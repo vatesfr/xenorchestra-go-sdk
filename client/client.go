@@ -8,10 +8,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff/v3"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sourcegraph/jsonrpc2/websocket"
@@ -25,14 +29,17 @@ const (
 
 type XOClient interface {
 	GetObjectsWithTags(tags []string) ([]Object, error)
+	GetAllObjectsOfType(obj XoObject, response interface{}) error
 
 	CreateVm(vmReq Vm, d time.Duration) (*Vm, error)
 	GetVm(vmReq Vm) (*Vm, error)
 	GetVms(vm Vm) ([]Vm, error)
 	UpdateVm(vmReq Vm) (*Vm, error)
 	DeleteVm(id string) error
-	HaltVm(vmReq Vm) error
+	HaltVm(id string) error
 	StartVm(id string) error
+	SuspendVm(id string) error
+	PauseVm(id string) error
 
 	GetCloudConfigByName(name string) ([]CloudConfig, error)
 	CreateCloudConfig(name, template string) (*CloudConfig, error)
@@ -63,10 +70,13 @@ type XOClient interface {
 	CreateUser(user User) (*User, error)
 	GetAllUsers() ([]User, error)
 	GetUser(userReq User) (*User, error)
+	GetCurrentUser() (*User, error)
 	DeleteUser(userReq User) error
 
-	CreateNetwork(netReq Network) (*Network, error)
+	CreateNetwork(netReq CreateNetworkRequest) (*Network, error)
 	GetNetwork(netReq Network) (*Network, error)
+	UpdateNetwork(netReq UpdateNetworkRequest) (*Network, error)
+	CreateBondedNetwork(netReq CreateBondedNetworkRequest) (*Network, error)
 	GetNetworks() ([]Network, error)
 	DeleteNetwork(id string) error
 
@@ -78,8 +88,12 @@ type XOClient interface {
 
 	GetTemplate(template Template) ([]Template, error)
 
+	GetAllVDIs() ([]VDI, error)
 	GetVDIs(vdiReq VDI) ([]VDI, error)
+	GetVDI(vdiReq VDI) (VDI, error)
+	CreateVDI(vdiReq CreateVDIReq) (VDI, error)
 	UpdateVDI(d Disk) error
+	DeleteVDI(id string) error
 
 	CreateAcl(acl Acl) (*Acl, error)
 	GetAcl(aclReq Acl) (*Acl, error)
@@ -107,14 +121,32 @@ type XOClient interface {
 }
 
 type Client struct {
-	rpc jsonrpc2.JSONRPC2
+	RetryMode    RetryMode
+	RetryMaxTime time.Duration
+	rpc          jsonrpc2.JSONRPC2
+	httpClient   http.Client
+	restApiURL   *url.URL
 }
+
+type RetryMode int
+
+const (
+	None RetryMode = iota // specifies that no retries will be made
+	// Specifies that exponential backoff will be used for certain retryable errors. When
+	// a guest is booting there is the potential for a race condition if the given action
+	// relies on the existance of a PV driver (unplugging / plugging a device). This open
+	// allows the provider to retry these errors until the guest is initialized.
+	Backoff
+)
 
 type Config struct {
 	Url                string
 	Username           string
 	Password           string
+	Token              string
 	InsecureSkipVerify bool
+	RetryMode          RetryMode
+	RetryMaxTime       time.Duration
 }
 
 var dialer = gorillawebsocket.Dialer{
@@ -122,13 +154,23 @@ var dialer = gorillawebsocket.Dialer{
 	WriteBufferSize: MaxMessageSize,
 }
 
+var (
+	retryModeMap = map[string]RetryMode{
+		"none":    None,
+		"backoff": Backoff,
+	}
+)
+
 func GetConfigFromEnv() Config {
-	var url string
+	var wsURL string
 	var username string
 	var password string
+	var token string
 	insecure := false
+	retryMode := None
+	retryMaxTime := 5 * time.Minute
 	if v := os.Getenv("XOA_URL"); v != "" {
-		url = v
+		wsURL = v
 	}
 	if v := os.Getenv("XOA_USER"); v != "" {
 		username = v
@@ -136,28 +178,60 @@ func GetConfigFromEnv() Config {
 	if v := os.Getenv("XOA_PASSWORD"); v != "" {
 		password = v
 	}
+	if v := os.Getenv("XOA_TOKEN"); v != "" {
+		token = v
+	}
 	if v := os.Getenv("XOA_INSECURE"); v != "" {
 		insecure = true
 	}
+	if v := os.Getenv("XOA_RETRY_MODE"); v != "" {
+		retry, ok := retryModeMap[v]
+		if !ok {
+			fmt.Println("[ERROR] failed to set retry mode, disabling retries")
+		} else {
+			retryMode = retry
+		}
+	}
+	if v := os.Getenv("XOA_RETRY_MAX_TIME"); v != "" {
+		duration, err := time.ParseDuration(v)
+		if err == nil {
+			retryMaxTime = duration
+		} else {
+			fmt.Println("[ERROR] failed to set retry mode, disabling retries")
+		}
+	}
 	return Config{
-		Url:                url,
+		Url:                wsURL,
 		Username:           username,
 		Password:           password,
+		Token:              token,
 		InsecureSkipVerify: insecure,
+		RetryMode:          retryMode,
+		RetryMaxTime:       retryMaxTime,
 	}
 }
 
 func NewClient(config Config) (XOClient, error) {
-	url := config.Url
+	wsURL := config.Url
 	username := config.Username
 	password := config.Password
-	skipVerify := config.InsecureSkipVerify
+	token := config.Token
 
-	if skipVerify {
-		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	if token == "" && (username == "" || password == "") {
+		return nil, fmt.Errorf("One of the following environment variable(s) must be set: XOA_USER and XOA_PASSWORD or XOA_TOKEN")
 	}
 
-	ws, _, err := dialer.Dial(fmt.Sprintf("%s/api/", url), http.Header{})
+	useTokenAuth := false
+	if token != "" {
+		useTokenAuth = true
+	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: config.InsecureSkipVerify,
+	}
+	dialer.TLSClientConfig = tlsConfig
+
+	ws, _, err := dialer.Dial(fmt.Sprintf("%s/api/", wsURL), http.Header{})
 
 	if err != nil {
 		return nil, err
@@ -168,47 +242,120 @@ func NewClient(config Config) (XOClient, error) {
 	h = &handler{}
 	c := jsonrpc2.NewConn(context.Background(), objStream, h)
 
-	reqParams := map[string]interface{}{
-		"email":    username,
-		"password": password,
+	reqParams := map[string]interface{}{}
+	if useTokenAuth {
+		reqParams["token"] = token
+	} else {
+
+		reqParams["email"] = username
+		reqParams["password"] = password
 	}
 	var reply signInResponse
-	err = c.Call(context.Background(), "session.signInWithPassword", reqParams, &reply)
+	err = c.Call(context.Background(), "session.signIn", reqParams, &reply)
 	if err != nil {
 		return nil, err
 	}
+
+	if !useTokenAuth {
+		err = c.Call(context.Background(), "token.create", map[string]interface{}{}, &token)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	jar, err := cookiejar.New(&cookiejar.Options{})
+	if err != nil {
+		return nil, err
+	}
+
+	restApiURL, err := convertWebsocketURLToRestApi(wsURL)
+	if err != nil {
+		return nil, err
+	}
+
+	jar.SetCookies(restApiURL, []*http.Cookie{
+		&http.Cookie{
+			Name:   "authenticationToken",
+			Value:  token,
+			MaxAge: 0,
+		},
+	})
+
+	httpClient := http.Client{
+		Jar: jar,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}
 	return &Client{
-		rpc: c,
+		RetryMode:    config.RetryMode,
+		RetryMaxTime: config.RetryMaxTime,
+		rpc:          c,
+		httpClient:   httpClient,
+		restApiURL:   restApiURL,
 	}, nil
 }
 
-func (c *Client) Call(method string, params, result interface{}, opt ...jsonrpc2.CallOption) error {
-	err := c.rpc.Call(context.Background(), method, params, result, opt...)
-	var callRes interface{}
-	t := reflect.TypeOf(result)
-	if t == nil || t.Kind() != reflect.Ptr {
-		callRes = result
-	} else {
-		callRes = reflect.ValueOf(result).Elem()
+func (c *Client) IsRetryableError(err jsonrpc2.Error) bool {
+
+	if c.RetryMode == None {
+		return false
 	}
-	log.Printf("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n", method, params, callRes, err)
 
-	if err != nil {
-		rpcErr, ok := err.(*jsonrpc2.Error)
+	// Error code 11 corresponds to an error condition where a VM is missing PV drivers.
+	// https://github.com/vatesfr/xen-orchestra/blob/a3a2fda157fa30af4b93d34c99bac550f7c82bbc/packages/xo-common/api-errors.js#L95
 
-		if !ok {
-			return err
-		}
-
-		data := rpcErr.Data
-
-		if data == nil {
-			return err
-		}
-
-		return errors.New(fmt.Sprintf("%s: %s", err, *data))
+	// During the boot process, there is a race condition where the PV drivers aren't available yet and
+	// making XO api calls during this time can return a VM_MISSING_PV_DRIVERS error. These errors can
+	// be treated as retryable since we want to wait until the VM has finished booting and its PV driver
+	// is initialized.
+	if err.Code == 11 || err.Code == 14 {
+		return true
 	}
-	return nil
+	return false
+}
+
+func (c *Client) Call(method string, params, result interface{}) error {
+	operation := func() error {
+		err := c.rpc.Call(context.Background(), method, params, result)
+		var callRes interface{}
+		t := reflect.TypeOf(result)
+		if t == nil || t.Kind() != reflect.Ptr {
+			callRes = result
+		} else {
+			callRes = reflect.ValueOf(result).Elem()
+		}
+		log.Printf("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n", method, params, callRes, err)
+
+		if err != nil {
+			rpcErr, ok := err.(*jsonrpc2.Error)
+
+			if !ok {
+				return backoff.Permanent(err)
+			}
+
+			if c.IsRetryableError(*rpcErr) {
+				return err
+			}
+
+			data := rpcErr.Data
+
+			if data == nil {
+				return backoff.Permanent(err)
+			}
+
+			return backoff.Permanent(errors.New(fmt.Sprintf("%s: %s", err, *data)))
+		}
+		return nil
+	}
+
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxElapsedTime = c.RetryMaxTime
+	return backoff.Retry(operation, bo)
+}
+
+type RefreshComparison interface {
+	Propagated(obj interface{}) bool
 }
 
 type XoObject interface {
@@ -303,4 +450,14 @@ func (h *handler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2
 type signInResponse struct {
 	Email string `json:"email,omitempty"`
 	Id    string `json:"id,omitempty"`
+}
+
+// This function must be used after a successful JSONRPC websocket request
+// is made. This is to verify that we can trust the websocket URL is well-formed
+// so our simple ws/wss -> http/https translation will be done correctly
+func convertWebsocketURLToRestApi(wsURL string) (*url.URL, error) {
+	if !strings.HasPrefix(wsURL, "ws") {
+		return nil, fmt.Errorf("expected `%s` to begin with ws in order to munge the URL to its http/https equivalent\n", wsURL)
+	}
+	return url.Parse(strings.Replace(wsURL, "ws", "http", 1))
 }

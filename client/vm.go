@@ -1,18 +1,34 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type allObjectResponse struct {
 	Objects map[string]Vm `json:"-"`
 }
+
+const (
+	HaltedPowerState    string = "Halted"
+	PausedPowerState    string = "Paused"
+	RunningPowerState   string = "Running"
+	SuspendedPowerState string = "Suspended"
+)
+
+const (
+	CloneTypeFastClone string = "fast"
+	CloneTypeFullClone string = "full"
+)
 
 type CPUs struct {
 	Number int `json:"number"`
@@ -56,13 +72,43 @@ func (v *Videoram) UnmarshalJSON(data []byte) (err error) {
 	return json.Unmarshal(data, &v.Value)
 }
 
+// This resource set type is used to allow differentiating between when a
+// user wants to remove a resource set from a VM (during an update) and when
+// a resource set parameter should be omitted from a vm.set RPC call.
+type FlatResourceSet struct {
+	Id string
+}
+
+// This ensures when a FlatResourceSet is printed in debug logs
+// that the string value of the Id is used rather than the pointer
+// value. Since the purpose of this struct is to flatten resource
+// sets to a string, it makes the logs properly reflect what is
+// being logged.
+func (rs *FlatResourceSet) String() string {
+	return rs.Id
+}
+
+func (rs *FlatResourceSet) UnmarshalJSON(data []byte) (err error) {
+	return json.Unmarshal(data, &rs.Id)
+}
+
+func (rs *FlatResourceSet) MarshalJSON() ([]byte, error) {
+	if len(rs.Id) == 0 {
+		var buf bytes.Buffer
+		buf.WriteString(`null`)
+		return buf.Bytes(), nil
+	} else {
+		return json.Marshal(rs.Id)
+	}
+}
+
 type Vm struct {
 	Addresses          map[string]string `json:"addresses,omitempty"`
 	BlockedOperations  map[string]string `json:"blockedOperations,omitempty"`
 	Boot               Boot              `json:"boot,omitempty"`
 	Type               string            `json:"type,omitempty"`
 	Id                 string            `json:"id,omitempty"`
-	AffinityHost       string            `json:"affinityHost,omitempty"`
+	AffinityHost       *string           `json:"affinityHost,omitempty"`
 	NameDescription    string            `json:"name_description"`
 	NameLabel          string            `json:"name_label"`
 	CPUs               CPUs              `json:"CPUs"`
@@ -77,14 +123,15 @@ type Vm struct {
 	AutoPoweron        bool              `json:"auto_poweron"`
 	HA                 string            `json:"high_availability"`
 	CloudConfig        string            `json:"cloudConfig"`
-	ResourceSet        string            `json:"resourceSet,omitempty"`
+	ResourceSet        *FlatResourceSet  `json:"resourceSet"`
 	// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
 	// SecureBoot         bool              `json:"secureBoot,omitempty"`
-	Tags       []string `json:"tags"`
-	Videoram   Videoram `json:"videoram,omitempty"`
-	Vga        string   `json:"vga,omitempty"`
-	StartDelay int      `json:startDelay,omitempty"`
-	Host       string   `json:"$container"`
+	Tags         []string               `json:"tags"`
+	Videoram     Videoram               `json:"videoram,omitempty"`
+	Vga          string                 `json:"vga,omitempty"`
+	StartDelay   int                    `json:startDelay,omitempty"`
+	Host         string                 `json:"$container"`
+	XenstoreData map[string]interface{} `json:"xenStoreData,omitempty"`
 
 	// These fields are used for passing in disk inputs when
 	// creating Vms, however, this is not a real field as far
@@ -92,8 +139,14 @@ type Vm struct {
 	Disks              []Disk              `json:"-"`
 	CloudNetworkConfig string              `json:"-"`
 	VIFsMap            []map[string]string `json:"-"`
-	WaitForIps         bool                `json:"-"`
-	Installation       Installation        `json:"-"`
+	// Map where the key is the network interface index and the
+	// value is a cidr range parsable by net.ParseCIDR
+	WaitForIps                     map[string]string `json:"-"`
+	Installation                   Installation      `json:"-"`
+	ManagementAgentDetected        bool              `json:"managementAgentDetected"`
+	PVDriversDetected              bool              `json:"pvDriversDetected"`
+	DestroyCloudConfigVdiAfterBoot bool              `json:"-"`
+	CloneType                      string            `json:"-"`
 }
 
 type Installation struct {
@@ -139,6 +192,42 @@ func (v Vm) Compare(obj interface{}) bool {
 	return false
 }
 
+func (c *Client) SuspendVm(id string) error {
+	return c.changeVmState(id, "suspend", []string{SuspendedPowerState}, []string{RunningPowerState}, 2*time.Minute)
+}
+
+func (c *Client) changeVmState(id, action string, target, pending []string, timeout time.Duration) error {
+	// PV drivers are necessary for the XO api to issue a graceful shutdown.
+	// See https://github.com/terra-farm/terraform-provider-xenorchestra/issues/220
+	// for more details.
+	if err := c.waitForPVDriversDetected(id); err != nil {
+		return errors.New(
+			fmt.Sprintf("failed to gracefully %s vm (%s) since PV drivers were never detected", action, id))
+	}
+
+	params := map[string]interface{}{
+		"id": id,
+	}
+	var success bool
+	err := c.Call(fmt.Sprintf("vm.%s", action), params, &success)
+
+	if err != nil {
+		return err
+	}
+	return c.waitForVmState(
+		id,
+		StateChangeConf{
+			Pending: pending,
+			Target:  target,
+			Timeout: timeout,
+		},
+	)
+}
+
+func (c *Client) PauseVm(id string) error {
+	return c.changeVmState(id, "pause", []string{PausedPowerState}, []string{RunningPowerState}, 2*time.Minute)
+}
+
 func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	tmpl, err := c.GetTemplate(Template{
 		Id: vmReq.Template,
@@ -177,11 +266,10 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	}
 
 	params := map[string]interface{}{
-		"affinityHost":     vmReq.AffinityHost,
-		"bootAfterCreate":  true,
+		"bootAfterCreate":  false,
+		"clone":            useExistingDisks && vmReq.CloneType == CloneTypeFastClone,
 		"name_label":       vmReq.NameLabel,
 		"name_description": vmReq.NameDescription,
-		"hvmBootFirmware":  vmReq.Boot.Firmware,
 		"template":         vmReq.Template,
 		"coreOs":           false,
 		"cpuCap":           nil,
@@ -191,15 +279,37 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		"existingDisks":    existingDisks,
 		// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
 		// "secureBoot":       vmReq.SecureBoot,
-		"expNestedHvm": vmReq.ExpNestedHvm,
-		"VDIs":         vdis,
-		"VIFs":         vmReq.VIFsMap,
-		"tags":         vmReq.Tags,
+		"expNestedHvm":      vmReq.ExpNestedHvm,
+		"VDIs":              vdis,
+		"VIFs":              vmReq.VIFsMap,
+		"tags":              vmReq.Tags,
+		"auto_poweron":      vmReq.AutoPoweron,
+		"high_availability": vmReq.HA,
+	}
+
+	if !params["clone"].(bool) && vmReq.CloneType == CloneTypeFastClone {
+		fmt.Printf("[WARN] A fast clone was requested but falling back to full due to lack of disk template support\n")
+	}
+
+	destroyCloudConfigVdiAfterBoot := vmReq.DestroyCloudConfigVdiAfterBoot
+	if destroyCloudConfigVdiAfterBoot {
+		params["destroyCloudConfigVdiAfterBoot"] = destroyCloudConfigVdiAfterBoot
+		params["bootAfterCreate"] = true
 	}
 
 	videoram := vmReq.Videoram.Value
 	if videoram != 0 {
 		params["videoram"] = videoram
+	}
+
+	firmware := vmReq.Boot.Firmware
+	if firmware != "" {
+		params["hvmBootFirmware"] = firmware
+	}
+
+	affinityHost := vmReq.AffinityHost
+	if affinityHost != nil {
+		params["affinityHost"] = affinityHost
 	}
 
 	vga := vmReq.Vga
@@ -229,11 +339,13 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 
 	cloudConfig := vmReq.CloudConfig
 	if cloudConfig != "" {
+		warnOnInvalidCloudConfig(cloudConfig)
+
 		params["cloudConfig"] = cloudConfig
 	}
 
 	resourceSet := vmReq.ResourceSet
-	if resourceSet != "" {
+	if resourceSet != nil {
 		params["resourceSet"] = resourceSet
 	}
 
@@ -249,7 +361,26 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		return nil, err
 	}
 
-	err = c.waitForModifyVm(vmId, vmReq.WaitForIps, createTime)
+	xsParams := map[string]interface{}{
+		"id":           vmId,
+		"xenStoreData": vmReq.XenstoreData,
+	}
+	var success bool
+	err = c.Call("vm.set", xsParams, &success)
+
+	if err != nil {
+		return nil, err
+	}
+
+	bootAfterCreate := params["bootAfterCreate"].(bool)
+	if !bootAfterCreate && vmReq.PowerState == RunningPowerState {
+		err = c.StartVm(vmId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = c.waitForModifyVm(vmId, vmReq.PowerState, vmReq.WaitForIps, createTime)
 
 	if err != nil {
 		return nil, err
@@ -274,25 +405,16 @@ func createVdiMap(disk Disk) map[string]interface{} {
 }
 
 func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
-	var resourceSet interface{} = vmReq.ResourceSet
-	if vmReq.ResourceSet == "" {
-		resourceSet = nil
-	}
 	params := map[string]interface{}{
 		"id":                vmReq.Id,
-		"affinityHost":      vmReq.AffinityHost,
 		"name_label":        vmReq.NameLabel,
 		"name_description":  vmReq.NameDescription,
-		"hvmBootFirmware":   vmReq.Boot.Firmware,
 		"auto_poweron":      vmReq.AutoPoweron,
-		"resourceSet":       resourceSet,
 		"high_availability": vmReq.HA, // valid options are best-effort, restart, ''
 		"CPUs":              vmReq.CPUs.Number,
 		"memoryMax":         vmReq.Memory.Static[1],
 		"expNestedHvm":      vmReq.ExpNestedHvm,
 		"startDelay":        vmReq.StartDelay,
-		"vga":               vmReq.Vga,
-		"videoram":          vmReq.Videoram.Value,
 		// TODO: These need more investigation before they are implemented
 		// pv_args
 
@@ -306,11 +428,43 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 		// coresPerSocket is null or a number of cores per socket. Putting an invalid value doesn't seem to cause an error :(
 	}
 
+	affinityHost := vmReq.AffinityHost
+	if affinityHost != nil {
+		if *affinityHost == "" {
+			params["affinityHost"] = nil
+		} else {
+			params["affinityHost"] = *affinityHost
+		}
+	}
+
+	videoram := vmReq.Videoram.Value
+	if videoram != 0 {
+		params["videoram"] = videoram
+	}
+
+	if vmReq.ResourceSet != nil {
+		params["resourceSet"] = vmReq.ResourceSet
+	}
+
+	if len(vmReq.XenstoreData) > 0 {
+		params["xenStoreData"] = vmReq.XenstoreData
+	}
+
+	vga := vmReq.Vga
+	if vga != "" {
+		params["vga"] = vga
+	}
+
 	// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
 	// secureBoot := vmReq.SecureBoot
 	// if secureBoot {
 	// 	params["secureBoot"] = true
 	// }
+
+	firmware := vmReq.Boot.Firmware
+	if firmware != "" {
+		params["hvmBootFirmware"] = firmware
+	}
 
 	blockedOperations := map[string]interface{}{}
 	for k, v := range vmReq.BlockedOperations {
@@ -353,39 +507,26 @@ func (c *Client) StartVm(id string) error {
 	return c.waitForVmState(
 		id,
 		StateChangeConf{
-			Pending: []string{"Halted", "Stopped"},
-			Target:  []string{"Running"},
+			Pending: []string{HaltedPowerState},
+			Target:  []string{RunningPowerState},
 			Timeout: 2 * time.Minute,
 		},
 	)
 }
 
-func (c *Client) HaltVm(vmReq Vm) error {
-	params := map[string]interface{}{
-		"id": vmReq.Id,
-	}
-	var success bool
-	// TODO: This can block indefinitely before we get to the waitForVmHalt
-	err := c.Call("vm.stop", params, &success)
-
-	if err != nil {
-		return err
-	}
-	return c.waitForVmState(
-		vmReq.Id,
-		StateChangeConf{
-			Pending: []string{"Running", "Stopped"},
-			Target:  []string{"Halted"},
-			Timeout: 2 * time.Minute,
-		},
-	)
+func (c *Client) HaltVm(id string) error {
+	return c.changeVmState(id, "stop", []string{HaltedPowerState}, []string{RunningPowerState}, 2*time.Minute)
 }
 
 func (c *Client) DeleteVm(id string) error {
 	params := map[string]interface{}{
 		"id": id,
 	}
-	var reply []interface{}
+	// Xen Orchestra versions >= 5.69.0 changed this return value to a bool
+	// when older versions returned an object. This needs to be an interface
+	// type in order to be backwards compatible while fixing this bug. See
+	// GitHub issue 196 for more details.
+	var reply interface{}
 	return c.Call("vm.delete", params, &reply)
 }
 
@@ -439,54 +580,143 @@ func GetVmPowerState(c *Client, id string) func() (result interface{}, state str
 	}
 }
 
+func (c *Client) waitForPVDriversDetected(id string) error {
+	refreshFn := func() (result interface{}, state string, err error) {
+		vm, err := c.GetVm(Vm{Id: id})
+
+		if err != nil {
+			return vm, "", err
+		}
+
+		return vm, strconv.FormatBool(vm.PVDriversDetected), nil
+	}
+	stateConf := &StateChangeConf{
+		Pending: []string{"false"},
+		Refresh: refreshFn,
+		Target:  []string{"true"},
+		Timeout: 2 * time.Minute,
+	}
+	_, err := stateConf.WaitForState()
+	return err
+}
+
 func (c *Client) waitForVmState(id string, stateConf StateChangeConf) error {
 	stateConf.Refresh = GetVmPowerState(c, id)
 	_, err := stateConf.WaitForState()
 	return err
 }
 
-func (c *Client) waitForModifyVm(id string, waitForIp bool, timeout time.Duration) error {
-	if !waitForIp {
-		refreshFn := func() (result interface{}, state string, err error) {
-			vm, err := c.GetVm(Vm{Id: id})
+func waitForPowerStateReached(c *Client, vmId, desiredPowerState string, timeout time.Duration) error {
+	var pending []string
+	target := desiredPowerState
+	switch desiredPowerState {
+	case RunningPowerState:
+		pending = []string{HaltedPowerState}
+	case HaltedPowerState:
+		pending = []string{RunningPowerState}
+	default:
+		return errors.New(fmt.Sprintf("Invalid VM power state requested: %s\n", desiredPowerState))
+	}
+	refreshFn := func() (result interface{}, state string, err error) {
+		vm, err := c.GetVm(Vm{Id: vmId})
 
-			if err != nil {
-				return vm, "", err
+		if err != nil {
+			return vm, "", err
+		}
+
+		return vm, vm.PowerState, nil
+	}
+	stateConf := &StateChangeConf{
+		Pending: pending,
+		Refresh: refreshFn,
+		Target:  []string{target},
+		Timeout: timeout,
+	}
+	_, err := stateConf.WaitForState()
+	return err
+}
+
+type ifaceMatchCheck struct {
+	cidrRange  string
+	ifaceIdx   string
+	ifaceAddrs []string
+}
+
+func waitForIPAssignment(c *Client, vmId string, waitForIps map[string]string, timeout time.Duration) error {
+	var lastResult ifaceMatchCheck
+	refreshFn := func() (result interface{}, state string, err error) {
+		vm, err := c.GetVm(Vm{Id: vmId})
+
+		if err != nil {
+			return vm, "", err
+		}
+
+		addrs := vm.Addresses
+		if len(addrs) == 0 || vm.PowerState != RunningPowerState {
+			return addrs, "Waiting", nil
+		}
+
+		netIfaces := map[string][]string{}
+		for key, addr := range vm.Addresses {
+
+			// key has the following format "{iface_id}/(ipv4|ipv6)/{iface_ip_id}"
+			ifaceIdx, _, _ := strings.Cut(key, "/")
+			if _, ok := netIfaces[ifaceIdx]; !ok {
+				netIfaces[ifaceIdx] = []string{}
+			}
+			netIfaces[ifaceIdx] = append(netIfaces[ifaceIdx], addr)
+		}
+
+		for ifaceIdx, cidrRange := range waitForIps {
+			// VM's Addresses member does not contain this network interface yet
+			if _, ok := netIfaces[ifaceIdx]; !ok {
+				return addrs, "Waiting", nil
 			}
 
-			return vm, vm.PowerState, nil
+			found := false
+			for _, ipAddr := range netIfaces[ifaceIdx] {
+				_, ipNet, err := net.ParseCIDR(cidrRange)
+
+				if err != nil {
+					return addrs, "Waiting", err
+				}
+
+				if ipNet.Contains(net.ParseIP(ipAddr)) {
+					found = true
+				}
+			}
+
+			if !found {
+				lastResult = ifaceMatchCheck{
+					cidrRange:  cidrRange,
+					ifaceIdx:   ifaceIdx,
+					ifaceAddrs: netIfaces[ifaceIdx],
+				}
+
+				return addrs, "Waiting", nil
+			}
 		}
-		stateConf := &StateChangeConf{
-			Pending: []string{"Halted", "Stopped"},
-			Refresh: refreshFn,
-			Target:  []string{"Running"},
-			Timeout: timeout,
-		}
-		_, err := stateConf.WaitForState()
-		return err
+
+		return addrs, "Ready", nil
+	}
+	stateConf := &StateChangeConf{
+		Pending: []string{"Waiting"},
+		Refresh: refreshFn,
+		Target:  []string{"Ready"},
+		Timeout: timeout,
+	}
+	_, err := stateConf.WaitForState()
+	if _, ok := err.(*TimeoutError); ok {
+		return errors.New(fmt.Sprintf("network[%s] never converged to the following cidr: %s, addresses: %s failed to match", lastResult.ifaceIdx, lastResult.cidrRange, lastResult.ifaceAddrs))
+	}
+	return err
+}
+
+func (c *Client) waitForModifyVm(id string, desiredPowerState string, waitForIps map[string]string, timeout time.Duration) error {
+	if len(waitForIps) == 0 {
+		return waitForPowerStateReached(c, id, desiredPowerState, timeout)
 	} else {
-		refreshFn := func() (result interface{}, state string, err error) {
-			vm, err := c.GetVm(Vm{Id: id})
-
-			if err != nil {
-				return vm, "", err
-			}
-
-			l := len(vm.Addresses)
-			if l == 0 || vm.PowerState != "Running" {
-				return vm, "Waiting", nil
-			}
-
-			return vm, "Ready", nil
-		}
-		stateConf := &StateChangeConf{
-			Pending: []string{"Waiting"},
-			Refresh: refreshFn,
-			Target:  []string{"Ready"},
-			Timeout: timeout,
-		}
-		_, err := stateConf.WaitForState()
-		return err
+		return waitForIPAssignment(c, id, waitForIps, timeout)
 	}
 }
 
@@ -563,4 +793,84 @@ func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 	}
 
 	*vm = *vmRes
+}
+
+func checkBlockDestroyOperation(vm *Vm) bool {
+	fmt.Printf("Found VM with blocked_operations=%v", vm.BlockedOperations)
+
+	for k, _ := range vm.BlockedOperations {
+
+		if k == "destroy" {
+			return true
+		}
+
+	}
+	return false
+}
+
+func RemoveVmsWithNamePrefix(prefix string) func(string) error {
+	return func(_ string) error {
+		fmt.Println("[DEBUG] Running vm sweeper")
+		c, err := NewClient(GetConfigFromEnv())
+		if err != nil {
+			return fmt.Errorf("error getting client: %s", err)
+		}
+
+		var vmsMap map[string]Vm
+		err = c.GetAllObjectsOfType(Vm{}, &vmsMap)
+		if err != nil {
+			return fmt.Errorf("error getting vms: %s", err)
+		}
+		for _, vm := range vmsMap {
+			if strings.HasPrefix(vm.NameLabel, prefix) {
+				if checkBlockDestroyOperation(&vm) {
+					var success bool
+					blockedOperations := map[string]interface{}{
+						"destroy": nil,
+					}
+					params := map[string]interface{}{
+						"id":                vm.Id,
+						"blockedOperations": blockedOperations,
+					}
+					client, _ := c.(*Client)
+					err := client.Call("vm.set", params, &success)
+
+					if err != nil {
+						log.Printf("error removing destroy block on vm `%s` during sweep: %s", vm.NameLabel, err)
+					}
+				}
+				fmt.Printf("[DEBUG] Deleting vm `%s`\n", vm.NameLabel)
+				err := c.DeleteVm(vm.Id)
+				if err != nil {
+					log.Printf("error destroying vm `%s` during sweep: %s", vm.NameLabel, err)
+				}
+			}
+		}
+		return nil
+	}
+}
+
+// This is not meant to be a robust check since it would be complicated to detect all
+// malformed config. The goal is to cover what is supported by the cloudinit terraform
+// provider (https://github.com/hashicorp/terraform-provider-cloudinit) and to rule out
+// obviously bad config
+func warnOnInvalidCloudConfig(cloudConfig string) {
+	contentType := http.DetectContentType([]byte(cloudConfig))
+	if contentType == "application/x-gzip" {
+		return
+	}
+
+	if strings.HasPrefix(cloudConfig, "Content-Type") {
+		if !strings.Contains(cloudConfig, "multipart/") {
+
+			log.Printf("[WARNING] Detected MIME type that may not be supported by cloudinit")
+			log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation (https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
+		}
+		return
+	}
+	if !strings.HasPrefix(cloudConfig, "#cloud-config") {
+		log.Printf("[WARNING] cloud config does not start with required text `#cloud-config`.")
+		log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation (https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
+	}
+
 }
