@@ -326,8 +326,15 @@ func (c *Client) Call(method string, params, result interface{}) error {
 		} else {
 			callRes = reflect.ValueOf(result).Elem()
 		}
+		// Create a copy of params and remove sensitive information
+		sanitizedParams := make(map[string]interface{})
+		for k, v := range params.(map[string]interface{}) {
+			if k != "password" {
+				sanitizedParams[k] = v
+			}
+		}
 		log.Printf("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n",
-			method, params, callRes, err)
+			method, sanitizedParams, callRes, err)
 
 		if err != nil {
 			rpcErr, ok := err.(*jsonrpc2.Error)
