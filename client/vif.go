@@ -63,7 +63,7 @@ func (c *Client) GetVIF(vifReq *VIF) (*VIF, error) {
 	vifs := obj.([]VIF)
 
 	if len(vifs) > 1 {
-		return nil, errors.New(fmt.Sprintf("recieved %d VIFs but was expecting a single VIF to be returned", len(vifs)))
+		return nil, fmt.Errorf("received %d VIFs but was expecting a single VIF to be returned", len(vifs))
 	}
 	return &vifs[0], nil
 }

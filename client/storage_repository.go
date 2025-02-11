@@ -71,7 +71,8 @@ func (c *Client) GetStorageRepositoryById(id string) (StorageRepository, error) 
 	}
 
 	if len(srs) != 1 {
-		return sr, errors.New(fmt.Sprintf("expected a single storage respository to be returned, instead received: %d in the response: %v", len(srs), obj))
+		return sr, fmt.Errorf("expected a single storage repository to be returned, instead received: %d in the response: %v",
+			len(srs), obj)
 	}
 
 	return srs[0], nil
@@ -102,7 +103,8 @@ func FindStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag string)
 	defaultSr, err := c.GetStorageRepositoryById(pool.DefaultSR)
 
 	if err != nil {
-		fmt.Printf("failed to find the default storage repository with id: %s with error: %v\n", pool.DefaultSR, err)
+		fmt.Printf("failed to find the default storage repository with id: %s with error: %v\n",
+			pool.DefaultSR, err)
 		os.Exit(-1)
 	}
 
@@ -119,7 +121,7 @@ func FindStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag string)
 func FindIsoStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag, isoSrEnvVar string) {
 	isoSrName, found := os.LookupEnv(isoSrEnvVar)
 	if !found {
-		fmt.Println(fmt.Sprintf("The %s environment variable must be set for the tests", isoSrEnvVar))
+		fmt.Printf("The %s environment variable must be set for the tests\n", isoSrEnvVar)
 		os.Exit(-1)
 	}
 

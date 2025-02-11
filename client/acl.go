@@ -81,6 +81,9 @@ func (c *Client) DeleteAcl(acl Acl) error {
 	var aclRef *Acl
 	if getAclById(acl) {
 		aclRef, err = c.GetAcl(acl)
+		if err != nil {
+			return err
+		}
 		acl = *aclRef
 	}
 	var success bool

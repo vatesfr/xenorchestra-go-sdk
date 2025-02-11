@@ -18,7 +18,10 @@ func TestGetUser(t *testing.T) {
 	}
 
 	user, err := c.CreateUser(expectedUser)
-	defer c.DeleteUser(*user)
+	defer func() {
+		err := c.DeleteUser(*user)
+		t.Errorf("failed to delete user with error: %v", err)
+	}()
 
 	if err != nil {
 		t.Fatalf("failed to create user with error: %v", err)

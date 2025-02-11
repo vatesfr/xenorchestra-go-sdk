@@ -15,11 +15,13 @@ type jsonRPCFail struct {
 	err error
 }
 
-func (rpc jsonRPCFail) Call(ctx context.Context, method string, params, result interface{}, opt ...jsonrpc2.CallOption) error {
+func (rpc jsonRPCFail) Call(ctx context.Context, method string, params, result interface{},
+	opt ...jsonrpc2.CallOption) error {
 	return rpc.err
 }
 
-func (rpc jsonRPCFail) Notify(ctx context.Context, method string, params interface{}, opt ...jsonrpc2.CallOption) error {
+func (rpc jsonRPCFail) Notify(ctx context.Context, method string, params interface{},
+	opt ...jsonrpc2.CallOption) error {
 	return nil
 }
 
@@ -28,7 +30,8 @@ func (rpc jsonRPCFail) Close() error {
 }
 
 func TestCall_withJsonRPC2Error(t *testing.T) {
-	var jsonRpcErr string = `{"errors":[{"code":null,"reason":"type","message":"must be string, but is object","property":"@.template"}]}`
+	var jsonRpcErr string = `{"errors":[{"code":null,"reason":"type","message":"must be string,` +
+		`but is object","property":"@.template"}]}`
 	rpcCode := 10
 	msg := "invalid parameters"
 	var expectedErrMsg string = fmt.Sprintf(`jsonrpc2: code %d message: %s: %s`, rpcCode, msg, jsonRpcErr)
@@ -53,7 +56,8 @@ func TestCall_withJsonRPC2Error(t *testing.T) {
 	}
 
 	if err.Error() != expectedErrMsg {
-		t.Errorf("Call method should surface property with invalid parameter. Received `%s` but expected `%s`", err, expectedErrMsg)
+		t.Errorf("Call method should surface property with invalid parameter. Received `%s` but expected `%s`",
+			err, expectedErrMsg)
 	}
 }
 
@@ -81,7 +85,8 @@ func TestCall_withJsonRPC2ErrorWithNilData(t *testing.T) {
 	}
 
 	if err.Error() != expectedErrMsg {
-		t.Errorf("Call method should surface property with invalid parameter. Received `%s` but expected `%s`", err, expectedErrMsg)
+		t.Errorf("Call method should surface property with invalid parameter. Received `%s` but expected `%s`",
+			err, expectedErrMsg)
 	}
 }
 
@@ -103,7 +108,8 @@ func TestCall_withNonJsonRPC2Error(t *testing.T) {
 	}
 
 	if err != expectedErr {
-		t.Errorf("Call method should return an error as is if not of type `jsonrpc2.Error`. Expected: %v received: %v", expectedErr, err)
+		t.Errorf("Call method should return an error as is if not of type `jsonrpc2.Error`. Expected: %v received: %v",
+			expectedErr, err)
 	}
 }
 
@@ -138,7 +144,8 @@ func Test_convertWebsocketURLToRestApi(t *testing.T) {
 		{
 			inputURL:    "ftp://example.com",
 			expectedURL: nil,
-			err:         fmt.Errorf("expected `%s` to begin with ws in order to munge the URL to its http/https equivalent\n", "ftp://example.com"),
+			err: fmt.Errorf("expected `%s` to begin with ws in order to munge the URL to its http/https equivalent\n",
+				"ftp://example.com"),
 		},
 	}
 

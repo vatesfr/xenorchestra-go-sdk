@@ -48,7 +48,11 @@ func (c *Client) GetObjectsWithTags(tags []string) ([]Object, error) {
 			"tags": tags,
 		},
 	}
-	c.Call("xo.getAllObjects", params, &objsRes.Objects)
+	err := c.Call("xo.getAllObjects", params, &objsRes.Objects)
+	if err != nil {
+		return nil, err
+	}
+
 	log.Printf("[DEBUG] Found objects with tags `%s`: %v\n", tags, objsRes)
 
 	t := []Object{}
@@ -56,7 +60,7 @@ func (c *Client) GetObjectsWithTags(tags []string) ([]Object, error) {
 		obj, ok := resObject.(map[string]interface{})
 
 		if !ok {
-			return t, errors.New("Could not coerce interface{} into map")
+			return t, errors.New("could not coerce interface{} into map")
 		}
 
 		id := obj["id"].(string)

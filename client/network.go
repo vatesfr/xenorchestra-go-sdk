@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -50,7 +49,7 @@ type CreateNetworkRequest struct {
 	// The first set of members are shared between bonded and non bonded networks
 	// These should be kept in sync with the CreateBondedNetworkRequest struct
 	// Refactoring these fields to an embedded struct means that the caller must
-	// know the embedded structs existance. Since the list is relatively small
+	// know the embedded structs existence. Since the list is relatively small
 	// this was deemed a more appropriate tradeoff to make the API nicer.
 	Automatic       bool   `mapstructure:"automatic"`
 	DefaultIsLocked bool   `mapstructure:"defaultIsLocked"`
@@ -118,13 +117,16 @@ func (c UpdateNetworkRequest) Propagated(obj interface{}) bool {
 func (c *Client) CreateNetwork(netReq CreateNetworkRequest) (*Network, error) {
 	var id string
 	var params map[string]interface{}
-	mapstructure.Decode(netReq, &params)
+	err := mapstructure.Decode(netReq, &params)
+	if err != nil {
+		return nil, err
+	}
 
 	delete(params, "automatic")
 	delete(params, "defaultIsLocked")
 
 	log.Printf("[DEBUG] params for network.create: %#v", params)
-	err := c.Call("network.create", params, &id)
+	err = c.Call("network.create", params, &id)
 
 	if err != nil {
 		return nil, err
@@ -138,6 +140,9 @@ func (c *Client) CreateNetwork(netReq CreateNetworkRequest) (*Network, error) {
 			Automatic:       netReq.Automatic,
 			DefaultIsLocked: netReq.DefaultIsLocked,
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c.waitForModifyNetwork(id, netReq, 10*time.Second)
@@ -145,7 +150,10 @@ func (c *Client) CreateNetwork(netReq CreateNetworkRequest) (*Network, error) {
 
 func (c *Client) CreateBondedNetwork(netReq CreateBondedNetworkRequest) (*Network, error) {
 	var params map[string]interface{}
-	mapstructure.Decode(netReq, &params)
+	err := mapstructure.Decode(netReq, &params)
+	if err != nil {
+		return nil, err
+	}
 
 	delete(params, "automatic")
 	delete(params, "defaultIsLocked")
@@ -153,7 +161,7 @@ func (c *Client) CreateBondedNetwork(netReq CreateBondedNetworkRequest) (*Networ
 	log.Printf("[DEBUG] params for network.createBonded: %#v", params)
 
 	var result map[string]interface{}
-	err := c.Call("network.createBonded", params, &result)
+	err = c.Call("network.createBonded", params, &result)
 	if err != nil {
 		return nil, err
 	}
@@ -167,6 +175,9 @@ func (c *Client) CreateBondedNetwork(netReq CreateBondedNetworkRequest) (*Networ
 			Automatic:       netReq.Automatic,
 			DefaultIsLocked: netReq.DefaultIsLocked,
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
 	return c.waitForModifyNetwork(id, netReq, 10*time.Second)
 }
@@ -195,10 +206,13 @@ func (c *Client) waitForModifyNetwork(id string, target RefreshComparison, timeo
 
 func (c *Client) UpdateNetwork(netReq UpdateNetworkRequest) (*Network, error) {
 	var params map[string]interface{}
-	mapstructure.Decode(netReq, &params)
+	err := mapstructure.Decode(netReq, &params)
+	if err != nil {
+		return nil, err
+	}
 
 	var success bool
-	err := c.Call("network.set", params, &success)
+	err = c.Call("network.set", params, &success)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +230,9 @@ func (c *Client) GetNetwork(netReq Network) (*Network, error) {
 	nets := obj.([]Network)
 
 	if len(nets) > 1 {
-		return nil, errors.New(fmt.Sprintf("Your query returned more than one result: %+v. Use `pool_id` or other fields to filter the result down to a single network", nets))
+		return nil, fmt.Errorf("your query returned more than one result: %+v."+
+			"Use `pool_id` or other fields to filter the result down to a single network",
+			nets)
 	}
 
 	return &nets[0], nil

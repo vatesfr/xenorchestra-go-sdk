@@ -55,7 +55,8 @@ func (c *Client) GetHostById(id string) (host Host, err error) {
 	}
 
 	if len(hosts) != 1 {
-		return host, errors.New(fmt.Sprintf("expected a single host to be returned, instead received: %d in the response: %v", len(hosts), obj))
+		return host, fmt.Errorf("expected a single host to be returned, instead received: %d in the response: %v",
+			len(hosts), obj)
 	}
 
 	return hosts[0], nil

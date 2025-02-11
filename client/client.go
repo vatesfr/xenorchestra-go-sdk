@@ -134,7 +134,7 @@ const (
 	None RetryMode = iota // specifies that no retries will be made
 	// Specifies that exponential backoff will be used for certain retryable errors. When
 	// a guest is booting there is the potential for a race condition if the given action
-	// relies on the existance of a PV driver (unplugging / plugging a device). This open
+	// relies on the existence of a PV driver (unplugging / plugging a device). This open
 	// allows the provider to retry these errors until the guest is initialized.
 	Backoff
 )
@@ -218,7 +218,8 @@ func NewClient(config Config) (XOClient, error) {
 	token := config.Token
 
 	if token == "" && (username == "" || password == "") {
-		return nil, fmt.Errorf("One of the following environment variable(s) must be set: XOA_USER and XOA_PASSWORD or XOA_TOKEN")
+		return nil,
+			fmt.Errorf("one of the following environment variable(s) must be set: XOA_USER and XOA_PASSWORD or XOA_TOKEN")
 	}
 
 	useTokenAuth := false
@@ -227,7 +228,7 @@ func NewClient(config Config) (XOClient, error) {
 	}
 
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: config.InsecureSkipVerify,
+		InsecureSkipVerify: config.InsecureSkipVerify, // #nosec G402
 	}
 	dialer.TLSClientConfig = tlsConfig
 
@@ -238,8 +239,7 @@ func NewClient(config Config) (XOClient, error) {
 	}
 
 	objStream := websocket.NewObjectStream(ws)
-	var h jsonrpc2.Handler
-	h = &handler{}
+	var h jsonrpc2.Handler = &handler{}
 	c := jsonrpc2.NewConn(context.Background(), objStream, h)
 
 	reqParams := map[string]interface{}{}
@@ -274,7 +274,7 @@ func NewClient(config Config) (XOClient, error) {
 	}
 
 	jar.SetCookies(restApiURL, []*http.Cookie{
-		&http.Cookie{
+		{
 			Name:   "authenticationToken",
 			Value:  token,
 			MaxAge: 0,
@@ -303,7 +303,8 @@ func (c *Client) IsRetryableError(err jsonrpc2.Error) bool {
 	}
 
 	// Error code 11 corresponds to an error condition where a VM is missing PV drivers.
-	// https://github.com/vatesfr/xen-orchestra/blob/a3a2fda157fa30af4b93d34c99bac550f7c82bbc/packages/xo-common/api-errors.js#L95
+	// https://github.com/vatesfr/xen-orchestra/blob/a3a2fda157fa30af4b93d34c99bac550f7c82bbc/
+	// packages/xo-common/api-errors.js#L95
 
 	// During the boot process, there is a race condition where the PV drivers aren't available yet and
 	// making XO api calls during this time can return a VM_MISSING_PV_DRIVERS error. These errors can
@@ -325,7 +326,8 @@ func (c *Client) Call(method string, params, result interface{}) error {
 		} else {
 			callRes = reflect.ValueOf(result).Elem()
 		}
-		log.Printf("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n", method, params, callRes, err)
+		log.Printf("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n",
+			method, params, callRes, err)
 
 		if err != nil {
 			rpcErr, ok := err.(*jsonrpc2.Error)
@@ -344,7 +346,7 @@ func (c *Client) Call(method string, params, result interface{}) error {
 				return backoff.Permanent(err)
 			}
 
-			return backoff.Permanent(errors.New(fmt.Sprintf("%s: %s", err, *data)))
+			return backoff.Permanent(fmt.Errorf("%s: %s", err, *data))
 		}
 		return nil
 	}
@@ -414,7 +416,7 @@ func (c *Client) FindFromGetAllObjects(obj XoObject) (interface{}, error) {
 	for _, resObj := range objsRes.Objects {
 		v, ok := resObj.(map[string]interface{})
 		if !ok {
-			return obj, errors.New("Could not coerce interface{} into map")
+			return obj, errors.New("could not coerce interface{} into map")
 		}
 		b, err := json.Marshal(v)
 
@@ -457,7 +459,7 @@ type signInResponse struct {
 // so our simple ws/wss -> http/https translation will be done correctly
 func convertWebsocketURLToRestApi(wsURL string) (*url.URL, error) {
 	if !strings.HasPrefix(wsURL, "ws") {
-		return nil, fmt.Errorf("expected `%s` to begin with ws in order to munge the URL to its http/https equivalent\n", wsURL)
+		return nil, fmt.Errorf("expected `%s` to begin with ws in order to munge the URL to its http/https equivalent", wsURL)
 	}
 	return url.Parse(strings.Replace(wsURL, "ws", "http", 1))
 }

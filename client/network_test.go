@@ -2,7 +2,7 @@ package client
 
 import "testing"
 
-var testNetworkName string = integrationTestPrefix + "network"
+var testNetworkName = integrationTestPrefix + "network"
 
 func TestNetworkCompare(t *testing.T) {
 

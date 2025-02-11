@@ -26,6 +26,11 @@ const (
 )
 
 const (
+	WaitingState string = "Waiting"
+	ReadyState   string = "Ready"
+)
+
+const (
 	CloneTypeFastClone string = "fast"
 	CloneTypeFullClone string = "full"
 )
@@ -97,9 +102,8 @@ func (rs *FlatResourceSet) MarshalJSON() ([]byte, error) {
 		var buf bytes.Buffer
 		buf.WriteString(`null`)
 		return buf.Bytes(), nil
-	} else {
-		return json.Marshal(rs.Id)
 	}
+	return json.Marshal(rs.Id)
 }
 
 type Vm struct {
@@ -129,7 +133,7 @@ type Vm struct {
 	Tags         []string               `json:"tags"`
 	Videoram     Videoram               `json:"videoram,omitempty"`
 	Vga          string                 `json:"vga,omitempty"`
-	StartDelay   int                    `json:startDelay,omitempty"`
+	StartDelay   int                    `json:"startDelay,omitempty"`
 	Host         string                 `json:"$container"`
 	XenstoreData map[string]interface{} `json:"xenStoreData,omitempty"`
 
@@ -201,8 +205,7 @@ func (c *Client) changeVmState(id, action string, target, pending []string, time
 	// See https://github.com/terra-farm/terraform-provider-xenorchestra/issues/220
 	// for more details.
 	if err := c.waitForPVDriversDetected(id); err != nil {
-		return errors.New(
-			fmt.Sprintf("failed to gracefully %s vm (%s) since PV drivers were never detected", action, id))
+		return fmt.Errorf("failed to gracefully %s vm (%s) since PV drivers were never detected", action, id)
 	}
 
 	params := map[string]interface{}{
@@ -238,7 +241,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	}
 
 	if len(tmpl) != 1 {
-		return nil, errors.New(fmt.Sprintf("cannot create VM when multiple templates are returned: %v", tmpl))
+		return nil, fmt.Errorf("cannot create VM when multiple templates are returned: %v", tmpl)
 	}
 
 	useExistingDisks := tmpl[0].isDiskTemplate()
@@ -420,9 +423,12 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 
 		// virtualizationMode hvm or pv, cannot be set after vm is created (requires conversion)
 
-		// hasVendorDevice must be applied when the vm is halted and only applies to windows machines - https://github.com/xapi-project/xen-api/blob/889b83c47d46c4df65fe58b01caed284dab8dc93/ocaml/idl/datamodel_vm.ml#L1168
+		// hasVendorDevice must be applied when the vm is halted and only applies to windows machines -
+		// https://github.com/xapi-project/xen-api/blob/889b83c47d46c4df65fe58b01caed284dab8dc93
+		// /ocaml/idl/datamodel_vm.ml#L1168
 
-		// share relates to resource sets. This can be accomplished with the resource set resource so supporting it isn't necessary
+		// share relates to resource sets. This can be accomplished with the resource set resource so
+		// supporting it isn't necessary
 
 		// cpusMask, cpuWeight and cpuCap can be changed at runtime to an integer value or null
 		// coresPerSocket is null or a number of cores per socket. Putting an invalid value doesn't seem to cause an error :(
@@ -539,7 +545,7 @@ func (c *Client) GetVm(vmReq Vm) (*Vm, error) {
 	vms := obj.([]Vm)
 
 	if len(vms) != 1 {
-		return nil, errors.New(fmt.Sprintf("expected to find a single VM from request %+v, instead found %d", vmReq, len(vms)))
+		return nil, fmt.Errorf("expected to find a single VM from request %+v, instead found %d", vmReq, len(vms))
 	}
 
 	log.Printf("[DEBUG] Found vm: %+v", vms[0])
@@ -615,7 +621,7 @@ func waitForPowerStateReached(c *Client, vmId, desiredPowerState string, timeout
 	case HaltedPowerState:
 		pending = []string{RunningPowerState}
 	default:
-		return errors.New(fmt.Sprintf("Invalid VM power state requested: %s\n", desiredPowerState))
+		return fmt.Errorf("Invalid VM power state requested: %s\n", desiredPowerState)
 	}
 	refreshFn := func() (result interface{}, state string, err error) {
 		vm, err := c.GetVm(Vm{Id: vmId})
@@ -653,7 +659,7 @@ func waitForIPAssignment(c *Client, vmId string, waitForIps map[string]string, t
 
 		addrs := vm.Addresses
 		if len(addrs) == 0 || vm.PowerState != RunningPowerState {
-			return addrs, "Waiting", nil
+			return addrs, WaitingState, nil
 		}
 
 		netIfaces := map[string][]string{}
@@ -670,7 +676,7 @@ func waitForIPAssignment(c *Client, vmId string, waitForIps map[string]string, t
 		for ifaceIdx, cidrRange := range waitForIps {
 			// VM's Addresses member does not contain this network interface yet
 			if _, ok := netIfaces[ifaceIdx]; !ok {
-				return addrs, "Waiting", nil
+				return addrs, WaitingState, nil
 			}
 
 			found := false
@@ -678,7 +684,7 @@ func waitForIPAssignment(c *Client, vmId string, waitForIps map[string]string, t
 				_, ipNet, err := net.ParseCIDR(cidrRange)
 
 				if err != nil {
-					return addrs, "Waiting", err
+					return addrs, WaitingState, err
 				}
 
 				if ipNet.Contains(net.ParseIP(ipAddr)) {
@@ -693,31 +699,32 @@ func waitForIPAssignment(c *Client, vmId string, waitForIps map[string]string, t
 					ifaceAddrs: netIfaces[ifaceIdx],
 				}
 
-				return addrs, "Waiting", nil
+				return addrs, WaitingState, nil
 			}
 		}
 
-		return addrs, "Ready", nil
+		return addrs, ReadyState, nil
 	}
 	stateConf := &StateChangeConf{
-		Pending: []string{"Waiting"},
+		Pending: []string{WaitingState},
 		Refresh: refreshFn,
-		Target:  []string{"Ready"},
+		Target:  []string{ReadyState},
 		Timeout: timeout,
 	}
 	_, err := stateConf.WaitForState()
 	if _, ok := err.(*TimeoutError); ok {
-		return errors.New(fmt.Sprintf("network[%s] never converged to the following cidr: %s, addresses: %s failed to match", lastResult.ifaceIdx, lastResult.cidrRange, lastResult.ifaceAddrs))
+		return fmt.Errorf("network[%s] never converged to the following cidr: %s, addresses: %s failed to match",
+			lastResult.ifaceIdx, lastResult.cidrRange, lastResult.ifaceAddrs)
 	}
 	return err
 }
 
-func (c *Client) waitForModifyVm(id string, desiredPowerState string, waitForIps map[string]string, timeout time.Duration) error {
+func (c *Client) waitForModifyVm(id string, desiredPowerState string, waitForIps map[string]string,
+	timeout time.Duration) error {
 	if len(waitForIps) == 0 {
 		return waitForPowerStateReached(c, id, desiredPowerState, timeout)
-	} else {
-		return waitForIPAssignment(c, id, waitForIps, timeout)
 	}
+	return waitForIPAssignment(c, id, waitForIps, timeout)
 }
 
 func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
@@ -767,14 +774,14 @@ func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 					},
 				},
 				Disks: []Disk{
-					Disk{
+					{
 						VDI: VDI{
 							SrId:      srId,
 							NameLabel: "terraform xenorchestra client testing",
 							Size:      16106127360,
 						},
 					},
-					Disk{
+					{
 						VDI: VDI{
 							SrId:      srId,
 							NameLabel: "disk2",
@@ -788,7 +795,7 @@ func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 	}
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("failed to find vm for the client tests with error: %v\n", err))
+		fmt.Printf("failed to find vm for the client tests with error: %v\n", err)
 		os.Exit(-1)
 	}
 
@@ -798,7 +805,7 @@ func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 func checkBlockDestroyOperation(vm *Vm) bool {
 	fmt.Printf("Found VM with blocked_operations=%v", vm.BlockedOperations)
 
-	for k, _ := range vm.BlockedOperations {
+	for k := range vm.BlockedOperations {
 
 		if k == "destroy" {
 			return true
@@ -821,7 +828,8 @@ func RemoveVmsWithNamePrefix(prefix string) func(string) error {
 		if err != nil {
 			return fmt.Errorf("error getting vms: %s", err)
 		}
-		for _, vm := range vmsMap {
+		for _, v := range vmsMap {
+			vm := v
 			if strings.HasPrefix(vm.NameLabel, prefix) {
 				if checkBlockDestroyOperation(&vm) {
 					var success bool
@@ -864,13 +872,15 @@ func warnOnInvalidCloudConfig(cloudConfig string) {
 		if !strings.Contains(cloudConfig, "multipart/") {
 
 			log.Printf("[WARNING] Detected MIME type that may not be supported by cloudinit")
-			log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation (https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
+			log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation" +
+				"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
 		}
 		return
 	}
 	if !strings.HasPrefix(cloudConfig, "#cloud-config") {
 		log.Printf("[WARNING] cloud config does not start with required text `#cloud-config`.")
-		log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation (https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
+		log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation" +
+			"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
 	}
 
 }

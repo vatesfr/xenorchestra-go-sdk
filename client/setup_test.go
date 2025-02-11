@@ -53,12 +53,12 @@ func TestMain(m *testing.M) {
 	FindStorageRepositoryForTests(accTestPool, &accDefaultSr, integrationTestPrefix)
 	CreateNetwork(&accDefaultNetwork)
 	FindOrCreateVmForTests(&accVm, accTestPool.Id, accDefaultSr.Id, testTemplate.Id, integrationTestPrefix)
-	CreateResourceSet(testResourceSet)
+	_ = CreateResourceSet(testResourceSet)
 
 	code := m.Run()
 
-	RemoveResourceSetsWithNamePrefix(integrationTestPrefix)("")
-	RemoveNetworksWithNamePrefix(integrationTestPrefix)("")
+	_ = RemoveResourceSetsWithNamePrefix(integrationTestPrefix)("")
+	_ = RemoveNetworksWithNamePrefix(integrationTestPrefix)("")
 
 	os.Exit(code)
 }

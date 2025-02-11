@@ -7,12 +7,18 @@ linters:
     - govet
     - ineffassign
     - lll
-    - megacheck
+    - gosimple
+    - staticcheck
+    - unused
     - misspell
     - nakedret
-    - revive
+    # - revive # Disable revive linter as it required to rename fields (e.g. Id to ID)
     - unconvert
     - unused
   enable-all: false
+linters-settings:
+  govet:
+    disable:
+      - structtag
 run:
   timeout: 20m

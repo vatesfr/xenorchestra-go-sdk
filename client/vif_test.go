@@ -13,6 +13,9 @@ func TestGetVIFs(t *testing.T) {
 	}
 
 	vifs, err := c.GetVIFs(&accVm)
+	if err != nil {
+		t.Fatalf("failed to get VIFs with id: %s, with error: %v", accVm.Id, err)
+	}
 
 	for _, vif := range vifs {
 		if vif.Device == "" {
@@ -50,6 +53,9 @@ func TestGetVIF(t *testing.T) {
 	}
 
 	vifs, err := c.GetVIFs(&accVm)
+	if err != nil {
+		t.Fatalf("failed to get VIF with error: %v", err)
+	}
 
 	expectedVIF := vifs[0]
 

@@ -147,7 +147,8 @@ func TestUnmarshal(t *testing.T) {
 	var allObjectRes allObjectResponse
 	err := json.Unmarshal([]byte(data), &allObjectRes.Objects)
 
-	if err != nil || allObjectRes.Objects["77c6637c-fa3d-0a46-717e-296208c40169"].Id != "77c6637c-fa3d-0a46-717e-296208c40169" {
+	if err != nil ||
+		allObjectRes.Objects["77c6637c-fa3d-0a46-717e-296208c40169"].Id != "77c6637c-fa3d-0a46-717e-296208c40169" {
 		t.Fatalf("error: %v. Need to have VM object: %v", err, allObjectRes)
 	}
 }
@@ -185,7 +186,7 @@ func TestFlatResourceSetStringerInterface(t *testing.T) {
 	rs := &FlatResourceSet{
 		Id: "id",
 	}
-	v := fmt.Sprintf("%s", rs)
+	v := rs.String()
 	if v != rs.Id {
 		t.Errorf("expected FlatResourceSet to print Id '%s' value rather than value '%s'", rs.Id, v)
 	}
@@ -259,7 +260,12 @@ func TestUpdateVmWithUpdatesThatRequireHalt(t *testing.T) {
 		t.Fatalf("failed to halt vm ahead of update: %v", err)
 	}
 
-	vm, err := c.UpdateVm(Vm{Id: accVm.Id, CPUs: CPUs{Number: updatedCPUs}, NameLabel: "terraform testing", Memory: MemoryObject{Static: []int{0, 4294967296}}})
+	vm, err := c.UpdateVm(Vm{
+		Id:        accVm.Id,
+		CPUs:      CPUs{Number: updatedCPUs},
+		NameLabel: "terraform testing",
+		Memory:    MemoryObject{Static: []int{0, 4294967296}},
+	})
 
 	if err != nil {
 		t.Fatalf("failed to update vm with error: %v", err)
@@ -383,7 +389,9 @@ func Test_warnOnInvalidCloudConfigRecognizesMultipartMIME(t *testing.T) {
 	//        content = "baz"
 	//      }
 	// }
-	s := "Content-Type: multipart/mixed; boundary=\"MIMEBOUNDARY\"\nMIME-Version: 1.0\r\n\r\n--MIMEBOUNDARY\r\nContent-Transfer-Encoding: 7bit\r\nContent-Type: text/x-shellscript\r\nMime-Version: 1.0\r\n\r\nbaz\r\n--MIMEBOUNDARY--\r\n"
+	s := "Content-Type: multipart/mixed; boundary=\"MIMEBOUNDARY\"\nMIME-Version: 1.0\r\n\r\n--MIMEBOUNDARY\r\n" +
+		"Content-Transfer-Encoding: 7bit\r\nContent-Type: text/x-shellscript\r\nMime-Version: 1.0\r\n\r\nbaz\r\n" +
+		"--MIMEBOUNDARY--\r\n"
 	log.SetOutput(&logBuf)
 	warnOnInvalidCloudConfig(s)
 	if strings.Contains(logBuf.String(), "WARNING") {

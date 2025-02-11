@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -31,7 +30,7 @@ type VDI struct {
 	NameDescription string   `json:"name_description"`
 	Size            int      `json:"size"`
 	VBDs            []string `json:"$VBDs"`
-	Parent          string   `json:"parent",omitempty`
+	Parent          string   `json:"parent,omitempty"`
 	PoolId          string   `json:"$poolId"`
 	Tags            []string `json:"tags,omitempty"`
 }
@@ -103,7 +102,7 @@ func (c *Client) getDisksFromVBDs(vbd VBD) ([]Disk, error) {
 	disks, ok := obj.([]VBD)
 
 	if !ok {
-		return []Disk{}, errors.New(fmt.Sprintf("failed to coerce %v into VBD", obj))
+		return []Disk{}, fmt.Errorf("failed to coerce %v into VBD", obj)
 	}
 
 	vdis := []Disk{}
@@ -163,7 +162,7 @@ func (c *Client) GetVDIs(vdiReq VDI) ([]VDI, error) {
 	vdis, ok := obj.([]VDI)
 
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("failed to coerce %+v into VDI", obj))
+		return nil, fmt.Errorf("failed to coerce %+v into VDI", obj)
 	}
 
 	return vdis, nil
@@ -179,12 +178,12 @@ func (c *Client) GetVDI(vdiReq VDI) (VDI, error) {
 	vdis, ok := obj.([]VDI)
 
 	if !ok {
-		return VDI{}, errors.New(fmt.Sprintf("failed to coerce %+v into VDI", obj))
+		return VDI{}, fmt.Errorf("failed to coerce %+v into VDI", obj)
 	}
 
 	numVdis := len(vdis)
 	if numVdis != 1 {
-		return VDI{}, errors.New(fmt.Sprintf("expected to return 1 VDI, instead recieved %d for request %v", numVdis, vdiReq))
+		return VDI{}, fmt.Errorf("expected to return 1 VDI, instead received %d for request %v", numVdis, vdiReq)
 	}
 
 	return vdis[0], nil
@@ -204,11 +203,12 @@ func (c *Client) GetParentVDI(vbd VBD) (VDI, error) {
 	disks, ok := obj.([]VDI)
 
 	if !ok {
-		return VDI{}, errors.New(fmt.Sprintf("failed to coerce %+v into VDI", obj))
+		return VDI{}, fmt.Errorf("failed to coerce %+v into VDI", obj)
 	}
 
 	if len(disks) != 1 {
-		return VDI{}, errors.New(fmt.Sprintf("expected Vm VDI '%s' to only contain a single VBD, instead found %d: %+v", vbd.VDI, len(disks), disks))
+		return VDI{}, fmt.Errorf("expected Vm VDI '%s' to only contain a single VBD, instead found %d: %+v",
+			vbd.VDI, len(disks), disks)
 	}
 	return disks[0], nil
 }
@@ -318,6 +318,9 @@ func (c *Client) InsertCd(vmId, cdId string) error {
 
 func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	file, err := os.Open(vdiReq.Filepath)
+	if err != nil {
+		return VDI{}, err
+	}
 	defer file.Close()
 
 	if err != nil {
@@ -402,7 +405,7 @@ func RemoveVDIsWithPrefix(prefix string) func(string) error {
 func FindVDIForTests(pool Pool, isoVdi *VDI, isoNameEnvVar string) {
 	isoName, found := os.LookupEnv(isoNameEnvVar)
 	if !found {
-		fmt.Println(fmt.Sprintf("The %s environment variable must be set for the tests", isoNameEnvVar))
+		fmt.Printf("The %s environment variable must be set for the tests\n", isoNameEnvVar)
 		os.Exit(-1)
 	}
 

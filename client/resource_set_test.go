@@ -26,24 +26,24 @@ var testResourceSet = ResourceSet{
 	Objects:  []string{},
 }
 
-var resourceSetObj = map[string]interface{}{
-	"id":   "id of resource set",
-	"name": "resource set name",
-	"limits": map[string]interface{}{
-		"cpus": map[string]interface{}{
-			"available": 4,
-			"total":     4,
-		},
-		"disk": map[string]interface{}{
-			"available": 4,
-			"total":     4,
-		},
-		"memory": map[string]interface{}{
-			"available": 4,
-			"total":     4,
-		},
-	},
-}
+// var resourceSetObj = map[string]interface{}{
+// 	"id":   "id of resource set",
+// 	"name": "resource set name",
+// 	"limits": map[string]interface{}{
+// 		"cpus": map[string]interface{}{
+// 			"available": 4,
+// 			"total":     4,
+// 		},
+// 		"disk": map[string]interface{}{
+// 			"available": 4,
+// 			"total":     4,
+// 		},
+// 		"memory": map[string]interface{}{
+// 			"available": 4,
+// 			"total":     4,
+// 		},
+// 	},
+// }
 
 func TestGetResourceSet(t *testing.T) {
 	c, err := NewClient(GetConfigFromEnv())

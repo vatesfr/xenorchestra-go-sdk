@@ -23,11 +23,7 @@ func (p PIF) Compare(obj interface{}) bool {
 	otherPif := obj.(PIF)
 
 	if p.Id != "" {
-		if otherPif.Id == p.Id {
-			return true
-		} else {
-			return false
-		}
+		return otherPif.Id == p.Id
 	}
 	hostIdExists := p.Host != ""
 	if hostIdExists && p.Host != otherPif.Host {
