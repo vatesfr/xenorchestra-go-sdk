@@ -21,6 +21,20 @@ import (
 	"github.com/sourcegraph/jsonrpc2/websocket"
 )
 
+// sanitizeParams removes or obfuscates sensitive information from the parameters
+func sanitizeParams(params interface{}) map[string]interface{} {
+	sanitizedParams := make(map[string]interface{})
+	for k, v := range params.(map[string]interface{}) {
+		switch k {
+		case "password":
+			sanitizedParams[k] = "****"
+		default:
+			sanitizedParams[k] = v
+		}
+	}
+	return sanitizedParams
+}
+
 const (
 	// Maximum message size allowed from peer.
 	MaxMessageSize = 4096
@@ -326,13 +340,8 @@ func (c *Client) Call(method string, params, result interface{}) error {
 		} else {
 			callRes = reflect.ValueOf(result).Elem()
 		}
-		// Create a copy of params and remove sensitive information
-		sanitizedParams := make(map[string]interface{})
-		for k, v := range params.(map[string]interface{}) {
-			if k != "password" {
-				sanitizedParams[k] = v
-			}
-		}
+		// Sanitize parameters to remove sensitive information
+		sanitizedParams := sanitizeParams(params)
 		log.Printf("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n",
 			method, sanitizedParams, callRes, err)
 
