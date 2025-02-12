@@ -11,10 +11,10 @@ TODO
 ## 🧑🏻‍💻 Usage
 
 ```shell
-go get github.com/vatesfr/xo-sdk-go
+go get github.com/vatesfr/xenorchestra-go-sdk
 ```
 
-See [examples](https://github.com/vatesfr/xo-sdk-go/tree/main/examples).
+See [examples](https://github.com/vatesfr/xenorchestra-go-sdk/tree/main/examples).
 
 
 ## 🍰 Contributing    

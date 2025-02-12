@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vatesfr/xo-sdk-go/client"
+	"github.com/vatesfr/xenorchestra-go-sdk/client"
 )
 
 func newClient() (client.XOClient, error) {

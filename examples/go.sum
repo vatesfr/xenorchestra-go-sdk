@@ -7,5 +7,3 @@ github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyua
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750 h1:j3HKQAXXj5vV3oHyg9pjK3uIM4bidukvv+tR2iJCvFA=
 github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750/go.mod h1:ZafdZgk/axhT1cvZAPOhw+95nz2I/Ra5qMlU4gTRwIo=
-github.com/vatesfr/xo-sdk-go v0.0.1-0.20250211151527-42fa788be672 h1:9KItv6kQvwCR/gGELcTWPrylcO7pigbUap34y/l0WC0=
-github.com/vatesfr/xo-sdk-go v0.0.1-0.20250211151527-42fa788be672/go.mod h1:ZiEauIzdTs9tIDqn2MdIvU6A91uJUkVRIni8SEMyBXc=

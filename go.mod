@@ -1,4 +1,4 @@
-module github.com/vatesfr/xo-sdk-go
+module github.com/vatesfr/xenorchestra-go-sdk
 
 go 1.21
 
