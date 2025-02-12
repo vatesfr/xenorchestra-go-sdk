@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -54,7 +53,7 @@ func (c Client) GetResourceSetById(id string) (*ResourceSet, error) {
 
 	l := len(resourceSets)
 	if l != 1 {
-		return nil, errors.New(fmt.Sprintf("found %d resource set(s) with id `%s`: %v", l, id, resourceSets))
+		return nil, fmt.Errorf("found %d resource set(s) with id `%s`: %v", l, id, resourceSets)
 	}
 
 	return &resourceSets[0], nil
@@ -145,7 +144,7 @@ func (c Client) DeleteResourceSet(rsReq ResourceSet) error {
 		}
 
 		if len(rs) > 1 {
-			return errors.New(fmt.Sprintf("refusing to delete resource set since `%d` resource sets were returned: %v", len(rs), rs))
+			return fmt.Errorf("refusing to delete resource set since `%d` resource sets were returned: %v", len(rs), rs)
 		}
 
 		id = rs[0].Id
@@ -223,7 +222,8 @@ func (c Client) AddResourceSetLimit(rsReq ResourceSet, limit string, quantity in
 	}
 	var success bool
 	err := c.Call("resourceSet.addLimit", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.addLimit call with params: %v successful: %t with error: %v\n", params, success, err)
+	log.Printf("[DEBUG] Calling resourceSet.addLimit call with params: %v successful: %t with error: %v\n",
+		params, success, err)
 	return err
 }
 

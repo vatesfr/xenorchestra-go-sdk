@@ -97,12 +97,42 @@ func Test_sortHostsByField(t *testing.T) {
 		args args
 		want []Host
 	}{
-		{name: "sortIdAsc", args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}}, order: "asc", by: "id"}, want: []Host{{Id: "abc"}, {Id: "acb"}}},
-		{name: "sortIdDesc", args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}}, order: "desc", by: "id"}, want: []Host{{Id: "acb"}, {Id: "abc"}}},
-		{name: "sortWrongOrder", args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}}, order: "TRASH", by: "id"}, want: []Host{{Id: "acb"}, {Id: "abc"}}},
-		{name: "sortWrongField", args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}, {Id: "xyz"}}, order: "asc", by: "UNKNOWN"}, want: []Host{{Id: "acb"}, {Id: "abc"}, {Id: "xyz"}}},
-		{name: "sortNameLabelAsc", args: args{hosts: []Host{{NameLabel: "acb"}, {NameLabel: "abc"}, {NameLabel: "xyz"}}, order: "asc", by: "name_label"}, want: []Host{{NameLabel: "abc"}, {NameLabel: "acb"}, {NameLabel: "xyz"}}},
-		{name: "noSort", args: args{hosts: []Host{{Id: "1", NameLabel: "xyz"}, {Id: "2", NameLabel: "acb"}, {Id: "3", NameLabel: "abc"}}, order: "", by: ""}, want: []Host{{Id: "1", NameLabel: "xyz"}, {Id: "2", NameLabel: "acb"}, {Id: "3", NameLabel: "abc"}}},
+		{
+			name: "sortIdAsc",
+			args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}}, order: "asc", by: "id"},
+			want: []Host{{Id: "abc"}, {Id: "acb"}}},
+		{
+			name: "sortIdDesc",
+			args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}}, order: "desc", by: "id"},
+			want: []Host{{Id: "acb"}, {Id: "abc"}}},
+		{
+			name: "sortWrongOrder",
+			args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}}, order: "TRASH", by: "id"},
+			want: []Host{{Id: "acb"}, {Id: "abc"}}},
+		{
+			name: "sortWrongField",
+			args: args{hosts: []Host{{Id: "acb"}, {Id: "abc"}, {Id: "xyz"}}, order: "asc", by: "UNKNOWN"},
+			want: []Host{{Id: "acb"}, {Id: "abc"}, {Id: "xyz"}}},
+		{
+			name: "sortNameLabelAsc",
+			args: args{hosts: []Host{
+				{NameLabel: "acb"},
+				{NameLabel: "abc"},
+				{NameLabel: "xyz"},
+			},
+				order: "asc",
+				by:    "name_label"},
+			want: []Host{{NameLabel: "abc"}, {NameLabel: "acb"}, {NameLabel: "xyz"}}},
+		{
+			name: "noSort",
+			args: args{hosts: []Host{
+				{Id: "1", NameLabel: "xyz"},
+				{Id: "2", NameLabel: "acb"},
+				{Id: "3", NameLabel: "abc"}}, order: "", by: ""},
+			want: []Host{
+				{Id: "1", NameLabel: "xyz"},
+				{Id: "2", NameLabel: "acb"},
+				{Id: "3", NameLabel: "abc"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

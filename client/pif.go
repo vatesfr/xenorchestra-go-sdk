@@ -2,28 +2,40 @@ package client
 
 import (
 	"errors"
+	"fmt"
+	"os"
 )
 
 type PIF struct {
-	Device   string `json:"device"`
-	Host     string `json:"$host"`
-	Network  string `json:"$network"`
-	Id       string `json:"id"`
-	Uuid     string `json:"uuid"`
-	PoolId   string `json:"$poolId"`
-	Attached bool   `json:"attached"`
-	Vlan     int    `json:"vlan"`
+	Device       string `json:"device"`
+	Host         string `json:"$host"`
+	Network      string `json:"$network"`
+	Id           string `json:"id"`
+	Uuid         string `json:"uuid"`
+	PoolId       string `json:"$poolId"`
+	Attached     bool   `json:"attached"`
+	Vlan         int    `json:"vlan"`
+	IsBondMaster bool   `json:"isBondMaster,omitempty"`
+	IsBondSlave  bool   `json:"isBondSlave,omitempty"`
 }
 
 func (p PIF) Compare(obj interface{}) bool {
 	otherPif := obj.(PIF)
 
+	if p.Id != "" {
+		return otherPif.Id == p.Id
+	}
 	hostIdExists := p.Host != ""
 	if hostIdExists && p.Host != otherPif.Host {
 		return false
 	}
 
-	if p.Vlan == otherPif.Vlan && p.Device == otherPif.Device {
+	networkIdExists := p.Network != ""
+	if networkIdExists && p.Network != otherPif.Network {
+		return false
+	}
+
+	if p.Vlan == otherPif.Vlan && (p.Device == "" || (p.Device == otherPif.Device)) {
 		return true
 	}
 	return false
@@ -57,4 +69,33 @@ func (c *Client) GetPIF(pifReq PIF) (pifs []PIF, err error) {
 	}
 
 	return pifs, nil
+}
+
+func FindPIFForTests(pif *PIF) {
+	pifId, found := os.LookupEnv("XOA_PIF")
+
+	if !found {
+		fmt.Println("The XOA_PIF environment variable must be set to run the network resource tests")
+		return
+	}
+
+	c, err := NewClient(GetConfigFromEnv())
+	if err != nil {
+		fmt.Printf("failed to create client with error: %v", err)
+		os.Exit(-1)
+	}
+
+	pifs, err := c.GetPIF(PIF{Id: pifId})
+
+	if err != nil {
+		fmt.Printf("[ERROR] Failed to get pif with error: %v", err)
+		os.Exit(1)
+	}
+
+	if len(pifs) != 1 {
+		fmt.Printf("[ERROR] expected to find a single pif. Found %d PIFs instead: %v", len(pifs), pifs)
+		os.Exit(1)
+	}
+
+	*pif = pifs[0]
 }

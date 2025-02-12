@@ -13,6 +13,9 @@ func TestGetVIFs(t *testing.T) {
 	}
 
 	vifs, err := c.GetVIFs(&accVm)
+	if err != nil {
+		t.Fatalf("failed to get VIFs with id: %s, with error: %v", accVm.Id, err)
+	}
 
 	for _, vif := range vifs {
 		if vif.Device == "" {
@@ -50,6 +53,9 @@ func TestGetVIF(t *testing.T) {
 	}
 
 	vifs, err := c.GetVIFs(&accVm)
+	if err != nil {
+		t.Fatalf("failed to get VIF with error: %v", err)
+	}
 
 	expectedVIF := vifs[0]
 
@@ -73,7 +79,7 @@ func TestCreateVIF_DeleteVIF(t *testing.T) {
 		t.Fatalf("failed to create client with error: %v", err)
 	}
 
-	vm, err := c.GetVm(accVm)
+	vm, err := c.GetVm(Vm{Id: accVm.Id})
 
 	if err != nil {
 		t.Fatalf("failed to get VM with error: %v", err)

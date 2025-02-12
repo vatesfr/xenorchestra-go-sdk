@@ -1,0 +1,24 @@
+linters:
+  enable:
+    - errcheck
+    - goconst
+    - gofmt
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - gosimple
+    - staticcheck
+    - unused
+    - misspell
+    - nakedret
+    # - revive # Disable revive linter as it required to rename fields (e.g. Id to ID)
+    - unconvert
+    - unused
+  enable-all: false
+linters-settings:
+  govet:
+    disable:
+      - structtag
+run:
+  timeout: 20m

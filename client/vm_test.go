@@ -1,7 +1,13 @@
 package client
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -141,7 +147,8 @@ func TestUnmarshal(t *testing.T) {
 	var allObjectRes allObjectResponse
 	err := json.Unmarshal([]byte(data), &allObjectRes.Objects)
 
-	if err != nil || allObjectRes.Objects["77c6637c-fa3d-0a46-717e-296208c40169"].Id != "77c6637c-fa3d-0a46-717e-296208c40169" {
+	if err != nil ||
+		allObjectRes.Objects["77c6637c-fa3d-0a46-717e-296208c40169"].Id != "77c6637c-fa3d-0a46-717e-296208c40169" {
 		t.Fatalf("error: %v. Need to have VM object: %v", err, allObjectRes)
 	}
 }
@@ -170,6 +177,73 @@ func TestUnmarshalingVmObject(t *testing.T) {
 		t.Fatalf("Expected vm to Unmarshal from numerical videoram value")
 	}
 
+	if vmObj.ManagementAgentDetected != false {
+		t.Fatalf("expected vm to Unmarshal to 'false' when `managementAgentDetected` not present")
+	}
+}
+
+func TestFlatResourceSetStringerInterface(t *testing.T) {
+	rs := &FlatResourceSet{
+		Id: "id",
+	}
+	v := rs.String()
+	if v != rs.Id {
+		t.Errorf("expected FlatResourceSet to print Id '%s' value rather than value '%s'", rs.Id, v)
+	}
+}
+
+func TestFlatResourceSetMarshalling(t *testing.T) {
+	rs := &FlatResourceSet{
+		Id: "id",
+	}
+
+	b, err := json.Marshal(rs)
+
+	if err != nil {
+		t.Fatalf("failed to marshal resource set with error: %v", err)
+	}
+
+	expected := fmt.Sprintf(`"%s"`, rs.Id)
+	if s := string(b); s != expected {
+		t.Errorf("expected '%s' to equal '%s' after marshalling", s, expected)
+	}
+}
+
+func TestFlatResourceSetMarshallingForEmptyString(t *testing.T) {
+	rs := &FlatResourceSet{
+		Id: "",
+	}
+
+	b, err := json.Marshal(rs)
+
+	if err != nil {
+		t.Fatalf("failed to marshal resource set with error: %v", err)
+	}
+
+	expected := `null`
+	if s := string(b); s != expected {
+		t.Errorf("expected '%s' to equal '%s' after marshalling", s, expected)
+	}
+}
+
+func TestFlatResourceSetUnmarshalling(t *testing.T) {
+	id := "id"
+	s := struct {
+		ResourceSet *FlatResourceSet `json:"resourceSet,omitempty"`
+	}{
+		ResourceSet: &FlatResourceSet{},
+	}
+	data := []byte(fmt.Sprintf(`{"resourceSet": "%s"}`, id))
+	err := json.Unmarshal(data, &s)
+
+	if err != nil {
+		t.Fatalf("failed to unmarshal into FlatResourceSet with error: %v", err)
+	}
+
+	rs := s.ResourceSet
+	if rs.Id != id {
+		t.Errorf("expected '%s' but received resource set '%v' with actual value '%s'", id, rs, rs.Id)
+	}
 }
 
 func TestUpdateVmWithUpdatesThatRequireHalt(t *testing.T) {
@@ -180,10 +254,27 @@ func TestUpdateVmWithUpdatesThatRequireHalt(t *testing.T) {
 
 	prevCPUs := accVm.CPUs.Number
 	updatedCPUs := prevCPUs + 1
-	vm, err := c.UpdateVm(Vm{Id: accVm.Id, CPUs: CPUs{Number: updatedCPUs}, NameLabel: "terraform testing", Memory: MemoryObject{Static: []int{0, 4294967296}}})
+	err = c.HaltVm(accVm.Id)
+
+	if err != nil {
+		t.Fatalf("failed to halt vm ahead of update: %v", err)
+	}
+
+	vm, err := c.UpdateVm(Vm{
+		Id:        accVm.Id,
+		CPUs:      CPUs{Number: updatedCPUs},
+		NameLabel: "terraform testing",
+		Memory:    MemoryObject{Static: []int{0, 4294967296}},
+	})
 
 	if err != nil {
 		t.Fatalf("failed to update vm with error: %v", err)
+	}
+
+	err = c.StartVm(vm.Id)
+
+	if err != nil {
+		t.Fatalf("failed to start vm after update: %v", err)
 	}
 
 	if vm.CPUs.Number != updatedCPUs {
@@ -219,7 +310,7 @@ func validateVmObject(o Vm) bool {
 		return false
 	}
 
-	if o.ResourceSet == "" {
+	if o.ResourceSet.Id == "" {
 		return false
 	}
 
@@ -228,4 +319,82 @@ func validateVmObject(o Vm) bool {
 	}
 
 	return true
+}
+
+var cloudConfig string = "#cloud-config"
+
+func Test_warnOnInvalidCloudConfigLogsWarningOnInvalidContent(t *testing.T) {
+	var logBuf bytes.Buffer
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	log.SetOutput(&logBuf)
+	warnOnInvalidCloudConfig("This is not valid")
+	if !strings.Contains(logBuf.String(), "WARNING") {
+		t.Errorf("This shoud trigger a warning log")
+	}
+}
+
+func Test_warnOnInvalidCloudConfigRecognizesRawText(t *testing.T) {
+	var logBuf bytes.Buffer
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	log.SetOutput(&logBuf)
+	warnOnInvalidCloudConfig(cloudConfig)
+	if strings.Contains(logBuf.String(), "WARNING") {
+		t.Errorf("#cloud-config should be recognized as valid cloud config")
+	}
+}
+
+func Test_warnOnInvalidCloudConfigRecognizesGzip(t *testing.T) {
+	var logBuf bytes.Buffer
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+
+	_, err := zw.Write([]byte(cloudConfig))
+
+	if err != nil {
+		t.Fatalf("failed to compress data necessary for test: %v", err)
+	}
+
+	log.SetOutput(&logBuf)
+	warnOnInvalidCloudConfig(buf.String())
+	if strings.Contains(logBuf.String(), "WARNING") {
+		t.Errorf("gzipped content should be recognized as valid cloud config")
+	}
+}
+
+func Test_warnOnInvalidCloudConfigRecognizesMultipartMIME(t *testing.T) {
+	var logBuf bytes.Buffer
+	defer func() {
+		log.SetOutput(os.Stderr)
+	}()
+
+	// This was generated by using the terraform provider for cloudinit. Terraform code used
+	// provided below:
+	//
+	// data "cloudinit_config" "foo" {
+	//      gzip = false
+	//      base64_encode = false
+	//
+	//      part {
+	//	  content_type = "text/x-shellscript"
+	//        content = "baz"
+	//      }
+	// }
+	s := "Content-Type: multipart/mixed; boundary=\"MIMEBOUNDARY\"\nMIME-Version: 1.0\r\n\r\n--MIMEBOUNDARY\r\n" +
+		"Content-Transfer-Encoding: 7bit\r\nContent-Type: text/x-shellscript\r\nMime-Version: 1.0\r\n\r\nbaz\r\n" +
+		"--MIMEBOUNDARY--\r\n"
+	log.SetOutput(&logBuf)
+	warnOnInvalidCloudConfig(s)
+	if strings.Contains(logBuf.String(), "WARNING") {
+		t.Errorf("multipart MIME archives should be recognized as valid cloud config")
+	}
 }

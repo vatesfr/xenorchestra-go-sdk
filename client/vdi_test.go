@@ -71,6 +71,10 @@ func TestCreateDiskAndDeleteDisk(t *testing.T) {
 	}
 
 	disks, err := c.GetDisks(&accVm)
+	if err != nil {
+		t.Fatalf("failed to get disks with id: %s with error: %v", diskId, err)
+		return
+	}
 
 	for _, disk := range disks {
 		if disk.NameLabel != diskNameLabel {

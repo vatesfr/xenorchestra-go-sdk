@@ -15,8 +15,8 @@ type Pool struct {
 }
 
 type CpuInfo struct {
-	Cores   int64 `json:"cores,float64`
-	Sockets int64 `json:"sockets,float64`
+	Cores   int64 `json:"cores"`
+	Sockets int64 `json:"sockets"`
 }
 
 func (p Pool) Compare(obj interface{}) bool {
@@ -73,7 +73,8 @@ func FindPoolForTests(pool *Pool) {
 	}
 
 	if len(pools) != 1 {
-		fmt.Printf("Found %d pools with name_label %s. Please use a label that is unique so tests are reproducible.\n", len(pools), poolName)
+		fmt.Printf("Found %d pools with name_label %s."+
+			"Please use a label that is unique so tests are reproducible.\n", len(pools), poolName)
 		os.Exit(-1)
 	}
 

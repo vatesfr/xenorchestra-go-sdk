@@ -71,7 +71,8 @@ func (c *Client) GetStorageRepositoryById(id string) (StorageRepository, error) 
 	}
 
 	if len(srs) != 1 {
-		return sr, errors.New(fmt.Sprintf("expected a single storage respository to be returned, instead received: %d in the response: %v", len(srs), obj))
+		return sr, fmt.Errorf("expected a single storage repository to be returned, instead received: %d in the response: %v",
+			len(srs), obj)
 	}
 
 	return srs[0], nil
@@ -102,7 +103,8 @@ func FindStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag string)
 	defaultSr, err := c.GetStorageRepositoryById(pool.DefaultSR)
 
 	if err != nil {
-		fmt.Printf("failed to find the default storage repository with id: %s with error: %v\n", pool.DefaultSR, err)
+		fmt.Printf("failed to find the default storage repository with id: %s with error: %v\n",
+			pool.DefaultSR, err)
 		os.Exit(-1)
 	}
 
@@ -112,6 +114,47 @@ func FindStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag string)
 
 	if err != nil {
 		fmt.Printf("failed to set tag on default storage repository with id: %s with error: %v\n", pool.DefaultSR, err)
+		os.Exit(-1)
+	}
+}
+
+func FindIsoStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag, isoSrEnvVar string) {
+	isoSrName, found := os.LookupEnv(isoSrEnvVar)
+	if !found {
+		fmt.Printf("The %s environment variable must be set for the tests\n", isoSrEnvVar)
+		os.Exit(-1)
+	}
+
+	c, err := NewClient(GetConfigFromEnv())
+	if err != nil {
+		fmt.Printf("failed to create client with error: %v", err)
+		os.Exit(-1)
+	}
+
+	isoSrReq := StorageRepository{
+		PoolId:    pool.Id,
+		NameLabel: isoSrName,
+		SRType:    "iso",
+	}
+	isoSrs, err := c.GetStorageRepository(isoSrReq)
+
+	if err != nil {
+		fmt.Printf("failed to find an iso storage repository with error: %v\n", err)
+		os.Exit(-1)
+	}
+
+	if len(isoSrs) != 1 {
+		fmt.Printf("expected iso srs req `%v` to only return single sr, instead found %d", isoSrReq, len(isoSrs))
+		os.Exit(-1)
+	}
+
+	isoSr := isoSrs[0]
+	*sr = isoSr
+
+	err = c.AddTag(isoSr.Id, tag)
+
+	if err != nil {
+		fmt.Printf("failed to set tag on iso storage repository with id: %s with error: %v\n", isoSr.Id, err)
 		os.Exit(-1)
 	}
 }

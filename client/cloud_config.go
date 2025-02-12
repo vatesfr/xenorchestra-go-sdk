@@ -44,7 +44,8 @@ func (c *Client) GetCloudConfig(id string) (*CloudConfig, error) {
 		}
 	}
 
-	// TODO: This should return a NotFound error (see https://github.com/terra-farm/terraform-provider-xenorchestra/issues/118)
+	// TODO: This should return a NotFound error
+	// (see https://github.com/terra-farm/terraform-provider-xenorchestra/issues/118)
 	// for more details
 	return nil, nil
 }
@@ -86,14 +87,18 @@ func (c *Client) CreateCloudConfig(name, template string) (*CloudConfig, error) 
 		"name":     name,
 		"template": template,
 	}
-	var resp bool
+	// Xen Orchestra versions >= 5.98.0 changed this return value to an object
+	// when older versions returned bool. This needs to be an interface
+	// type in order to be backwards compatible while fixing this bug. See
+	// GitHub issue 204 for more details.
+	var resp interface{}
 	err := c.Call("cloudConfig.create", params, &resp)
 
 	if err != nil {
 		return nil, err
 	}
 
-	// Since the Id isn't returned in the reponse loop over all cloud configs
+	// Since the Id isn't returned in the response loop over all cloud configs
 	// and find the one we just created
 	cloudConfigs, err := c.GetAllCloudConfigs()
 
