@@ -10,5 +10,3 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750 // indirect
 )
-
-replace github.com/vatesfr/xenorchestra-go-sdk => ../
