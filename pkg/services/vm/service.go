@@ -34,10 +34,11 @@ func (s *Service) formatPath(path string) string {
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error) {
 	var result payloads.VM
+	path := core.NewPathBuilder().Resource("vms").ID(id).Build()
 	err := client.TypedGet(
 		ctx,
 		s.client,
-		s.formatPath(id.String()),
+		path,
 		core.EmptyParams,
 		&result,
 	)
@@ -260,7 +261,8 @@ func (s *Service) waitForVMCreationTask(ctx context.Context, taskPath string) (*
 
 func (s *Service) Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error) {
 	var result payloads.VM
-	err := client.TypedPost(ctx, s.client, "vms/"+vm.ID.String(), vm, &result)
+	path := core.NewPathBuilder().Resource("vms").ID(vm.ID).Build()
+	err := client.TypedPost(ctx, s.client, path, vm, &result)
 	if err != nil {
 		s.log.Error("failed to update VM", zap.Error(err))
 		return nil, err
@@ -272,7 +274,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	var result struct {
 		Success bool `json:"success"`
 	}
-	err := client.TypedDelete(ctx, s.client, "vms/"+id.String(), core.EmptyParams, &result)
+	path := core.NewPathBuilder().Resource("vms").ID(id).Build()
+	err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result)
 	if err != nil {
 		s.log.Error("failed to delete VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -289,7 +292,14 @@ func (s *Service) Start(ctx context.Context, id uuid.UUID) error {
 		"id": id.String(),
 	}
 
-	err := client.TypedPost(ctx, s.client, "vms/_/actions/start", payload, &result)
+	path := core.NewPathBuilder().
+		Resource("vms").
+		Wildcard().
+		ActionsGroup().
+		Action("start").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, payload, &result)
 	if err != nil {
 		s.log.Error("failed to start VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -306,7 +316,14 @@ func (s *Service) CleanShutdown(ctx context.Context, id uuid.UUID) error {
 		"id": id.String(),
 	}
 
-	err := client.TypedPost(ctx, s.client, "vms/_/actions/clean_shutdown", payload, &result)
+	path := core.NewPathBuilder().
+		Resource("vms").
+		Wildcard().
+		ActionsGroup().
+		Action("clean_shutdown").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, payload, &result)
 	if err != nil {
 		s.log.Error("failed to clean shutdown VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -323,7 +340,14 @@ func (s *Service) HardShutdown(ctx context.Context, id uuid.UUID) error {
 		"id": id.String(),
 	}
 
-	err := client.TypedPost(ctx, s.client, "vms/_/actions/hard_shutdown", payload, &result)
+	path := core.NewPathBuilder().
+		Resource("vms").
+		Wildcard().
+		ActionsGroup().
+		Action("hard_shutdown").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, payload, &result)
 	if err != nil {
 		s.log.Error("failed to hard shutdown VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -340,7 +364,14 @@ func (s *Service) CleanReboot(ctx context.Context, id uuid.UUID) error {
 		"id": id.String(),
 	}
 
-	err := client.TypedPost(ctx, s.client, "vms/_/actions/clean_reboot", payload, &result)
+	path := core.NewPathBuilder().
+		Resource("vms").
+		Wildcard().
+		ActionsGroup().
+		Action("clean_reboot").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, payload, &result)
 	if err != nil {
 		s.log.Error("failed to clean reboot VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -357,7 +388,14 @@ func (s *Service) HardReboot(ctx context.Context, id uuid.UUID) error {
 		"id": id.String(),
 	}
 
-	err := client.TypedPost(ctx, s.client, "vms/_/actions/hard_reboot", payload, &result)
+	path := core.NewPathBuilder().
+		Resource("vms").
+		Wildcard().
+		ActionsGroup().
+		Action("hard_reboot").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, payload, &result)
 	if err != nil {
 		s.log.Error("failed to hard reboot VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -375,7 +413,14 @@ func (s *Service) Snapshot(ctx context.Context, id uuid.UUID, name string) error
 		"name": name,
 	}
 
-	err := client.TypedPost(ctx, s.client, "vms/_/actions/snapshot", payload, &result)
+	path := core.NewPathBuilder().
+		Resource("vms").
+		Wildcard().
+		ActionsGroup().
+		Action("snapshot").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, payload, &result)
 	if err != nil {
 		s.log.Error("failed to snapshot VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -387,7 +432,14 @@ func (s *Service) Restart(ctx context.Context, id uuid.UUID) error {
 	var result struct {
 		Success bool `json:"success"`
 	}
-	err := client.TypedPost(ctx, s.client, "vms/"+id.String()+"/restart", core.EmptyParams, &result)
+
+	path := core.NewPathBuilder().
+		Resource("vms").
+		ID(id).
+		Action("restart").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, core.EmptyParams, &result)
 	if err != nil {
 		s.log.Error("failed to restart VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -399,7 +451,14 @@ func (s *Service) Suspend(ctx context.Context, id uuid.UUID) error {
 	var result struct {
 		Success bool `json:"success"`
 	}
-	err := client.TypedPost(ctx, s.client, "vms/"+id.String()+"/suspend", core.EmptyParams, &result)
+
+	path := core.NewPathBuilder().
+		Resource("vms").
+		ID(id).
+		Action("suspend").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, core.EmptyParams, &result)
 	if err != nil {
 		s.log.Error("failed to suspend VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
@@ -411,7 +470,14 @@ func (s *Service) Resume(ctx context.Context, id uuid.UUID) error {
 	var result struct {
 		Success bool `json:"success"`
 	}
-	err := client.TypedPost(ctx, s.client, "vms/"+id.String()+"/resume", core.EmptyParams, &result)
+
+	path := core.NewPathBuilder().
+		Resource("vms").
+		ID(id).
+		Action("resume").
+		Build()
+
+	err := client.TypedPost(ctx, s.client, path, core.EmptyParams, &result)
 	if err != nil {
 		s.log.Error("failed to resume VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
