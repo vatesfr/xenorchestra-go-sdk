@@ -1,13 +1,6 @@
 /*
-TODO: REMOVE THIS COMMENT. The XOClient implements the Library interface.
-It means that each time we add in the library package a new service, we
-need to add it in the XOClient. Like adding backup as an example.
-
-We will have to create a new file in library called backup.go and add
-the service to the Library interface and add a method backup as shown
-bellow. Again see v2 provided example. The method chaining is also
-great IMO. Instead of calling client with method. Instead we can do
-client.VM.Create() or client.VM.GetByID() etc.
+See the documentation in the /docs/v2 or README.md file for more information
+about the v2 design choices, how to add new services, etc.
 */
 package v2
 

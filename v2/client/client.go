@@ -1,13 +1,3 @@
-/*
-TODO: REMOVE THIS COMMENT. I decided to introduce generic typed functions,
-it's going to avoid us having a lot of boilerplate code to make requests
-or read response since this already include the marshal and unmarshal
-of the payloads. It is also great for avoiding any type and safer type
-for the parameters by checking at compile time rather than at runtime.
-
-I am open to suggestions and feedback. We can already see the power of
-it in the vm service.
-*/
 package client
 
 import (
@@ -29,8 +19,6 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
 )
 
-// Add strong type for the token. Necessary ?
-// I don't know but I like it.
 type Token string
 
 func (t Token) String() string {
@@ -42,14 +30,15 @@ const (
 	SecureWebSocketScheme = "wss"
 )
 
+// Client handles communication with the Xen Orchestra REST API.
 type Client struct {
 	/*
-		Client has a HttpClient that is constructed with the config.
-		I'd prefer to unexport it and hide the implementation details.
-		However, for the older version using jsonrpc, it's exported
-		and can be used to make requests for missing endpoints.
-		When we have a pure REST API, we can remove it since it
-		won't be needed anymore.
+		The Client has an HttpClient that is constructed with the provided config.
+		I'd prefer to unexport this field and hide the implementation details.
+		However, for backward compatibility with the older version using jsonrpc,
+		it needs to remain exported so it can be used to make requests for missing endpoints.
+		Once we have the final fully implemented v2 REST API, we won't need to export
+		the HttpClient field anymore and can remove it.
 	*/
 	HttpClient *http.Client
 	BaseURL    *url.URL
@@ -59,6 +48,7 @@ type Client struct {
 	RetryMaxTime time.Duration
 }
 
+// New creates an authenticated client with the provided configuration.
 func New(config *config.Config) (*Client, error) {
 	if config.Url == "" {
 		return nil, errors.New("url is required")
@@ -209,6 +199,13 @@ func (c *Client) get(ctx context.Context, endpoint string, params map[string]any
 	return c.do(ctx, "GET", endpoint, params, result)
 }
 
+// TypedGet performs a type-safe GET request to the API.
+// It converts the params struct to a map and unmarshals the response into the result struct.
+//
+// Example:
+//
+//	var result MyResponseType
+//	err := TypedGet(ctx, client, "vms/123", MyParamsType{Filter: "value"}, &result)
 func TypedGet[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
 	var paramsMap map[string]any
 
@@ -229,6 +226,13 @@ func (c *Client) post(ctx context.Context, endpoint string, params map[string]an
 	return c.do(ctx, "POST", endpoint, params, result)
 }
 
+// TypedPost performs a type-safe POST request to the API.
+// It converts the params struct to a map and unmarshals the response into the result struct.
+//
+// Example:
+//
+//	var result MyResponseType
+//	err := TypedPost(ctx, client, "vms", MyParamsType{Name: "new-vm"}, &result)
 func TypedPost[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
 	var paramsMap map[string]any
 	if !reflect.ValueOf(params).IsZero() {
@@ -247,6 +251,13 @@ func (c *Client) delete(ctx context.Context, endpoint string, params map[string]
 	return c.do(ctx, "DELETE", endpoint, params, result)
 }
 
+// TypedDelete performs a type-safe DELETE request to the API.
+// It converts the params struct to a map and unmarshals the response into the result struct.
+//
+// Example:
+//
+//	var result MyResponseType
+//	err := TypedDelete(ctx, client, "vms/123", struct{}{}, &result)
 func TypedDelete[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
 	var paramsMap map[string]any
 	if !reflect.ValueOf(params).IsZero() {
