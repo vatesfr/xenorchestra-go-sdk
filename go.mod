@@ -11,7 +11,11 @@ require (
 	github.com/stretchr/testify v1.10.0
 )
 
-require go.uber.org/multierr v1.10.0 // indirect
+require (
+	github.com/subosito/gotenv v1.6.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
