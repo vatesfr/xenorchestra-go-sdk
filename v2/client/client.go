@@ -65,7 +65,7 @@ func New(config *config.Config) (*Client, error) {
 		baseURL.Scheme = "https"
 	}
 
-	baseURL.Path = path.Join(baseURL.Path, "rest/v0")
+	baseURL.Path = path.Join(baseURL.Path, core.RestV0Path)
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = &tls.Config{
@@ -99,7 +99,7 @@ func New(config *config.Config) (*Client, error) {
 
 func (c *Client) authenticate(username, password string) (Token, error) {
 	authURL := *c.BaseURL
-	authURL.Path = path.Join(strings.TrimSuffix(c.BaseURL.Path, "rest/v0"), "auth/login")
+	authURL.Path = path.Join(strings.TrimSuffix(c.BaseURL.Path, core.RestV0Path), "auth/login")
 
 	payload := map[string]string{
 		"username": username,

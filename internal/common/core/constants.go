@@ -10,3 +10,7 @@ const (
 	// allows the provider to retry these errors until the guest is initialized.
 	Backoff
 )
+
+const (
+	RestV0Path = "rest/v0"
+)
