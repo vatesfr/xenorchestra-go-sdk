@@ -1,68 +1,92 @@
-SHELL := /bin/bash
+PROJECT_NAME := xenorchestra-go-sdk
+GO := go
+GOFLAGS :=
+MOCKGEN_VERSION := 1.6.0
 
-.DEFAULT_GOAL := all
+# Colors
+BLUE := \033[0;34m
+GREEN := \033[0;32m
+YELLOW := \033[0;33m
+RED := \033[0;31m
+NC := \033[0m # No Color
+
 .PHONY: all
-all: ## build pipeline
-all: mod gen spell lint test
-
-.PHONY: precommit
-precommit: ## validate the branch before commit
-precommit: all vuln
-
-.PHONY: ci
-ci: ## CI build pipeline
-ci: precommit diff
+all: mod test lint
 
 .PHONY: help
 help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-.PHONY: clean
-clean: ## remove files created during build pipeline
-	$(call print-target)
-	rm -rf dist
-	rm -f coverage.*
-	rm -f '"$(shell go env GOCACHE)/../golangci-lint"'
-	go clean -i -cache -testcache -modcache -fuzzcache -x
+	@echo "$(BLUE)Makefile for $(PROJECT_NAME)$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Usage:$(NC)"
+	@echo "  make $(GREEN)<target>$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Targets:$(NC)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2}'
 
 .PHONY: mod
-mod: ## go mod tidy
-	$(call print-target)
-	go mod tidy
-
-.PHONY: gen
-gen: ## go generate
-	$(call print-target)
-	go generate ./...
-
-.PHONY: spell
-spell: ## misspell
-	$(call print-target)
-	misspell -error -locale=US -w **.md
-
-.PHONY: lint
-lint: ## golangci-lint
-	$(call print-target)
-	golangci-lint run
-
-.PHONY: vuln
-vuln: ## govulncheck
-	$(call print-target)
-	govulncheck ./...
+mod: 
+	@echo "$(BLUE)Running go mod tidy...$(NC)"
+	$(GO) mod tidy
 
 .PHONY: test
-test: ## go test
-	$(call print-target)
-	go test -race -covermode=atomic -coverprofile=coverage.out -coverpkg=./... ./...
-	go tool cover -html=coverage.out -o coverage.html
+test:
+	@echo "$(BLUE)Running tests...$(NC)"
+	$(GO) test -race -covermode=atomic -coverprofile=coverage.out ./...
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	@echo "$(GREEN)Coverage report generated at coverage.html$(NC)"
 
-.PHONY: diff
-diff: ## git diff
-	$(call print-target)
-	git diff --exit-code
-	RES=$$(git status --porcelain) ; if [ -n "$$RES" ]; then echo $$RES && exit 1 ; fi
+.PHONY: test-v1
+test-v1: 
+	@echo "$(BLUE)Running v1 client tests...$(NC)"
+	$(GO) test -race ./client/...
 
+.PHONY: test-v2
+test-v2: 
+	@echo "$(BLUE)Running v2 client tests...$(NC)"
+	$(GO) test -race ./v2/... ./pkg/... ./internal/...
 
-define print-target
-    @printf "Executing target: \033[36m$@\033[0m\n"
-endef
+.PHONY: lint
+lint: 
+	@echo "$(BLUE)Running linter...$(NC)"
+	golangci-lint run
+
+.PHONY: install-mockgen
+install-mockgen: 
+	@echo "$(BLUE)Installing mockgen v$(MOCKGEN_VERSION)...$(NC)"
+	$(GO) install github.com/golang/mock/mockgen@v$(MOCKGEN_VERSION)
+
+.PHONY: mock
+mock: install-mockgen 
+	@echo "$(BLUE)Generating mocks...$(NC)"
+	$(GO) generate ./...
+
+.PHONY: run-example-v1
+run-example-v1: 
+	@echo "$(BLUE)Running v1 example...$(NC)"
+	$(GO) run ./examples/v1/user_demo.go
+
+.PHONY: run-example-v2
+run-example-v2: 
+	@echo "$(BLUE)Running v2 example...$(NC)"
+	$(GO) run ./examples/v2/user_demo.go
+
+.PHONY: run-examples
+run-examples: run-example-v1 run-example-v2 
+	@echo "$(GREEN)All examples executed successfully$(NC)"
+
+.PHONY: clean
+clean: 
+	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
+	rm -f coverage.out coverage.html
+	$(GO) clean -cache -testcache
+
+.PHONY: vuln
+vuln: 
+	@echo "$(BLUE)Checking for vulnerabilities...$(NC)"
+	govulncheck ./...
+
+.PHONY: precommit
+precommit: 
+	@echo "$(BLUE)Running pre-commit checks...$(NC)"
+	pre-commit run --all-files
+	@echo "$(GREEN)Pre-commit checks passed!$(NC)"

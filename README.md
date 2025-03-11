@@ -37,6 +37,32 @@ The SDK includes examples for both v1 and v2 clients:
 
 Contributions are what make the open source community such an amazing place to be learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
+### Development
+
+This project includes a Makefile to help with common development tasks:
+
+```shell
+# Run tests
+make test
+
+# Run specific client tests
+make test-v1
+make test-v2
+
+# Run linter
+make lint
+
+# Generate mocks
+make mock
+
+# Run examples
+make example-v1
+make example-v2
+
+# See all available commands
+make help
+```
+
 ## License
 
 MIT License
