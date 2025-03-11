@@ -28,19 +28,31 @@ var (
 	}
 )
 
-func isZero[T comparable](value T) bool {
-	var zero T
-	return value == zero
-}
-
-func valueOrFallback[T comparable](value, fallback T) T {
-	if isZero(value) {
-		return fallback
+// New returns a new Config with sensible defaults.
+//
+// The following environment variables are honored:
+//
+// - XOA_URL: the base URL of the Xen Orchestra API.
+// - XOA_USER: the username to use when connecting to the API.
+// - XOA_PASSWORD: the password to use when connecting to the API.
+// - XOA_TOKEN: the authentication token to use when connecting to the API.
+// - XOA_INSECURE: whether to skip verifying the server's TLS certificate.
+// - XOA_DEVELOPMENT: whether to enable development mode.
+// - XOA_RETRY_MODE: the retry mode to use. Defaults to "none". Valid values are "none", "backoff".
+// - XOA_RETRY_MAX_TIME: the maximum time to wait between retries. Defaults to 5 minutes.
+//
+// If any of the required environment variables are not set, New will return an error.
+func New() (*Config, error) {
+	if os.Getenv("XOA_URL") == "" {
+		return nil, fmt.Errorf("XOA_URL is not set, please set it to the Xen Orchestra URL")
 	}
-	return value
-}
+	if os.Getenv("XOA_USER") == "" {
+		return nil, fmt.Errorf("XOA_USER is not set, please set it to the Xen Orchestra username")
+	}
+	if os.Getenv("XOA_PASSWORD") == "" {
+		return nil, fmt.Errorf("XOA_PASSWORD is not set, please set it to the Xen Orchestra password")
+	}
 
-func New() *Config {
 	retryMode := core.None
 	retryMaxTime := 5 * time.Minute
 
@@ -74,13 +86,13 @@ func New() *Config {
 	}
 
 	return &Config{
-		Url:                valueOrFallback(os.Getenv("XOA_URL"), "http://localhost:80"),
-		Username:           valueOrFallback(os.Getenv("XOA_USER"), "admin@admin.net"),
-		Password:           valueOrFallback(os.Getenv("XOA_PASSWORD"), "admin"),
-		Token:              valueOrFallback(os.Getenv("XOA_TOKEN"), ""),
+		Url:                os.Getenv("XOA_URL"),
+		Username:           os.Getenv("XOA_USER"),
+		Password:           os.Getenv("XOA_PASSWORD"),
+		Token:              os.Getenv("XOA_TOKEN"),
 		InsecureSkipVerify: insecure,
 		Development:        development,
 		RetryMode:          retryMode,
 		RetryMaxTime:       retryMaxTime,
-	}
+	}, nil
 }

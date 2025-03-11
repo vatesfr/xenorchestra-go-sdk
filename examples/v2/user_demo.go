@@ -14,7 +14,10 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	cfg := config.New()
+	cfg, err := config.New()
+	if err != nil {
+		panic(err)
+	}
 
 	client, err := v2.New(cfg)
 	if err != nil {
