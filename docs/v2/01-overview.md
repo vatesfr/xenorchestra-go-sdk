@@ -13,6 +13,7 @@ The Xen Orchestra Go SDK v2 provides a modern, type-safe interface to interact w
 - **UUID Support**: Native UUID type support instead of string IDs
 - **Structured Logging**: Built-in logging with configurable verbosity levels
 - **Interface-Based Design**: Clean interfaces for better testability and mocking
+- **Go Mocking**: Mocking is supported for all interfaces by adding the `//go:generate mockgen` tag in the interface file
 
 ## Installation
 

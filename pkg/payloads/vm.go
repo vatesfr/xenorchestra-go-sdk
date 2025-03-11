@@ -1,8 +1,3 @@
-/*
-TODO: REMOVE THIS COMMENT. Payloads package is all the contracts needed for
-to interact with Xen Orchestra Rest API. We won't keep the payload model,
-inside with the interface and implementation, it will be easier to maintain
-*/
 package payloads
 
 import (
@@ -13,8 +8,9 @@ import (
 )
 
 /*
-As videoram is an int but comes as a string from the response sometimes,
-we need to parse it as a string first and then convert it to an int.
+Videoram is represented as an integer, but sometimes comes as a string in the API response.
+Therefore, we need to handle both formats by parsing it as a string when necessary and
+converting it to an integer.
 */
 type Videoram int
 

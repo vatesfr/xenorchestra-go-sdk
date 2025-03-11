@@ -1,8 +1,3 @@
-/*
-TODO: REMOVE THIS COMMENT. I added a working example with vm operations that
-are now working using the rest API to show case the full potential for the
-structure and patterns I decided to add in the v2 of the SDK.
-*/
 package vm
 
 import (

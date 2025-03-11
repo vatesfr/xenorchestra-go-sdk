@@ -1,18 +1,3 @@
-/*
-TODO: REMOVE THIS COMMENT. Since the v1 has a huge interface for the client,
-I decided to separate all the different components into interface, then we
-use a library to register all the components.
-
-For example we can have a task service, a vm service, a pool service, etc.
-
-We only have to create the interface contract, add the interface to library,
-then the xo client that is acting as a registry will register the component
-and we can use it as an abstraction layer. Can see the v2 provided example.
-
-I also introduce a way to generate the mock for the interface, it will reduce
-the headache of having to implement all the methods for the interface when an
-interface needs another interface to be implemented.
-*/
 package library
 
 import (

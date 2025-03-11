@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
-	// NOTE: I like this package however this isn't necessary to have it.
 	"github.com/stretchr/testify/assert"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
