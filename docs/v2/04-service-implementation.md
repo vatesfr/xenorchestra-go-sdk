@@ -116,7 +116,8 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.Snapshot
 Check vm/service_test.go for reference:
 
 ```go
-// pkg/services/snapshot/service_test.go ```
+// pkg/services/snapshot/service_test.go
+```
 
 ## Step 5: Register the Service in the Main Client
 
@@ -161,7 +162,6 @@ func (c *XOClient) Snapshot() library.Snapshot {  // Add this method
     return c.snapshotService
 }
 ```
-
 ## Step 6: Document Your Service
 
 Add documentation for your service including:
