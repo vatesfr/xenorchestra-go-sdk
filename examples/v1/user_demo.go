@@ -2,28 +2,12 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/client"
 )
 
 func newClient() (client.XOClient, error) {
-	duration, err := time.ParseDuration("10m")
-	if err != nil {
-		return nil, err
-	}
-	config := client.Config{
-		// Use the websocket URL
-		Url: "ws://xo-instance.example",
-		// Use the following if you want to use basic auth
-		// Username:           "admin",
-		// Password:           "password",
-		// XO Authentication token
-		Token:              "token",
-		InsecureSkipVerify: false,
-		RetryMode:          client.Backoff,
-		RetryMaxTime:       duration,
-	}
+	config := client.GetConfigFromEnv()
 	return client.NewClient(config)
 }
 
