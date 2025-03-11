@@ -28,9 +28,19 @@ var (
 	}
 )
 
+// NOTE: Same as the shared types or constants, we could have in the internal package,
+// errors message declared to be used in the different v2 packages. (OPTIONAL)
+const (
+	errMissingUsrPwdAndToken = `XOA_TOKEN is not set, please set it to the Xen 
+		Orchestra XOA_TOKEN or XOA_USER and XOA_PASSWORD`
+	errMissingUrl = `XOA_URL is not set, please set it`
+)
+
 // New returns a new Config with sensible defaults.
 //
 // The following environment variables are honored:
+//
+// Note that either XOA_TOKEN or XOA_USER and XOA_PASSWORD must be set.
 //
 // - XOA_URL: the base URL of the Xen Orchestra API.
 // - XOA_USER: the username to use when connecting to the API.
@@ -43,14 +53,15 @@ var (
 //
 // If any of the required environment variables are not set, New will return an error.
 func New() (*Config, error) {
-	if os.Getenv("XOA_URL") == "" {
-		return nil, fmt.Errorf("XOA_URL is not set, please set it to the Xen Orchestra URL")
+	url := os.Getenv("XOA_URL")
+	token := os.Getenv("XOA_TOKEN")
+	username := os.Getenv("XOA_USER")
+	password := os.Getenv("XOA_PASSWORD")
+	if url == "" {
+		return nil, fmt.Errorf(errMissingUrl)
 	}
-	if os.Getenv("XOA_USER") == "" {
-		return nil, fmt.Errorf("XOA_USER is not set, please set it to the Xen Orchestra username")
-	}
-	if os.Getenv("XOA_PASSWORD") == "" {
-		return nil, fmt.Errorf("XOA_PASSWORD is not set, please set it to the Xen Orchestra password")
+	if token == "" && (username == "" || password == "") {
+		return nil, fmt.Errorf(errMissingUsrPwdAndToken)
 	}
 
 	retryMode := core.None
@@ -86,10 +97,10 @@ func New() (*Config, error) {
 	}
 
 	return &Config{
-		Url:                os.Getenv("XOA_URL"),
-		Username:           os.Getenv("XOA_USER"),
-		Password:           os.Getenv("XOA_PASSWORD"),
-		Token:              os.Getenv("XOA_TOKEN"),
+		Url:                url,
+		Username:           username,
+		Password:           password,
+		Token:              token,
 		InsecureSkipVerify: insecure,
 		Development:        development,
 		RetryMode:          retryMode,
