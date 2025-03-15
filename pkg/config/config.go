@@ -32,7 +32,7 @@ var (
 // errors message declared to be used in the different v2 packages. (OPTIONAL)
 const (
 	errMissingUsrPwdAndToken = `XOA_TOKEN is not set, please set it to the Xen 
-		Orchestra XOA_TOKEN or XOA_USER and XOA_PASSWORD`
+		Orchestra XOA_TOKEN or use XOA_USER and XOA_PASSWORD`
 	errMissingUrl = `XOA_URL is not set, please set it`
 )
 

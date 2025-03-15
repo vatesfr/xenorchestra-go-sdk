@@ -4,9 +4,6 @@
 # In the meantime, you can use the v1 SDK to interact with Xen Orchestra.
 # Another note is that the v2 can use the backup which isn't available in the v1.
 # You can start the migration by using both version 1 and 2 in parallel. 
-# While we cannot be sure that the v1 jsonrpc will be available in the future,
-# we advice v2 for new projects and v1 for existing projects.
-
 
 # Migration Guide: v1 to v2
 
