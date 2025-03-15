@@ -117,8 +117,7 @@ Errors are propagated from the HTTP client to the service methods and finally to
 
 ## Logging Implementation
 
-The SDK uses a structured logger based on zap for efficient and informative logging. Log levels are automatically adjusted based on whether the SDK is in development or production mode.
-The SDK implements a structured logger based on the [zap](https://github.com/uber-go/zap) logging library. The logger is configured in the `internal/common/logger` package:
+The SDK implements a structured logger based on the [zap](https://github.com/uber-go/zap) logging library for efficient and informative logging. Log levels are automatically adjusted based on whether the SDK is in development or production mode. The logger is configured in the `internal/common/logger` package:
 
 ```go
 // In internal/common/logger/logger.go
