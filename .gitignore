@@ -39,3 +39,6 @@ dist/
 .env
 .envrc
 .autoenv.zsh
+
+# goenv version file
+.go-version

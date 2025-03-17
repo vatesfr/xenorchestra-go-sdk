@@ -22,3 +22,4 @@ linters-settings:
       - structtag
 run:
   timeout: 20m
+  go: '1.24'
