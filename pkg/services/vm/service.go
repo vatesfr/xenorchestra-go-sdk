@@ -174,6 +174,7 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 			return nil, fmt.Errorf("VM creation failed: %s", taskResult.Message)
 		}
 
+<<<<<<< HEAD
 		// If task successful, get the created VM
 		// Check both regular ID and StringID in the result
 		vmID := taskResult.Result.ID
@@ -182,6 +183,124 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 			parsedID, err := uuid.FromString(taskResult.Result.StringID)
 			if err == nil {
 				vmID = parsedID
+=======
+// NOTE: This method should be placed in the task service at least for the polling logic, vm is still
+// part of it for the creation part, however we need to follow clean pattern for all services (SOC).
+// It's already done in the backup PR that I prepared but I cannot let the hardcoded VM I used for testing
+func (s *Service) waitForVMCreationTask(ctx context.Context, taskPath string) (*payloads.VM, error) {
+	taskID := strings.TrimPrefix(taskPath, "/rest/v0/tasks/")
+
+	s.log.Info("Waiting for VM creation task to complete", zap.String("taskID", taskID))
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	timeout := time.After(5 * time.Minute)
+
+	var taskMetadata struct {
+		Params struct {
+			NameLabel string `json:"name_label"`
+		} `json:"params"`
+	}
+
+	err := client.TypedGet(ctx, s.client, fmt.Sprintf("tasks/%s", taskID), core.EmptyParams, &taskMetadata)
+	if err != nil {
+		s.log.Warn("Failed to get task metadata, VM name-based fallback won't be available",
+			zap.String("taskID", taskID), zap.Error(err))
+	}
+
+	vmNameLabel := taskMetadata.Params.NameLabel
+	s.log.Debug("Task metadata retrieved", zap.String("taskID", taskID), zap.String("vmNameLabel", vmNameLabel))
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timeout:
+			return nil, fmt.Errorf("timed out waiting for VM creation task to complete")
+		case <-ticker.C:
+			var task struct {
+				Status string          `json:"status"`
+				Result json.RawMessage `json:"result"`
+			}
+
+			err := client.TypedGet(ctx, s.client, fmt.Sprintf("tasks/%s", taskID), core.EmptyParams, &task)
+			if err != nil {
+				s.log.Error("failed to get task status", zap.String("taskID", taskID), zap.Error(err))
+				continue
+			}
+
+			s.log.Debug("Task status", zap.String("taskID", taskID), zap.String("status", task.Status))
+
+			switch task.Status {
+			case "success":
+				var vmID string
+
+				if err := json.Unmarshal(task.Result, &vmID); err == nil {
+					s.log.Info("VM creation task completed successfully with string ID",
+						zap.String("taskID", taskID),
+						zap.String("vmID", vmID))
+
+					uuid, err := uuid.FromString(vmID)
+					if err != nil {
+						return nil, fmt.Errorf("invalid VM ID returned by task: %s", vmID)
+					}
+					return s.GetByID(ctx, uuid)
+				}
+
+				var resultObj struct {
+					ID string `json:"id"`
+				}
+				if err := json.Unmarshal(task.Result, &resultObj); err == nil && resultObj.ID != "" {
+					s.log.Info("VM creation task completed successfully with object containing ID",
+						zap.String("taskID", taskID),
+						zap.String("vmID", resultObj.ID))
+
+					uuid, err := uuid.FromString(resultObj.ID)
+					if err != nil {
+						return nil, fmt.Errorf("invalid VM ID returned by task: %s", resultObj.ID)
+					}
+					return s.GetByID(ctx, uuid)
+				}
+
+				s.log.Warn("Couldn't extract VM ID from task result",
+					zap.String("taskID", taskID),
+					zap.String("rawResult", string(task.Result)))
+
+				if vmNameLabel != "" {
+					time.Sleep(5 * time.Second)
+
+					vms, err := s.List(ctx)
+					if err != nil {
+						return nil, fmt.Errorf("task completed but failed to list VMs: %w", err)
+					}
+
+					for _, v := range vms {
+						if v.NameLabel == vmNameLabel {
+							s.log.Info("Found VM by name after task completion",
+								zap.String("vmName", vmNameLabel),
+								zap.String("vmID", v.ID.String()))
+							return v, nil
+						}
+					}
+
+					return nil, fmt.Errorf("task completed successfully but could not find VM with name: %s", vmNameLabel)
+				}
+
+				return nil, fmt.Errorf("task completed successfully but could not determine created VM ID")
+
+			case "failure":
+				var errorObj map[string]any
+				if err := json.Unmarshal(task.Result, &errorObj); err == nil {
+					if msg, ok := errorObj["message"].(string); ok {
+						return nil, fmt.Errorf("VM creation task failed: %s", msg)
+					}
+				}
+				return nil, fmt.Errorf("VM creation task failed")
+
+			default:
+				continue
+>>>>>>> main
 			}
 		}
 

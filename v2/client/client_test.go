@@ -13,6 +13,8 @@ import (
 
 var ctx = context.Background()
 
+const restPath = "/rest/v0"
+
 func TestNew(t *testing.T) {
 	_, err := New(&config.Config{Url: "://invalid-url"})
 	if err == nil {
@@ -32,7 +34,7 @@ func TestAuthenticate(t *testing.T) {
 				Username string `json:"username"`
 				Password string `json:"password"`
 			}
-			json.NewDecoder(r.Body).Decode(&creds)
+			_ = json.NewDecoder(r.Body).Decode(&creds)
 
 			if creds.Username == "testuser" && creds.Password == "testpass" {
 				http.SetCookie(w, &http.Cookie{
@@ -84,23 +86,23 @@ func TestDo(t *testing.T) {
 			return
 		}
 
-		if r.URL.Path == "/rest/v0/test" && r.Method == "GET" {
+		if r.URL.Path == restPath+"/test" && r.Method == "GET" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"result":"success"}`))
+			_, _ = w.Write([]byte(`{"result":"success"}`))
 			return
 		}
 
-		if r.URL.Path == "/rest/v0/test" && r.Method == "POST" {
+		if r.URL.Path == restPath+"/test" && r.Method == "POST" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"id":"123"}`))
+			_, _ = w.Write([]byte(`{"id":"123"}`))
 			return
 		}
 
-		if r.URL.Path == "/rest/v0/error" {
+		if r.URL.Path == restPath+"/error" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"error":"test error"}`))
+			_, _ = w.Write([]byte(`{"error":"test error"}`))
 			return
 		}
 
@@ -110,7 +112,7 @@ func TestDo(t *testing.T) {
 
 	client := &Client{
 		HttpClient: http.DefaultClient,
-		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
+		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: restPath},
 		AuthToken:  "test-token",
 	}
 
@@ -144,10 +146,10 @@ func TestDo(t *testing.T) {
 
 func TestTypedGet(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/rest/v0/test" && r.Method == "GET" {
+		if r.URL.Path == restPath+"/test" && r.Method == "GET" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"name":"test-item","value":123}`))
+			_, _ = w.Write([]byte(`{"name":"test-item","value":123}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -156,7 +158,7 @@ func TestTypedGet(t *testing.T) {
 
 	client := &Client{
 		HttpClient: http.DefaultClient,
-		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
+		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: restPath},
 		AuthToken:  "test-token",
 	}
 
