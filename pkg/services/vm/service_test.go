@@ -38,17 +38,21 @@ func setupTestServer() (*httptest.Server, library.VM) {
 		case r.URL.Path == "/rest/v0/vms" && r.Method == http.MethodGet:
 			id1 := uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000001"))
 			id2 := uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000002"))
-			json.NewEncoder(w).Encode([]string{
+			err := json.NewEncoder(w).Encode([]string{
 				fmt.Sprintf("/rest/v0/vms/%s", id1),
 				fmt.Sprintf("/rest/v0/vms/%s", id2),
 			})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case r.URL.Path == "/rest/v0/vms" && r.Method == http.MethodPost:
 			var vm payloads.VM
-			json.NewDecoder(r.Body).Decode(&vm)
+			_ = json.NewDecoder(r.Body).Decode(&vm)
 			vm.ID = uuid.Must(uuid.NewV4())
 			vm.PowerState = payloads.PowerStateHalted
-			json.NewEncoder(w).Encode(vm)
+			_ = json.NewEncoder(w).Encode(vm)
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && len(pathParts) == 5 && r.Method == http.MethodGet:
 			vmName := "VM 1"
@@ -56,26 +60,34 @@ func setupTestServer() (*httptest.Server, library.VM) {
 				vmName = "VM 2"
 			}
 
-			json.NewEncoder(w).Encode(payloads.VM{
+			err := json.NewEncoder(w).Encode(payloads.VM{
 				ID:         vmID,
 				NameLabel:  vmName,
 				PowerState: payloads.PowerStateRunning,
 			})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && len(pathParts) == 5 && r.Method == http.MethodPost:
 			var vm payloads.VM
-			json.NewDecoder(r.Body).Decode(&vm)
+			_ = json.NewDecoder(r.Body).Decode(&vm)
 			vm.ID = vmID
-			json.NewEncoder(w).Encode(vm)
+			_ = json.NewEncoder(w).Encode(vm)
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && len(pathParts) == 5 && r.Method == http.MethodDelete:
-			json.NewEncoder(w).Encode(map[string]bool{"success": true})
+			err := json.NewEncoder(w).Encode(map[string]bool{"success": true})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/_/actions/"):
 			action := strings.TrimPrefix(r.URL.Path, "/rest/v0/vms/_/actions/")
 
 			var requestBody map[string]string
-			json.NewDecoder(r.Body).Decode(&requestBody)
+			_ = json.NewDecoder(r.Body).Decode(&requestBody)
 			_, err := uuid.FromString(requestBody["id"])
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -84,20 +96,32 @@ func setupTestServer() (*httptest.Server, library.VM) {
 
 			switch action {
 			case "start", "clean_shutdown", "hard_shutdown", "clean_reboot", "hard_reboot", "snapshot":
-				json.NewEncoder(w).Encode(map[string]bool{"success": true})
+				err := json.NewEncoder(w).Encode(map[string]bool{"success": true})
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			default:
 				w.WriteHeader(http.StatusNotFound)
 			}
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && strings.HasSuffix(r.URL.Path, "/suspend"):
-			json.NewEncoder(w).Encode(map[string]bool{"success": true})
+			err := json.NewEncoder(w).Encode(map[string]bool{"success": true})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && strings.HasSuffix(r.URL.Path, "/resume"):
-			json.NewEncoder(w).Encode(map[string]bool{"success": true})
+			err := json.NewEncoder(w).Encode(map[string]bool{"success": true})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/pools/") && strings.HasSuffix(r.URL.Path, "/actions/create_vm"):
 			var createParams map[string]any
-			json.NewDecoder(r.Body).Decode(&createParams)
+			_ = json.NewDecoder(r.Body).Decode(&createParams)
 
 			pathParts := strings.Split(r.URL.Path, "/")
 			poolID := pathParts[4]
@@ -110,7 +134,7 @@ func setupTestServer() (*httptest.Server, library.VM) {
 				PoolID:          uuid.Must(uuid.FromString(poolID)),
 			}
 
-			json.NewEncoder(w).Encode(vm)
+			_ = json.NewEncoder(w).Encode(vm)
 
 		default:
 			fmt.Printf("Unhandled path: %s\n", r.URL.Path)

@@ -69,6 +69,7 @@ func New(config *config.Config) (*Client, error) {
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = &tls.Config{
+		// #nosec G402 -- Allow self-signed certificates when configured by user
 		InsecureSkipVerify: config.InsecureSkipVerify,
 	}
 

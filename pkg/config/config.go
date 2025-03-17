@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -31,9 +32,9 @@ var (
 // NOTE: Same as the shared types or constants, we could have in the internal package,
 // errors message declared to be used in the different v2 packages. (OPTIONAL)
 const (
-	errMissingUsrPwdAndToken = `XOA_TOKEN is not set, please set it to the Xen 
-		Orchestra XOA_TOKEN or use XOA_USER and XOA_PASSWORD`
-	errMissingUrl = `XOA_URL is not set, please set it`
+	// #nosec G101 -- Not actual credentials, just environment variable names
+	errMissingAuthInfo = `Authentication information not provided. Please set XOA_TOKEN or both XOA_USER and XOA_PASSWORD`
+	errMissingUrl      = `XOA_URL is not set, please set it`
 )
 
 // New returns a new Config with sensible defaults.
@@ -58,10 +59,10 @@ func New() (*Config, error) {
 	username := os.Getenv("XOA_USER")
 	password := os.Getenv("XOA_PASSWORD")
 	if url == "" {
-		return nil, fmt.Errorf(errMissingUrl)
+		return nil, errors.New(errMissingUrl)
 	}
 	if token == "" && (username == "" || password == "") {
-		return nil, fmt.Errorf(errMissingUsrPwdAndToken)
+		return nil, errors.New(errMissingAuthInfo)
 	}
 
 	retryMode := core.None

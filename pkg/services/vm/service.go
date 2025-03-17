@@ -28,10 +28,6 @@ func New(client *client.Client, log *logger.Logger) library.VM {
 	}
 }
 
-func (s *Service) formatPath(path string) string {
-	return fmt.Sprintf("vms/%s", path)
-}
-
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error) {
 	var result payloads.VM
 	path := core.NewPathBuilder().Resource("vms").ID(id).Build()
@@ -163,6 +159,7 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 
 // NOTE: This method should be placed in the task service at least for the polling logic, vm is still
 // part of it for the creation part, however we need to follow clean pattern for all services (SOC).
+// It's already done in the backup PR that I prepared but I cannot let the hardcoded VM I used for testing
 func (s *Service) waitForVMCreationTask(ctx context.Context, taskPath string) (*payloads.VM, error) {
 	taskID := strings.TrimPrefix(taskPath, "/rest/v0/tasks/")
 
@@ -172,6 +169,21 @@ func (s *Service) waitForVMCreationTask(ctx context.Context, taskPath string) (*
 	defer ticker.Stop()
 
 	timeout := time.After(5 * time.Minute)
+
+	var taskMetadata struct {
+		Params struct {
+			NameLabel string `json:"name_label"`
+		} `json:"params"`
+	}
+
+	err := client.TypedGet(ctx, s.client, fmt.Sprintf("tasks/%s", taskID), core.EmptyParams, &taskMetadata)
+	if err != nil {
+		s.log.Warn("Failed to get task metadata, VM name-based fallback won't be available",
+			zap.String("taskID", taskID), zap.Error(err))
+	}
+
+	vmNameLabel := taskMetadata.Params.NameLabel
+	s.log.Debug("Task metadata retrieved", zap.String("taskID", taskID), zap.String("vmNameLabel", vmNameLabel))
 
 	for {
 		select {
@@ -228,17 +240,24 @@ func (s *Service) waitForVMCreationTask(ctx context.Context, taskPath string) (*
 					zap.String("taskID", taskID),
 					zap.String("rawResult", string(task.Result)))
 
-				time.Sleep(5 * time.Second)
+				if vmNameLabel != "" {
+					time.Sleep(5 * time.Second)
 
-				vms, err := s.List(ctx)
-				if err != nil {
-					return nil, fmt.Errorf("task completed but failed to list VMs: %w", err)
-				}
-
-				for _, v := range vms {
-					if v.NameLabel == "AM-TEST-XO-SDK-TEST" {
-						return v, nil
+					vms, err := s.List(ctx)
+					if err != nil {
+						return nil, fmt.Errorf("task completed but failed to list VMs: %w", err)
 					}
+
+					for _, v := range vms {
+						if v.NameLabel == vmNameLabel {
+							s.log.Info("Found VM by name after task completion",
+								zap.String("vmName", vmNameLabel),
+								zap.String("vmID", v.ID.String()))
+							return v, nil
+						}
+					}
+
+					return nil, fmt.Errorf("task completed successfully but could not find VM with name: %s", vmNameLabel)
 				}
 
 				return nil, fmt.Errorf("task completed successfully but could not determine created VM ID")
