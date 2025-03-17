@@ -9,10 +9,10 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750
 	github.com/stretchr/testify v1.10.0
+	github.com/subosito/gotenv v1.6.0
 )
 
 require (
-	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 )
