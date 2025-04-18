@@ -45,13 +45,6 @@ func (p *PathBuilder) Action(action string) *PathBuilder {
 	return p
 }
 
-// Wildcard adds a wildcard segment ("_") to the path.
-// This is used in XO API for actions that apply to any resource of a type.
-func (p *PathBuilder) Wildcard() *PathBuilder {
-	p.segments = append(p.segments, "_")
-	return p
-}
-
 // ActionsGroup adds an "actions" segment to the path.
 // This is used in XO API to group actions on a resource.
 func (p *PathBuilder) ActionsGroup() *PathBuilder {

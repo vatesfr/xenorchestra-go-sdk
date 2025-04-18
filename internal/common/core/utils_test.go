@@ -34,20 +34,20 @@ func TestPathBuilder(t *testing.T) {
 		assert.Equal(t, "vms/123/start", builder.Build())
 	})
 
-	t.Run("resource with wildcard", func(t *testing.T) {
-		builder := NewPathBuilder().Resource("vms").Wildcard()
+	t.Run("resource with underscore placeholder", func(t *testing.T) {
+		builder := NewPathBuilder().Resource("vms").IDString("_")
 		assert.Equal(t, "vms/_", builder.Build())
 	})
 
 	t.Run("resource with actions group", func(t *testing.T) {
-		builder := NewPathBuilder().Resource("vms").Wildcard().ActionsGroup()
+		builder := NewPathBuilder().Resource("vms").IDString("_").ActionsGroup()
 		assert.Equal(t, "vms/_/actions", builder.Build())
 	})
 
 	t.Run("complex path", func(t *testing.T) {
 		builder := NewPathBuilder().
 			Resource("vms").
-			Wildcard().
+			IDString("_").
 			ActionsGroup().
 			Action("start")
 		assert.Equal(t, "vms/_/actions/start", builder.Build())
