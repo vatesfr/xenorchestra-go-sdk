@@ -13,7 +13,7 @@ import (
 //go:generate mockgen --build_flags=--mod=mod --destination mock/snapshot.go . Snapshot
 type Snapshot interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.Snapshot, error)
-	ListByVM(ctx context.Context, vmID uuid.UUID) ([]*payloads.Snapshot, error)
+	ListByVM(ctx context.Context, vmID uuid.UUID, limit int) ([]*payloads.Snapshot, error)
 	Create(ctx context.Context, vmID uuid.UUID, name string) (*payloads.Snapshot, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	Revert(ctx context.Context, vmID uuid.UUID, snapshotID uuid.UUID) error

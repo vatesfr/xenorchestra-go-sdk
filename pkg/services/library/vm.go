@@ -11,7 +11,7 @@ import (
 
 type VM interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error)
-	List(ctx context.Context) ([]*payloads.VM, error)
+	List(ctx context.Context, limit int) ([]*payloads.VM, error)
 	Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
 	Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -28,13 +28,14 @@ type VM interface {
 	Restore() Restore
 }
 
+/*
+TODO: Wait restart, suspend and resume actions to be added in the REST API.
+They are available in the JSON-RPC API with client v1 so no need to add them here.
+*/
 type VMActions interface {
 	Start(ctx context.Context, id uuid.UUID) error
 	CleanShutdown(ctx context.Context, id uuid.UUID) error
 	HardShutdown(ctx context.Context, id uuid.UUID) error
 	CleanReboot(ctx context.Context, id uuid.UUID) error
 	HardReboot(ctx context.Context, id uuid.UUID) error
-	Restart(ctx context.Context, id uuid.UUID) error
-	Suspend(ctx context.Context, id uuid.UUID) error
-	Resume(ctx context.Context, id uuid.UUID) error
 }
