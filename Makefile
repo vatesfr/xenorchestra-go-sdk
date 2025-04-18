@@ -74,6 +74,12 @@ run-example-v2:
 run-examples: run-example-v1 run-example-v2 
 	@echo "$(GREEN)All examples executed successfully$(NC)"
 
+.PHONY: run-integration-tests
+run-integration-tests:
+	@echo "$(BLUE)Running integration tests...$(NC)"
+	@mkdir -p v2/integration/logs
+	$(GO) test -v ./v2/integration 2>&1 | tee v2/integration/integration_tests.log
+
 .PHONY: clean
 clean: 
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
