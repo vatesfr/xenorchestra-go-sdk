@@ -5,6 +5,7 @@ go 1.24
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/gofrs/uuid v4.4.0+incompatible
+	github.com/golang/mock v1.6.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750
