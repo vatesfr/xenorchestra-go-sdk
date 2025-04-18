@@ -87,12 +87,16 @@ func New(config *config.Config) (*Client, error) {
 
 	if config.Token != "" {
 		client.AuthToken = Token(config.Token)
+		// No need to create a new token
+		return client, nil
 	} else if config.Username != "" && config.Password != "" {
 		token, err := client.authenticate(config.Username, config.Password)
 		if err != nil {
 			return nil, fmt.Errorf("failed to authenticate: %w", err)
 		}
 		client.AuthToken = token
+	} else {
+		return nil, errors.New("either token or username/password are required for authentication")
 	}
 
 	return client, nil
