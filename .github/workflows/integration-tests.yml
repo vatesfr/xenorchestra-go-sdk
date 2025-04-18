@@ -1,0 +1,77 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_teardown:
+        description: 'Skip teardown of resources'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  XOA_URL: ${{ secrets.XOA_URL }}
+  XOA_USER: ${{ secrets.XOA_USER }}
+  XOA_PASSWORD: ${{ secrets.XOA_PASSWORD }}
+  XOA_TOKEN: ${{ secrets.XOA_TOKEN }}
+  XOA_INSECURE: "true"
+  XOA_INTEGRATION_TESTS: "true"
+  XOA_POOL_ID: ${{ secrets.XOA_POOL_ID }}
+  XOA_TEMPLATE_ID: ${{ secrets.XOA_TEMPLATE_ID }}
+  XOA_NETWORK_ID: ${{ secrets.XOA_NETWORK_ID }}
+  XOA_STORAGE_ID: ${{ secrets.XOA_STORAGE_ID }}
+
+jobs:
+  integration-tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+      
+      - name: Install dependencies
+        run: go mod download
+      
+      - name: Set up WireGuard
+        uses: egor-tensin/setup-wireguard@v1
+        with:
+          endpoint: ${{ secrets.WIREGUARD_ENDPOINT }}
+          endpoint_public_key: ${{ secrets.WIREGUARD_ENDPOINT_PUBLIC_KEY }}
+          ips: ${{ secrets.WIREGUARD_IPS }}
+          allowed_ips: ${{ secrets.WIREGUARD_ALLOWED_IPS }}
+          private_key: ${{ secrets.WIREGUARD_PRIVATE_KEY }}
+      
+      - name: Test connection to Xen Orchestra (ping)
+        run: |
+          # Extract hostname from XOA_URL
+          XOA_HOST=$(echo $XOA_URL | sed -E 's/^(wss?|https?):\/\///g' | sed -E 's/:[0-9]+$//g' | sed -E 's/\/.*$//g')
+          echo "Testing connection to XOA host: $XOA_HOST"
+          ping -c 4 $XOA_HOST
+      
+      - name: Run integration tests
+        run: |
+          # Set skip_teardown if requested
+          if [[ "${{ inputs.skip_teardown }}" == "true" ]]; then
+            export XOA_SKIP_TEARDOWN=true
+            echo "Resources will not be torn down after tests"
+          fi
+          
+          # Run the tests
+          make run-integration-tests
+      
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-logs
+          path: |
+            v2/integration/logs
+            v2/integration/*.log
+          retention-days: 7 
