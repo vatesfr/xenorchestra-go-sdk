@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/uuid"
+	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
@@ -17,23 +18,29 @@ import (
 )
 
 type Service struct {
-	client *client.Client
-	log    *logger.Logger
+	client       *client.Client
+	legacyClient *v1.Client
+	jsonrpcSvc   library.JSONRPC
+	log          *logger.Logger
 }
 
-func New(client *client.Client, log *logger.Logger) library.Snapshot {
+func New(
+	client *client.Client,
+	legacyClient *v1.Client,
+	jsonrpcSvc library.JSONRPC,
+	log *logger.Logger,
+) library.Snapshot {
 	return &Service{
-		client: client,
-		log:    log,
+		client:       client,
+		legacyClient: legacyClient,
+		jsonrpcSvc:   jsonrpcSvc,
+		log:          log,
 	}
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.Snapshot, error) {
 	var result payloads.Snapshot
 	path := core.NewPathBuilder().Resource("vm-snapshots").ID(id).Build()
-	s.log.Debug("Getting VM snapshot by ID",
-		zap.String("snapshotID", id.String()),
-		zap.String("path", path))
 
 	err := client.TypedGet(ctx, s.client, path, core.EmptyParams, &result)
 	if err != nil {
@@ -43,23 +50,22 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.Snapshot
 	return &result, nil
 }
 
-func (s *Service) ListByVM(ctx context.Context, vmID uuid.UUID) ([]*payloads.Snapshot, error) {
+func (s *Service) ListByVM(ctx context.Context, vmID uuid.UUID, limit int) ([]*payloads.Snapshot, error) {
 	var snapshotURLs []string
 	path := core.NewPathBuilder().Resource("vm-snapshots").Build()
 
-	s.log.Debug("Listing VM snapshots",
-		zap.String("vmID", vmID.String()),
-		zap.String("path", path))
+	params := make(map[string]any)
+	if limit > 0 {
+		params["limit"] = limit
+	}
 
 	// Remove the vm filter parameter as it may not be supported
 	// Instead, we'll fetch all snapshots and filter by VM ID
-	err := client.TypedGet(ctx, s.client, path, core.EmptyParams, &snapshotURLs)
+	err := client.TypedGet(ctx, s.client, path, params, &snapshotURLs)
 	if err != nil {
 		s.log.Error("failed to list snapshots by vm", zap.Error(err))
 		return nil, err
 	}
-
-	s.log.Debug("Retrieved snapshot URLs", zap.Int("count", len(snapshotURLs)))
 
 	var snapshots []*payloads.Snapshot
 	for _, urlPath := range snapshotURLs {
@@ -90,11 +96,6 @@ func (s *Service) ListByVM(ctx context.Context, vmID uuid.UUID) ([]*payloads.Sna
 			snapshots = append(snapshots, snapshot)
 		}
 	}
-
-	s.log.Debug("Filtered snapshots for VM",
-		zap.String("vmID", vmID.String()),
-		zap.Int("totalCount", len(snapshotURLs)),
-		zap.Int("filteredCount", len(snapshots)))
 
 	return snapshots, nil
 }
@@ -153,7 +154,7 @@ func (s *Service) Create(ctx context.Context, vmID uuid.UUID, name string) (*pay
 	}
 
 	s.log.Debug("Listing VM snapshots to find the created snapshot", zap.String("name", name))
-	snapshots, err := s.ListByVM(ctx, vmID)
+	snapshots, err := s.ListByVM(ctx, vmID, 0)
 	if err != nil {
 		s.log.Error("failed to list snapshots by vm", zap.Error(err))
 		return nil, fmt.Errorf("could not determine created snapshot: %w", err)
@@ -184,55 +185,59 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 		zap.String("snapshotID", id.String()),
 		zap.String("path", path))
 
-	// TODO: Modify to pass the payload instead of the method scope result.
-	// This is for development purpose and will be removed before the PR.
-	var result struct {
-		Success bool `json:"success"`
-	}
-	err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result)
-	if err != nil {
-		s.log.Error("failed to delete snapshot", zap.Error(err))
-		return err
+	var stringResult string
+	err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &stringResult)
+
+	if err == nil {
+		if strings.TrimSpace(stringResult) == "OK" {
+			s.log.Debug("Successfully deleted snapshot with string response",
+				zap.String("snapshotID", id.String()),
+				zap.String("response", stringResult))
+			return nil
+		}
+
+		s.log.Debug("Received string response but not OK",
+			zap.String("snapshotID", id.String()),
+			zap.String("response", stringResult))
+	} else if strings.Contains(err.Error(), "invalid character 'O' looking for beginning of value") {
+		s.log.Debug("Received 'OK' response for deletion", zap.String("snapshotID", id.String()))
+		return nil
 	}
 
-	if !result.Success {
-		s.log.Error("failed to delete snapshot", zap.String("message", "failed to delete snapshot"))
-		return errors.New("failed to delete snapshot")
+	if err != nil {
+		var result struct {
+			Success bool `json:"success"`
+		}
+		err = client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result)
+		if err != nil {
+			s.log.Error("failed to delete snapshot", zap.Error(err))
+			return err
+		}
+
+		if !result.Success {
+			s.log.Error("failed to delete snapshot", zap.String("message", "failed to delete snapshot"))
+			return errors.New("failed to delete snapshot")
+		}
 	}
 
 	return nil
 }
 
 func (s *Service) Revert(ctx context.Context, vmID uuid.UUID, snapshotID uuid.UUID) error {
-	payload := map[string]any{
+	params := map[string]any{
 		"vm":       vmID.String(),
 		"snapshot": snapshotID.String(),
 	}
 
-	path := core.NewPathBuilder().
-		Resource("vm-snapshots").
-		ActionsGroup().
-		Action("revert").
-		Build()
-
-	s.log.Debug("Reverting VM to snapshot",
+	logContext := []zap.Field{
 		zap.String("vmID", vmID.String()),
 		zap.String("snapshotID", snapshotID.String()),
-		zap.String("path", path))
-
-	var result struct {
-		Success bool `json:"success"`
 	}
-	err := client.TypedPost(ctx, s.client, path, payload, &result)
-	if err != nil {
-		s.log.Error("failed to revert snapshot", zap.Error(err))
+
+	var result bool
+	if err := s.jsonrpcSvc.Call("vm.revert", params, &result, logContext...); err != nil {
 		return err
 	}
 
-	if !result.Success {
-		s.log.Error("failed to revert snapshot", zap.String("message", "failed to revert snapshot"))
-		return errors.New("failed to revert snapshot")
-	}
-
-	return nil
+	return s.jsonrpcSvc.ValidateResult(result, "snapshot revert", logContext...)
 }

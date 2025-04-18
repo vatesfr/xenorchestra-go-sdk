@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
@@ -37,9 +36,6 @@ func (s *Service) cleanDuplicateV0Path(path string) string {
 
 func (s *Service) Get(ctx context.Context, path string) (*payloads.Task, error) {
 	taskID := s.cleanDuplicateV0Path(path)
-
-	s.log.Debug("Getting task", zap.String("taskID", taskID), zap.String("originalPath", path))
-
 	taskPath := core.NewPathBuilder().Resource("tasks").IDString(taskID).Build()
 
 	var result payloads.Task
@@ -48,23 +44,6 @@ func (s *Service) Get(ctx context.Context, path string) (*payloads.Task, error) 
 		s.log.Error("Failed to get task", zap.String("taskID", taskID), zap.Error(err))
 		return nil, err
 	}
-
-	// TODO: remove noisy logs after development.
-	logFields := []zap.Field{
-		zap.String("taskID", taskID),
-		zap.String("status", string(result.Status)),
-	}
-
-	if result.Status == payloads.Success {
-		if result.Result.ID != uuid.Nil {
-			logFields = append(logFields, zap.String("resultID", result.Result.ID.String()))
-		}
-		if result.Result.StringID != "" {
-			logFields = append(logFields, zap.String("resultStringID", result.Result.StringID))
-		}
-	}
-
-	s.log.Debug("Task retrieved successfully", logFields...)
 
 	return &result, nil
 }
@@ -95,10 +74,9 @@ func (s *Service) Wait(ctx context.Context, id string) (*payloads.Task, error) {
 
 func (s *Service) WaitWithTimeout(ctx context.Context, id string, timeout time.Duration) (*payloads.Task, error) {
 	taskID := s.cleanDuplicateV0Path(id)
-	s.log.Debug("Waiting for task completion", zap.String("taskID", taskID), zap.Duration("timeout", timeout))
 
 	deadline := time.Now().Add(timeout)
-	pollInterval := 2 * time.Second
+	pollInterval := 7 * time.Second
 
 	for time.Now().Before(deadline) {
 		select {
@@ -107,35 +85,19 @@ func (s *Service) WaitWithTimeout(ctx context.Context, id string, timeout time.D
 		default:
 		}
 
+		s.log.Debug("Polling task status", zap.String("taskID", taskID))
 		task, err := s.Get(ctx, taskID)
 		if err != nil {
-			s.log.Error("Error checking task status", zap.String("taskID", taskID), zap.Error(err))
+			s.log.Warn("Error checking task status, will retry",
+				zap.String("taskID", taskID),
+				zap.Error(err))
 			time.Sleep(pollInterval)
 			continue
 		}
 
 		if task.Status == payloads.Success || task.Status == payloads.Failure {
-			logFields := []zap.Field{
-				zap.String("taskID", taskID),
-				zap.String("status", string(task.Status)),
-			}
-
-			if task.Status == payloads.Success {
-				if task.Result.ID != uuid.Nil {
-					logFields = append(logFields, zap.String("resultID", task.Result.ID.String()))
-				}
-				if task.Result.StringID != "" {
-					logFields = append(logFields, zap.String("resultStringID", task.Result.StringID))
-				}
-			}
-
-			s.log.Debug("Task completed", logFields...)
 			return task, nil
 		}
-
-		s.log.Debug("Task in progress",
-			zap.String("taskID", taskID),
-			zap.String("status", string(task.Status)))
 
 		time.Sleep(pollInterval)
 	}
@@ -144,26 +106,37 @@ func (s *Service) WaitWithTimeout(ctx context.Context, id string, timeout time.D
 }
 
 func IsTaskURL(s string) bool {
-	return strings.HasPrefix(s, "/rest/v0/tasks/")
+	isTask := strings.HasPrefix(s, "/rest/v0/tasks/")
+	return isTask
 }
 
 func ExtractTaskID(taskURL string) string {
 	return strings.TrimPrefix(taskURL, "/rest/v0/tasks/")
 }
 
+// TODO: we don't need to return a bool, we can just return the task and handle the error
 func (s *Service) HandleTaskResponse(ctx context.Context, response string, waitForCompletion bool) (*payloads.Task, bool, error) {
+	s.log.Info("Handling potential task response", zap.String("response", response))
+
 	if !IsTaskURL(response) {
+		s.log.Info("Response is not a task URL", zap.String("response", response))
 		return nil, false, nil
 	}
 
 	taskID := ExtractTaskID(response)
-	s.log.Debug("Got task URL", zap.String("taskID", taskID))
+	s.log.Info("Response is a task URL", zap.String("taskID", taskID))
 
 	if !waitForCompletion {
+		s.log.Info("Not waiting for task completion, just getting current status", zap.String("taskID", taskID))
 		task, err := s.Get(ctx, taskID)
 		return task, true, err
 	}
 
 	task, err := s.Wait(ctx, taskID)
+	if err != nil {
+		s.log.Error("Failed waiting for task", zap.String("taskID", taskID), zap.Error(err))
+		return nil, false, err
+	}
+
 	return task, true, err
 }

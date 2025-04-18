@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
@@ -16,16 +17,26 @@ import (
 )
 
 type Service struct {
-	client      *client.Client
-	log         *logger.Logger
-	taskService library.Task
+	client       *client.Client
+	legacyClient *v1.Client
+	log          *logger.Logger
+	taskService  library.Task
+	jsonrpcSvc   library.JSONRPC
 }
 
-func New(client *client.Client, log *logger.Logger, taskService library.Task) library.Restore {
+func New(
+	client *client.Client,
+	legacyClient *v1.Client,
+	taskService library.Task,
+	jsonrpcSvc library.JSONRPC,
+	log *logger.Logger,
+) library.Restore {
 	return &Service{
-		client:      client,
-		log:         log,
-		taskService: taskService,
+		client:       client,
+		legacyClient: legacyClient,
+		taskService:  taskService,
+		jsonrpcSvc:   jsonrpcSvc,
+		log:          log,
 	}
 }
 
@@ -55,9 +66,8 @@ func (s *Service) GetRestorePoints(ctx context.Context, vmID uuid.UUID) ([]*payl
 	for _, log := range logs {
 		if log.Status == payloads.BackupLogStatusSuccess {
 			restorePoint := &payloads.RestorePoint{
-				ID:   log.ID,
-				Name: log.Name,
-				// Approximate backup time based on log duration
+				ID:         log.ID,
+				Name:       log.Name,
 				BackupTime: time.Now().Add(-time.Duration(log.Duration) * time.Second),
 				Type:       "backup",
 			}
@@ -74,24 +84,38 @@ func (s *Service) GetRestorePoints(ctx context.Context, vmID uuid.UUID) ([]*payl
 }
 
 func (s *Service) RestoreVM(ctx context.Context, backupID uuid.UUID, options *payloads.RestoreOptions) error {
-	path := core.NewPathBuilder().
-		Resource("backup").
-		Resource("restore").
-		ID(backupID).
-		Build()
+	params := map[string]interface{}{
+		"id": backupID.String(),
+	}
+
+	if options != nil {
+		if options.StartAfterRestore {
+			params["startOnBoot"] = options.StartAfterRestore
+		}
+		if options.SrID != uuid.Nil {
+			params["sr"] = options.SrID.String()
+		}
+		if options.PoolID != uuid.Nil {
+			params["targetPoolId"] = options.PoolID.String()
+		}
+		if options.NewNamePattern != "" {
+			params["name_pattern"] = options.NewNamePattern
+		}
+	}
+
+	logContext := []zap.Field{
+		zap.String("backupID", backupID.String()),
+	}
 
 	var response string
-	err := client.TypedPost(ctx, s.client, path, options, &response)
-	if err != nil {
-		s.log.Error("Failed to restore VM", zap.Error(err))
+	if err := s.jsonrpcSvc.Call("backupNg.restoreMetadata", params, &response, logContext...); err != nil {
 		return err
 	}
 
 	if task.IsTaskURL(response) {
 		taskID := task.ExtractTaskID(response)
-		s.log.Debug("VM restore started",
-			zap.String("backupID", backupID.String()),
-			zap.String("taskID", taskID))
+		s.log.Debug("VM restore started via JSON-RPC",
+			append(logContext, zap.String("taskID", taskID))...)
 
 		taskResult, err := s.taskService.Wait(ctx, taskID)
 		if err != nil {
@@ -107,37 +131,42 @@ func (s *Service) RestoreVM(ctx context.Context, backupID uuid.UUID, options *pa
 }
 
 func (s *Service) ImportVM(ctx context.Context, options *payloads.ImportOptions) (*payloads.Task, error) {
-	path := core.NewPathBuilder().
-		Resource("backup").
-		Resource("import").
-		Build()
+	params := map[string]interface{}{
+		"id": options.BackupID.String(),
+		"sr": options.SrID.String(),
+	}
+
+	if options.NamePattern != "" {
+		params["name_pattern"] = options.NamePattern
+	}
+	if options.StartOnBoot {
+		params["startOnBoot"] = options.StartOnBoot
+	}
+	if options.NetworkConfig != nil && len(options.NetworkConfig) > 0 {
+		params["networkMapping"] = options.NetworkConfig
+	}
+
+	logContext := []zap.Field{
+		zap.String("backupID", options.BackupID.String()),
+		zap.String("srID", options.SrID.String()),
+	}
 
 	var response string
-	err := client.TypedPost(ctx, s.client, path, options, &response)
-	if err != nil {
-		s.log.Error("Failed to import VM", zap.Error(err))
+	if err := s.jsonrpcSvc.Call("backupNg.importVmBackup", params, &response, logContext...); err != nil {
 		return nil, err
 	}
 
 	if task.IsTaskURL(response) {
 		taskID := task.ExtractTaskID(response)
-		s.log.Debug("VM import started", zap.String("taskID", taskID))
+		s.log.Debug("VM import started via JSON-RPC",
+			append(logContext, zap.String("taskID", taskID))...)
 
-		taskResult, err := s.taskService.Get(ctx, taskID)
-		if err != nil {
-			return nil, err
-		}
-
-		return taskResult, nil
+		return s.taskService.Get(ctx, taskID)
 	}
 
-	// NOTE: For development purposes, we return a dummy task.
-	// will be replaced with the right type.
-	dummyTask := &payloads.Task{
+	return &payloads.Task{
 		Status: payloads.Success,
-	}
-
-	return dummyTask, nil
+	}, nil
 }
 
 func (s *Service) ListRestoreLogs(ctx context.Context, limit int) ([]*payloads.RestoreLog, error) {

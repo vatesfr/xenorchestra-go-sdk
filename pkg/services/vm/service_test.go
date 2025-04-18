@@ -105,20 +105,6 @@ func setupTestServer() (*httptest.Server, library.VM) {
 				w.WriteHeader(http.StatusNotFound)
 			}
 
-		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && strings.HasSuffix(r.URL.Path, "/suspend"):
-			err := json.NewEncoder(w).Encode(map[string]bool{"success": true})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && strings.HasSuffix(r.URL.Path, "/resume"):
-			err := json.NewEncoder(w).Encode(map[string]bool{"success": true})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/pools/") && strings.HasSuffix(r.URL.Path, "/actions/create_vm"):
 			var createParams map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&createParams)
@@ -174,7 +160,7 @@ func TestList(t *testing.T) {
 	server, service := setupTestServer()
 	defer server.Close()
 
-	vms, err := service.List(context.Background())
+	vms, err := service.List(context.Background(), 10)
 
 	assert.NoError(t, err)
 	assert.Len(t, vms, 2)
@@ -246,11 +232,5 @@ func TestPowerOperations(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = service.CleanShutdown(context.Background(), id)
-	assert.NoError(t, err)
-
-	err = service.Suspend(context.Background(), id)
-	assert.NoError(t, err)
-
-	err = service.Resume(context.Background(), id)
 	assert.NoError(t, err)
 }

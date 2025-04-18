@@ -44,7 +44,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.StorageR
 	return &result, nil
 }
 
-func (s *Service) List(ctx context.Context, filter *payloads.StorageRepositoryFilter) ([]*payloads.StorageRepository, error) {
+func (s *Service) List(ctx context.Context, filter *payloads.StorageRepositoryFilter, limit int) ([]*payloads.StorageRepository, error) {
 	var urlPaths []string
 	path := core.NewPathBuilder().
 		Resource("srs").
@@ -62,6 +62,12 @@ func (s *Service) List(ctx context.Context, filter *payloads.StorageRepositoryFi
 		if filter.SRType != "" {
 			params["SR_type"] = filter.SRType
 		}
+	} else {
+		params = make(map[string]any)
+	}
+
+	if limit > 0 {
+		params["limit"] = limit
 	}
 
 	err := client.TypedGet(ctx, s.client, path, params, &urlPaths)
@@ -69,8 +75,6 @@ func (s *Service) List(ctx context.Context, filter *payloads.StorageRepositoryFi
 		s.log.Error("Failed to get storage repository URLs", zap.Error(err))
 		return nil, err
 	}
-
-	s.log.Debug("Retrieved storage repository URLs", zap.Int("count", len(urlPaths)))
 
 	var result []*payloads.StorageRepository
 	for _, urlPath := range urlPaths {
@@ -110,11 +114,11 @@ func (s *Service) List(ctx context.Context, filter *payloads.StorageRepositoryFi
 	return result, nil
 }
 
-func (s *Service) ListByPool(ctx context.Context, poolID uuid.UUID) ([]*payloads.StorageRepository, error) {
+func (s *Service) ListByPool(ctx context.Context, poolID uuid.UUID, limit int) ([]*payloads.StorageRepository, error) {
 	filter := &payloads.StorageRepositoryFilter{
 		PoolID: poolID,
 	}
-	return s.List(ctx, filter)
+	return s.List(ctx, filter, limit)
 }
 
 func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {

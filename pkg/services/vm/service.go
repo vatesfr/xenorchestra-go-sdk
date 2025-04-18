@@ -59,7 +59,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, erro
 	return &result, nil
 }
 
-func (s *Service) List(ctx context.Context) ([]*payloads.VM, error) {
+func (s *Service) List(ctx context.Context, limit int) ([]*payloads.VM, error) {
 	var vmURLs []string
 	err := client.TypedGet(ctx, s.client, "vms", core.EmptyParams, &vmURLs)
 	if err != nil {
@@ -73,7 +73,7 @@ func (s *Service) List(ctx context.Context) ([]*payloads.VM, error) {
 	// TODO: add a config to set the max number of VMs to fetch
 	// We can also use the fields name_label, name_description,
 	// power_state to filter the VMs we want to fetch...
-	maxVMs := 10
+	maxVMs := limit
 	if len(vmURLs) < maxVMs {
 		maxVMs = len(vmURLs)
 	}
@@ -144,195 +144,62 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 		Action("create_vm").
 		Build()
 
-	s.log.Debug("Creating VM with params",
-		zap.String("endpoint", path),
-		zap.Any("params", createParams))
-
 	var response string
 	err := client.TypedPost(ctx, s.client, path, createParams, &response)
 	if err != nil {
-		s.log.Error("failed to create VM",
-			zap.String("poolID", vm.PoolID.String()),
-			zap.Error(err))
 		return nil, fmt.Errorf("failed to create VM: %w", err)
 	}
 
-	s.log.Debug("Received response from create_vm", zap.String("response", response))
-
-	// Use the task service to handle the response
 	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
 	if err != nil {
-		s.log.Error("Task handling failed", zap.Error(err))
 		return nil, fmt.Errorf("VM creation task failed: %w", err)
 	}
 
 	if isTask {
 		if taskResult.Status != payloads.Success {
-			s.log.Error("Task failed",
-				zap.String("status", string(taskResult.Status)),
-				zap.String("message", taskResult.Message))
 			return nil, fmt.Errorf("VM creation failed: %s", taskResult.Message)
 		}
 
-<<<<<<< HEAD
-		// If task successful, get the created VM
-		// Check both regular ID and StringID in the result
-		vmID := taskResult.Result.ID
-		if vmID == uuid.Nil && taskResult.Result.StringID != "" {
-			// Try to parse StringID as UUID
+		var vmID uuid.UUID
+
+		if taskResult.Result.ID != uuid.Nil {
+			vmID = taskResult.Result.ID
+		} else if taskResult.Result.StringID != "" {
 			parsedID, err := uuid.FromString(taskResult.Result.StringID)
 			if err == nil {
 				vmID = parsedID
-=======
-// NOTE: This method should be placed in the task service at least for the polling logic, vm is still
-// part of it for the creation part, however we need to follow clean pattern for all services (SOC).
-// It's already done in the backup PR that I prepared but I cannot let the hardcoded VM I used for testing
-func (s *Service) waitForVMCreationTask(ctx context.Context, taskPath string) (*payloads.VM, error) {
-	taskID := strings.TrimPrefix(taskPath, "/rest/v0/tasks/")
-
-	s.log.Info("Waiting for VM creation task to complete", zap.String("taskID", taskID))
-
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-
-	timeout := time.After(5 * time.Minute)
-
-	var taskMetadata struct {
-		Params struct {
-			NameLabel string `json:"name_label"`
-		} `json:"params"`
-	}
-
-	err := client.TypedGet(ctx, s.client, fmt.Sprintf("tasks/%s", taskID), core.EmptyParams, &taskMetadata)
-	if err != nil {
-		s.log.Warn("Failed to get task metadata, VM name-based fallback won't be available",
-			zap.String("taskID", taskID), zap.Error(err))
-	}
-
-	vmNameLabel := taskMetadata.Params.NameLabel
-	s.log.Debug("Task metadata retrieved", zap.String("taskID", taskID), zap.String("vmNameLabel", vmNameLabel))
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-timeout:
-			return nil, fmt.Errorf("timed out waiting for VM creation task to complete")
-		case <-ticker.C:
-			var task struct {
-				Status string          `json:"status"`
-				Result json.RawMessage `json:"result"`
 			}
-
-			err := client.TypedGet(ctx, s.client, fmt.Sprintf("tasks/%s", taskID), core.EmptyParams, &task)
-			if err != nil {
-				s.log.Error("failed to get task status", zap.String("taskID", taskID), zap.Error(err))
-				continue
-			}
-
-			s.log.Debug("Task status", zap.String("taskID", taskID), zap.String("status", task.Status))
-
-			switch task.Status {
-			case "success":
-				var vmID string
-
-				if err := json.Unmarshal(task.Result, &vmID); err == nil {
-					s.log.Info("VM creation task completed successfully with string ID",
-						zap.String("taskID", taskID),
-						zap.String("vmID", vmID))
-
-					uuid, err := uuid.FromString(vmID)
-					if err != nil {
-						return nil, fmt.Errorf("invalid VM ID returned by task: %s", vmID)
-					}
-					return s.GetByID(ctx, uuid)
+		} else {
+			if taskResult.Result.StringID != "" && taskResult.Result.ID == uuid.Nil {
+				parsedID, err := uuid.FromString(taskResult.Result.StringID)
+				if err == nil {
+					vmID = parsedID
 				}
-
-				var resultObj struct {
-					ID string `json:"id"`
-				}
-				if err := json.Unmarshal(task.Result, &resultObj); err == nil && resultObj.ID != "" {
-					s.log.Info("VM creation task completed successfully with object containing ID",
-						zap.String("taskID", taskID),
-						zap.String("vmID", resultObj.ID))
-
-					uuid, err := uuid.FromString(resultObj.ID)
-					if err != nil {
-						return nil, fmt.Errorf("invalid VM ID returned by task: %s", resultObj.ID)
-					}
-					return s.GetByID(ctx, uuid)
-				}
-
-				s.log.Warn("Couldn't extract VM ID from task result",
-					zap.String("taskID", taskID),
-					zap.String("rawResult", string(task.Result)))
-
-				if vmNameLabel != "" {
-					time.Sleep(5 * time.Second)
-
-					vms, err := s.List(ctx)
-					if err != nil {
-						return nil, fmt.Errorf("task completed but failed to list VMs: %w", err)
-					}
-
-					for _, v := range vms {
-						if v.NameLabel == vmNameLabel {
-							s.log.Info("Found VM by name after task completion",
-								zap.String("vmName", vmNameLabel),
-								zap.String("vmID", v.ID.String()))
-							return v, nil
-						}
-					}
-
-					return nil, fmt.Errorf("task completed successfully but could not find VM with name: %s", vmNameLabel)
-				}
-
-				return nil, fmt.Errorf("task completed successfully but could not determine created VM ID")
-
-			case "failure":
-				var errorObj map[string]any
-				if err := json.Unmarshal(task.Result, &errorObj); err == nil {
-					if msg, ok := errorObj["message"].(string); ok {
-						return nil, fmt.Errorf("VM creation task failed: %s", msg)
-					}
-				}
-				return nil, fmt.Errorf("VM creation task failed")
-
-			default:
-				continue
->>>>>>> main
 			}
 		}
-
 		if vmID != uuid.Nil {
-			s.log.Debug("Task result has VM ID, fetching VM", zap.String("vmID", vmID.String()))
 			return s.GetByID(ctx, vmID)
 		}
 
-		// If no valid VM ID in task result, try to find VM by name
-		s.log.Debug("Task result does not have VM ID, searching by name", zap.String("nameLabel", vm.NameLabel))
 	}
 
-	// If we don't have a task URL or couldn't extract a VM ID from the task,
-	// try to find VM by name
-	vms, err := s.List(ctx)
+	var resultVM payloads.VM
+	if err := json.Unmarshal([]byte(response), &resultVM); err == nil && resultVM.ID != uuid.Nil {
+		s.log.Info("Parsed VM directly from response", zap.String("vmID", resultVM.ID.String()))
+		return &resultVM, nil
+	}
+
+	s.log.Warn("Falling back to searching VM by name", zap.String("nameLabel", vm.NameLabel))
+	vms, err := s.List(ctx, 10)
 	if err != nil {
-		s.log.Error("failed to list VMs", zap.Error(err))
 		return nil, fmt.Errorf("could not determine created VM ID: %w", err)
 	}
 
 	for _, foundVM := range vms {
 		if foundVM.NameLabel == vm.NameLabel {
-			s.log.Debug("Found VM by name", zap.String("vmID", foundVM.ID.String()))
+			s.log.Info("Found VM by name", zap.String("vmID", foundVM.ID.String()))
 			return foundVM, nil
 		}
-	}
-
-	// If we don't have a task URL, the response might be the VM directly
-	var resultVM payloads.VM
-	if err := json.Unmarshal([]byte(response), &resultVM); err == nil && resultVM.ID != uuid.Nil {
-		s.log.Debug("Received VM directly in response", zap.String("vmID", resultVM.ID.String()))
-		return &resultVM, nil
 	}
 
 	return nil, fmt.Errorf("VM creation task completed but VM not found")
@@ -373,7 +240,7 @@ func (s *Service) Start(ctx context.Context, id uuid.UUID) error {
 
 	path := core.NewPathBuilder().
 		Resource("vms").
-		Wildcard().
+		ID(id).
 		ActionsGroup().
 		Action("start").
 		Build()
@@ -397,7 +264,7 @@ func (s *Service) CleanShutdown(ctx context.Context, id uuid.UUID) error {
 
 	path := core.NewPathBuilder().
 		Resource("vms").
-		Wildcard().
+		ID(id).
 		ActionsGroup().
 		Action("clean_shutdown").
 		Build()
@@ -421,7 +288,7 @@ func (s *Service) HardShutdown(ctx context.Context, id uuid.UUID) error {
 
 	path := core.NewPathBuilder().
 		Resource("vms").
-		Wildcard().
+		ID(id).
 		ActionsGroup().
 		Action("hard_shutdown").
 		Build()
@@ -445,7 +312,7 @@ func (s *Service) CleanReboot(ctx context.Context, id uuid.UUID) error {
 
 	path := core.NewPathBuilder().
 		Resource("vms").
-		Wildcard().
+		ID(id).
 		ActionsGroup().
 		Action("clean_reboot").
 		Build()
@@ -469,7 +336,7 @@ func (s *Service) HardReboot(ctx context.Context, id uuid.UUID) error {
 
 	path := core.NewPathBuilder().
 		Resource("vms").
-		Wildcard().
+		ID(id).
 		ActionsGroup().
 		Action("hard_reboot").
 		Build()
@@ -477,63 +344,6 @@ func (s *Service) HardReboot(ctx context.Context, id uuid.UUID) error {
 	err := client.TypedPost(ctx, s.client, path, payload, &result)
 	if err != nil {
 		s.log.Error("failed to hard reboot VM", zap.String("vmID", id.String()), zap.Error(err))
-		return err
-	}
-	return nil
-}
-
-func (s *Service) Restart(ctx context.Context, id uuid.UUID) error {
-	var result struct {
-		Success bool `json:"success"`
-	}
-
-	path := core.NewPathBuilder().
-		Resource("vms").
-		ID(id).
-		Action("restart").
-		Build()
-
-	err := client.TypedPost(ctx, s.client, path, core.EmptyParams, &result)
-	if err != nil {
-		s.log.Error("failed to restart VM", zap.String("vmID", id.String()), zap.Error(err))
-		return err
-	}
-	return nil
-}
-
-func (s *Service) Suspend(ctx context.Context, id uuid.UUID) error {
-	var result struct {
-		Success bool `json:"success"`
-	}
-
-	path := core.NewPathBuilder().
-		Resource("vms").
-		ID(id).
-		Action("suspend").
-		Build()
-
-	err := client.TypedPost(ctx, s.client, path, core.EmptyParams, &result)
-	if err != nil {
-		s.log.Error("failed to suspend VM", zap.String("vmID", id.String()), zap.Error(err))
-		return err
-	}
-	return nil
-}
-
-func (s *Service) Resume(ctx context.Context, id uuid.UUID) error {
-	var result struct {
-		Success bool `json:"success"`
-	}
-
-	path := core.NewPathBuilder().
-		Resource("vms").
-		ID(id).
-		Action("resume").
-		Build()
-
-	err := client.TypedPost(ctx, s.client, path, core.EmptyParams, &result)
-	if err != nil {
-		s.log.Error("failed to resume VM", zap.String("vmID", id.String()), zap.Error(err))
 		return err
 	}
 	return nil
