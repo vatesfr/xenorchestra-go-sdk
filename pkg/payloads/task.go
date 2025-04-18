@@ -1,3 +1,8 @@
+/*
+Those struct got some UnmarshalJSON methods to handle the different formats
+of the API responses. We can expect with the switch from JS to TS that the
+format will be more consistent and the need for those methods will be reduced.
+*/
 package payloads
 
 import (

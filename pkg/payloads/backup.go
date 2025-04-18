@@ -6,6 +6,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+// BackupJobType defines the type of backup job
 type BackupJobType string
 
 const (
@@ -20,12 +21,66 @@ type BackupJob struct {
 	Mode     BackupJobType `json:"mode"`
 	Schedule string        `json:"schedule"`
 	Enabled  bool          `json:"enabled"`
-	// NOTE: For development purposes, will be replaced with the right type.
-	VMs      any            `json:"vms"`
+	// VMs can be one of:
+	// - A string for a single VM ID
+	// - A []string for multiple VM IDs
+	// - A map[string]struct{} for backward compatibility
+	// - Raw API response data when retrieving jobs
+	VMs      any            `json:"vms,omitempty"`
 	Settings BackupSettings `json:"settings,omitempty"`
 	// Type represents the job type (vm, metadata, mirror)
 	// This is not part of the API response but is set by the service
 	Type string `json:"-"`
+}
+
+// VMSelection converts the VMs field to the proper API format
+// - String VM ID becomes {"id": "vm-id"}
+// - []string VM IDs becomes {"id": {"__or": ["vm-id1", "vm-id2"]}}
+// - map[string]struct{} gets converted to one of the above formats
+func (j *BackupJob) VMSelection() interface{} {
+	switch v := j.VMs.(type) {
+	case string:
+		// Single VM ID as string
+		return map[string]interface{}{
+			"id": v,
+		}
+	case []string:
+		// Multiple VM IDs as string slice
+		if len(v) == 1 {
+			return map[string]interface{}{
+				"id": v[0],
+			}
+		}
+		return map[string]interface{}{
+			"id": map[string]interface{}{
+				"__or": v,
+			},
+		}
+	case map[string]struct{}:
+		// Backward compatibility with map[string]struct{}
+		if len(v) == 0 {
+			return nil
+		}
+		if len(v) == 1 {
+			for vmID := range v {
+				return map[string]interface{}{
+					"id": vmID,
+				}
+			}
+		}
+		vmIDs := make([]string, 0, len(v))
+		for vmID := range v {
+			vmIDs = append(vmIDs, vmID)
+		}
+		return map[string]interface{}{
+			"id": map[string]interface{}{
+				"__or": vmIDs,
+			},
+		}
+	default:
+		// Return as-is for API responses or other formats
+		return j.VMs
+	}
 }
 
 type BackupSettings struct {
