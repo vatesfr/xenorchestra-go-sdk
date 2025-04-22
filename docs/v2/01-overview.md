@@ -83,3 +83,5 @@ The SDK uses the following environment variables for configuration:
 - [Architecture Guide](02-architecture.md) - Learn about the design patterns used in the SDK
 - [Migration Guide](03-migration-guide.md) - Migrate from v1 to v2
 - [Service Implementation Guide](04-service-implementation.md) - Learn how to add new services
+- [Integration Testing Guide](05-integration-testing.md) - Learn how to run integration tests
+- [Mocking Guide](06-mocking.md) - Learn how to use mocks for unit testing
