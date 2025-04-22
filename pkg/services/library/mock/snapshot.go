@@ -81,18 +81,18 @@ func (mr *MockSnapshotMockRecorder) GetByID(arg0, arg1 interface{}) *gomock.Call
 }
 
 // ListByVM mocks base method.
-func (m *MockSnapshot) ListByVM(arg0 context.Context, arg1 uuid.UUID) ([]*payloads.Snapshot, error) {
+func (m *MockSnapshot) ListByVM(arg0 context.Context, arg1 uuid.UUID, arg2 int) ([]*payloads.Snapshot, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListByVM", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListByVM", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]*payloads.Snapshot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListByVM indicates an expected call of ListByVM.
-func (mr *MockSnapshotMockRecorder) ListByVM(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockSnapshotMockRecorder) ListByVM(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByVM", reflect.TypeOf((*MockSnapshot)(nil).ListByVM), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByVM", reflect.TypeOf((*MockSnapshot)(nil).ListByVM), arg0, arg1, arg2)
 }
 
 // Revert mocks base method.

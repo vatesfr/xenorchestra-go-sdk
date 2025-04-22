@@ -81,48 +81,48 @@ func (mr *MockBackupMockRecorder) GetJob(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // ListJobs mocks base method.
-func (m *MockBackup) ListJobs(arg0 context.Context) ([]*payloads.BackupJob, error) {
+func (m *MockBackup) ListJobs(arg0 context.Context, arg1 int) ([]*payloads.BackupJob, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListJobs", arg0)
+	ret := m.ctrl.Call(m, "ListJobs", arg0, arg1)
 	ret0, _ := ret[0].([]*payloads.BackupJob)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListJobs indicates an expected call of ListJobs.
-func (mr *MockBackupMockRecorder) ListJobs(arg0 interface{}) *gomock.Call {
+func (mr *MockBackupMockRecorder) ListJobs(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobs", reflect.TypeOf((*MockBackup)(nil).ListJobs), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobs", reflect.TypeOf((*MockBackup)(nil).ListJobs), arg0, arg1)
 }
 
 // ListLogs mocks base method.
-func (m *MockBackup) ListLogs(arg0 context.Context, arg1 uuid.UUID) ([]*payloads.BackupLog, error) {
+func (m *MockBackup) ListLogs(arg0 context.Context, arg1 uuid.UUID, arg2 int) ([]*payloads.BackupLog, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListLogs", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListLogs", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]*payloads.BackupLog)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListLogs indicates an expected call of ListLogs.
-func (mr *MockBackupMockRecorder) ListLogs(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockBackupMockRecorder) ListLogs(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLogs", reflect.TypeOf((*MockBackup)(nil).ListLogs), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListLogs", reflect.TypeOf((*MockBackup)(nil).ListLogs), arg0, arg1, arg2)
 }
 
 // ListVMBackups mocks base method.
-func (m *MockBackup) ListVMBackups(arg0 context.Context, arg1 uuid.UUID) ([]*payloads.VMBackup, error) {
+func (m *MockBackup) ListVMBackups(arg0 context.Context, arg1 uuid.UUID, arg2 int) ([]*payloads.VMBackup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListVMBackups", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListVMBackups", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]*payloads.VMBackup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListVMBackups indicates an expected call of ListVMBackups.
-func (mr *MockBackupMockRecorder) ListVMBackups(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockBackupMockRecorder) ListVMBackups(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVMBackups", reflect.TypeOf((*MockBackup)(nil).ListVMBackups), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVMBackups", reflect.TypeOf((*MockBackup)(nil).ListVMBackups), arg0, arg1, arg2)
 }
 
 // RunJob mocks base method.
@@ -138,6 +138,21 @@ func (m *MockBackup) RunJob(arg0 context.Context, arg1 uuid.UUID) (string, error
 func (mr *MockBackupMockRecorder) RunJob(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunJob", reflect.TypeOf((*MockBackup)(nil).RunJob), arg0, arg1)
+}
+
+// RunJobForVMs mocks base method.
+func (m *MockBackup) RunJobForVMs(arg0 context.Context, arg1 uuid.UUID, arg2 string, arg3 []string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunJobForVMs", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RunJobForVMs indicates an expected call of RunJobForVMs.
+func (mr *MockBackupMockRecorder) RunJobForVMs(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunJobForVMs", reflect.TypeOf((*MockBackup)(nil).RunJobForVMs), arg0, arg1, arg2, arg3)
 }
 
 // UpdateJob mocks base method.

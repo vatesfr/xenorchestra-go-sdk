@@ -66,33 +66,33 @@ func (mr *MockStorageRepositoryMockRecorder) GetByID(arg0, arg1 interface{}) *go
 }
 
 // List mocks base method.
-func (m *MockStorageRepository) List(arg0 context.Context, arg1 *payloads.StorageRepositoryFilter) ([]*payloads.StorageRepository, error) {
+func (m *MockStorageRepository) List(arg0 context.Context, arg1 *payloads.StorageRepositoryFilter, arg2 int) ([]*payloads.StorageRepository, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0, arg1)
+	ret := m.ctrl.Call(m, "List", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]*payloads.StorageRepository)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockStorageRepositoryMockRecorder) List(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStorageRepositoryMockRecorder) List(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStorageRepository)(nil).List), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockStorageRepository)(nil).List), arg0, arg1, arg2)
 }
 
 // ListByPool mocks base method.
-func (m *MockStorageRepository) ListByPool(arg0 context.Context, arg1 uuid.UUID) ([]*payloads.StorageRepository, error) {
+func (m *MockStorageRepository) ListByPool(arg0 context.Context, arg1 uuid.UUID, arg2 int) ([]*payloads.StorageRepository, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListByPool", arg0, arg1)
+	ret := m.ctrl.Call(m, "ListByPool", arg0, arg1, arg2)
 	ret0, _ := ret[0].([]*payloads.StorageRepository)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListByPool indicates an expected call of ListByPool.
-func (mr *MockStorageRepositoryMockRecorder) ListByPool(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStorageRepositoryMockRecorder) ListByPool(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByPool", reflect.TypeOf((*MockStorageRepository)(nil).ListByPool), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByPool", reflect.TypeOf((*MockStorageRepository)(nil).ListByPool), arg0, arg1, arg2)
 }
 
 // RemoveTag mocks base method.

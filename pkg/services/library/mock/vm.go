@@ -138,18 +138,18 @@ func (mr *MockVMMockRecorder) HardShutdown(arg0, arg1 interface{}) *gomock.Call 
 }
 
 // List mocks base method.
-func (m *MockVM) List(arg0 context.Context) ([]*payloads.VM, error) {
+func (m *MockVM) List(arg0 context.Context, arg1 int) ([]*payloads.VM, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0)
+	ret := m.ctrl.Call(m, "List", arg0, arg1)
 	ret0, _ := ret[0].([]*payloads.VM)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockVMMockRecorder) List(arg0 interface{}) *gomock.Call {
+func (mr *MockVMMockRecorder) List(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockVM)(nil).List), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockVM)(nil).List), arg0, arg1)
 }
 
 // Restore mocks base method.

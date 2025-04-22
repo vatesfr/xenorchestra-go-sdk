@@ -42,3 +42,11 @@ dist/
 
 # goenv version file
 .go-version
+
+# mocks can be generated in your local environment or in CI  
+# using the makefile and/or the mockgen command tool.
+mocks/
+
+# integration test ignored stuff.
+integration_tests.log
+logs
