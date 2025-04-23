@@ -45,7 +45,7 @@ dist/
 
 # mocks can be generated in your local environment or in CI  
 # using the makefile and/or the mockgen command tool.
-mocks/
+mock/
 
 # integration test ignored stuff.
 integration_tests.log
