@@ -13,6 +13,13 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+// Enforcing type on the ID field since it's the only field that isn't an uuid
+type TaskID string
+
+func (t TaskID) String() string {
+	return string(t)
+}
+
 type Status string
 
 const (
@@ -127,7 +134,7 @@ func (r TaskResult) MarshalJSON() ([]byte, error) {
 }
 
 type Task struct {
-	ID         string     `json:"id"`
+	ID         TaskID     `json:"id"`
 	Name       string     `json:"name,omitempty"`
 	Status     Status     `json:"status"`
 	Properties Properties `json:"properties"`

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/uuid"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
 // PathBuilder helps construct API endpoint paths in a consistent way.
@@ -67,4 +68,8 @@ func FormatPath(resource string, id uuid.UUID) string {
 // It creates paths like "vms/_/actions/start".
 func FormatActionPath(resource string, action string) string {
 	return fmt.Sprintf("%s/_/actions/%s", resource, action)
+}
+
+func ExtractTaskID(response string) payloads.TaskID {
+	return payloads.TaskID(strings.TrimPrefix(response, "/rest/v0/tasks/"))
 }

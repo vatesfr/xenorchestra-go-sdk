@@ -34,6 +34,10 @@ func (s *Service) cleanDuplicateV0Path(path string) string {
 	return strings.TrimPrefix(path, "/rest/v0/tasks/")
 }
 
+func (s *Service) ExtractTaskID(taskURL string) payloads.TaskID {
+	return payloads.TaskID(strings.TrimPrefix(taskURL, "/rest/v0/tasks/"))
+}
+
 func (s *Service) Get(ctx context.Context, path string) (*payloads.Task, error) {
 	taskID := s.cleanDuplicateV0Path(path)
 	taskPath := core.NewPathBuilder().Resource("tasks").IDString(taskID).Build()

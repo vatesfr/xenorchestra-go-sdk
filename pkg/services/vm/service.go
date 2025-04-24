@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -16,9 +15,6 @@ import (
 )
 
 type Service struct {
-	// Needed by VM for the task related but not part of the VM interface
-	taskService library.Task
-
 	// Part of the VM interface with their own interfaces
 	restoreService  library.Restore
 	snapshotService library.Snapshot
@@ -29,14 +25,12 @@ type Service struct {
 
 func New(
 	client *client.Client,
-	task library.Task,
 	restore library.Restore,
 	snapshot library.Snapshot,
 	log *logger.Logger,
 ) library.VM {
 	return &Service{
 		client:          client,
-		taskService:     task,
 		restoreService:  restore,
 		snapshotService: snapshot,
 		log:             log,
@@ -115,9 +109,9 @@ func (s *Service) List(ctx context.Context, limit int) ([]*payloads.VM, error) {
 	return result, nil
 }
 
-func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, error) {
+func (s *Service) Create(ctx context.Context, vm *payloads.VM) (payloads.TaskID, error) {
 	if vm.PoolID == uuid.Nil {
-		return nil, fmt.Errorf("pool ID is required for VM creation")
+		return "", fmt.Errorf("pool ID is required for VM creation")
 	}
 
 	createParams := map[string]any{
@@ -129,9 +123,9 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 
 	if len(vm.VIFs) > 0 {
 		vifs := make([]map[string]any, 0, len(vm.VIFs))
-		for _, vifID := range vm.VIFs {
+		for _, vifRef := range vm.VIFs {
 			vifs = append(vifs, map[string]any{
-				"network": vifID,
+				"network": vifRef,
 			})
 		}
 		createParams["vifs"] = vifs
@@ -147,62 +141,11 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 	var response string
 	err := client.TypedPost(ctx, s.client, path, createParams, &response)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create VM: %w", err)
+		s.log.Error("failed to initiate VM creation", zap.Error(err), zap.Any("params", createParams))
+		return "", fmt.Errorf("failed to create VM: %w", err)
 	}
 
-	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
-	if err != nil {
-		return nil, fmt.Errorf("VM creation task failed: %w", err)
-	}
-
-	if isTask {
-		if taskResult.Status != payloads.Success {
-			return nil, fmt.Errorf("VM creation failed: %s", taskResult.Message)
-		}
-
-		var vmID uuid.UUID
-
-		if taskResult.Result.ID != uuid.Nil {
-			vmID = taskResult.Result.ID
-		} else if taskResult.Result.StringID != "" {
-			parsedID, err := uuid.FromString(taskResult.Result.StringID)
-			if err == nil {
-				vmID = parsedID
-			}
-		} else {
-			if taskResult.Result.StringID != "" && taskResult.Result.ID == uuid.Nil {
-				parsedID, err := uuid.FromString(taskResult.Result.StringID)
-				if err == nil {
-					vmID = parsedID
-				}
-			}
-		}
-		if vmID != uuid.Nil {
-			return s.GetByID(ctx, vmID)
-		}
-
-	}
-
-	var resultVM payloads.VM
-	if err := json.Unmarshal([]byte(response), &resultVM); err == nil && resultVM.ID != uuid.Nil {
-		s.log.Info("Parsed VM directly from response", zap.String("vmID", resultVM.ID.String()))
-		return &resultVM, nil
-	}
-
-	s.log.Warn("Falling back to searching VM by name", zap.String("nameLabel", vm.NameLabel))
-	vms, err := s.List(ctx, 10)
-	if err != nil {
-		return nil, fmt.Errorf("could not determine created VM ID: %w", err)
-	}
-
-	for _, foundVM := range vms {
-		if foundVM.NameLabel == vm.NameLabel {
-			s.log.Info("Found VM by name", zap.String("vmID", foundVM.ID.String()))
-			return foundVM, nil
-		}
-	}
-
-	return nil, fmt.Errorf("VM creation task completed but VM not found")
+	return core.ExtractTaskID(response), nil
 }
 
 func (s *Service) Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error) {

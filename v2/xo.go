@@ -88,7 +88,7 @@ func New(config *config.Config) (library.Library, error) {
 	backupService := backup.New(client, legacyClient, taskService, jsonrpcSvc, log)
 
 	return &XOClient{
-		vmService:                vm.New(client, taskService, restoreService, snapshotService, log),
+		vmService:                vm.New(client, restoreService, snapshotService, log),
 		taskService:              taskService,
 		backupService:            backupService,
 		storageRepositoryService: storageRepositoryService,
