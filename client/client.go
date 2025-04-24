@@ -236,10 +236,7 @@ func NewClient(config Config) (XOClient, error) {
 			fmt.Errorf("one of the following environment variable(s) must be set: XOA_USER and XOA_PASSWORD or XOA_TOKEN")
 	}
 
-	useTokenAuth := false
-	if token != "" {
-		useTokenAuth = true
-	}
+	var useTokenAuth = token != ""
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: config.InsecureSkipVerify, // #nosec G402

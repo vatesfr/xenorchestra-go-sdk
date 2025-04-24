@@ -115,7 +115,11 @@ func ExtractTaskID(taskURL string) string {
 }
 
 // TODO: we don't need to return a bool, we can just return the task and handle the error
-func (s *Service) HandleTaskResponse(ctx context.Context, response string, waitForCompletion bool) (*payloads.Task, bool, error) {
+func (s *Service) HandleTaskResponse(
+	ctx context.Context,
+	response string,
+	waitForCompletion bool,
+) (*payloads.Task, bool, error) {
 	s.log.Info("Handling potential task response", zap.String("response", response))
 
 	if !IsTaskURL(response) {

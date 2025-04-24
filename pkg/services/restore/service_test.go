@@ -56,7 +56,10 @@ func setupRestoreTestServer(t *testing.T) (*httptest.Server, *gomock.Controller,
 					},
 				}
 
-				json.NewEncoder(w).Encode(logs)
+				if err := json.NewEncoder(w).Encode(logs); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case r.URL.Path == "/rest/v0/restore/logs" && r.Method == http.MethodGet:
 				logs := []*payloads.RestoreLog{
@@ -83,14 +86,20 @@ func setupRestoreTestServer(t *testing.T) (*httptest.Server, *gomock.Controller,
 				}
 
 				var limit int
-				if r.URL.Query().Get("limit") != "" {
-					fmt.Sscanf(r.URL.Query().Get("limit"), "%d", &limit)
-					if limit > 0 && limit < len(logs) {
-						logs = logs[:limit]
-					}
+				_, err := fmt.Sscanf(r.URL.Query().Get("limit"), "%d", &limit)
+				if err != nil {
+					// TODO: add a default limit + warning to set it up in the docs
+					limit = 0
 				}
 
-				json.NewEncoder(w).Encode(logs)
+				if limit > 0 && limit < len(logs) {
+					logs = logs[:limit]
+				}
+
+				if err := json.NewEncoder(w).Encode(logs); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case strings.HasPrefix(r.URL.Path, "/rest/v0/restore/logs/") && r.Method == http.MethodGet:
 				parts := strings.Split(r.URL.Path, "/")
@@ -112,7 +121,10 @@ func setupRestoreTestServer(t *testing.T) (*httptest.Server, *gomock.Controller,
 					SrID:      uuid.Must(uuid.NewV4()).String(),
 				}
 
-				json.NewEncoder(w).Encode(log)
+				if err := json.NewEncoder(w).Encode(log); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			default:
 				w.WriteHeader(http.StatusNotFound)

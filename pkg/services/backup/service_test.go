@@ -39,7 +39,10 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 					fmt.Sprintf("/rest/v0/backup/jobs/vm/%s", job2ID),
 				)
 
-				json.NewEncoder(w).Encode(jobURLs)
+				if err := json.NewEncoder(w).Encode(jobURLs); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case strings.HasPrefix(r.URL.Path, "/rest/v0/backup/jobs/vm/") && r.Method == http.MethodGet:
 				parts := strings.Split(r.URL.Path, "/")
@@ -70,7 +73,10 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 					},
 				}
 
-				json.NewEncoder(w).Encode(job)
+				if err := json.NewEncoder(w).Encode(job); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case strings.HasPrefix(r.URL.Path, "/rest/v0/backup/jobs/vm/") && r.Method == http.MethodPut:
 				var job payloads.BackupJob
@@ -80,7 +86,10 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 					return
 				}
 
-				json.NewEncoder(w).Encode(job)
+				if err := json.NewEncoder(w).Encode(job); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case r.URL.Path == "/rest/v0/backup/logs" && r.Method == http.MethodGet:
 				logs := []*payloads.BackupLog{
@@ -100,7 +109,10 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 					},
 				}
 
-				json.NewEncoder(w).Encode(logs)
+				if err := json.NewEncoder(w).Encode(logs); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			default:
 				w.WriteHeader(http.StatusNotFound)
@@ -128,21 +140,30 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 					"result": newJobID.String(),
 					"id":     request.ID,
 				}
-				json.NewEncoder(w).Encode(response)
+				if err := json.NewEncoder(w).Encode(response); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case "backupNg.updateJob":
 				response := map[string]interface{}{
 					"result": true,
 					"id":     request.ID,
 				}
-				json.NewEncoder(w).Encode(response)
+				if err := json.NewEncoder(w).Encode(response); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case "backupNg.deleteJob":
 				response := map[string]interface{}{
 					"result": true,
 					"id":     request.ID,
 				}
-				json.NewEncoder(w).Encode(response)
+				if err := json.NewEncoder(w).Encode(response); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			case "backupNg.runJob":
 				taskID := uuid.Must(uuid.NewV4())
@@ -152,7 +173,10 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 					"result": taskURL,
 					"id":     request.ID,
 				}
-				json.NewEncoder(w).Encode(response)
+				if err := json.NewEncoder(w).Encode(response); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
 			default:
 				response := map[string]interface{}{
@@ -162,7 +186,10 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 					},
 					"id": request.ID,
 				}
-				json.NewEncoder(w).Encode(response)
+				if err := json.NewEncoder(w).Encode(response); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 			return
 		}

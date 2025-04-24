@@ -20,6 +20,11 @@ var (
 	clientInitialized bool
 )
 
+const (
+	// TODO: this should be a boolean
+	trueStr = "true"
+)
+
 // initializeClient initializes the global client instance if it hasn't been initialized yet
 func initializeClient() (library.Library, error) {
 	clientMutex.Lock()
@@ -60,8 +65,8 @@ type TestClient struct {
 }
 
 func Setup(t *testing.T) *TestClient {
-	if os.Getenv("XOA_INTEGRATION_TESTS") != "true" {
-		t.Skip("Skipping integration test. Set XOA_INTEGRATION_TESTS=true to run")
+	if os.Getenv("XOA_INTEGRATION_TESTS") != trueStr {
+		t.Skip("Skipping integration test. Set XOA_INTEGRATION_TESTS=" + trueStr + " to run")
 	}
 
 	client, err := initializeClient()
@@ -85,7 +90,7 @@ func Setup(t *testing.T) *TestClient {
 		NetworkID:    os.Getenv("XOA_NETWORK_ID"),
 		StorageID:    os.Getenv("XOA_STORAGE_ID"),
 		TestPrefix:   testPrefix,
-		SkipTeardown: os.Getenv("XOA_SKIP_TEARDOWN") == "true",
+		SkipTeardown: os.Getenv("XOA_SKIP_TEARDOWN") == trueStr,
 	}
 
 	tc.validateEnvironment(t)

@@ -23,6 +23,13 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	// errorID is a UUID string used to trigger error conditions in tests
+	// It's used to simulate failures in API calls like delete and revert operations
+	// This is defined here since we were using different values in different tests
+	errorID = "b509922c-6982-4711-86a4-cb6784c07468"
+)
+
 func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -77,7 +84,7 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 				parts := strings.Split(r.URL.Path, "/")
 				snapshotID := parts[len(parts)-1]
 
-				if snapshotID == "error-id" {
+				if snapshotID == errorID {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
@@ -161,7 +168,7 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 					return
 				}
 
-				if params.Snapshot == "error-id" {
+				if params.Snapshot == errorID {
 					response := map[string]any{
 						"error": map[string]any{
 							"code":    500,
@@ -169,7 +176,10 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 						},
 						"id": request.ID,
 					}
-					json.NewEncoder(w).Encode(response)
+					if err := json.NewEncoder(w).Encode(response); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 					return
 				}
 
@@ -177,7 +187,10 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 					"result": true,
 					"id":     request.ID,
 				}
-				json.NewEncoder(w).Encode(response)
+				if err := json.NewEncoder(w).Encode(response); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 			default:
 				response := map[string]any{
@@ -187,7 +200,10 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 					},
 					"id": request.ID,
 				}
-				json.NewEncoder(w).Encode(response)
+				if err := json.NewEncoder(w).Encode(response); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 			}
 		}
@@ -215,7 +231,7 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 		Call("vm.revert", gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(method string, params map[string]any, result any, logContext ...zap.Field) error {
 			snapshot, ok := params["snapshot"].(string)
-			if ok && snapshot == "error-id" {
+			if ok && snapshot == errorID {
 				return fmt.Errorf("error reverting snapshot")
 			}
 
@@ -321,7 +337,7 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("error delete", func(t *testing.T) {
-		id, _ := uuid.FromString("error-id")
+		id, _ := uuid.FromString(errorID)
 		err := service.Delete(ctx, id)
 
 		assert.Error(t, err)
@@ -345,7 +361,7 @@ func TestRevert(t *testing.T) {
 
 	t.Run("error revert", func(t *testing.T) {
 		vmID := uuid.Must(uuid.NewV4())
-		snapshotID, _ := uuid.FromString("error-id")
+		snapshotID, _ := uuid.FromString(errorID)
 
 		err := service.Revert(ctx, vmID, snapshotID)
 

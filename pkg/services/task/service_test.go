@@ -37,7 +37,10 @@ func setupTaskTestServer() (*httptest.Server, library.Task) {
 				Status:  payloads.Pending,
 				Started: payloads.APITime(time.Now()),
 			}
-			json.NewEncoder(w).Encode(task)
+			if err := json.NewEncoder(w).Encode(task); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case r.URL.Path == "/rest/v0/tasks/task-success" && r.Method == http.MethodGet:
 			resultID := uuid.Must(uuid.NewV4())
@@ -50,7 +53,10 @@ func setupTaskTestServer() (*httptest.Server, library.Task) {
 				Result:  payloads.TaskResult{ID: resultID},
 				Message: "Task completed successfully",
 			}
-			json.NewEncoder(w).Encode(task)
+			if err := json.NewEncoder(w).Encode(task); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case r.URL.Path == "/rest/v0/tasks/task-failure" && r.Method == http.MethodGet:
 			task := payloads.Task{
@@ -62,7 +68,10 @@ func setupTaskTestServer() (*httptest.Server, library.Task) {
 				Message: "Task failed",
 				Stack:   "Error details",
 			}
-			json.NewEncoder(w).Encode(task)
+			if err := json.NewEncoder(w).Encode(task); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case r.URL.Path == "/rest/v0/tasks/task-string-result" && r.Method == http.MethodGet:
 			task := payloads.Task{
@@ -74,42 +83,44 @@ func setupTaskTestServer() (*httptest.Server, library.Task) {
 				Result:  payloads.TaskResult{StringID: "resource-123"},
 				Message: "Task completed successfully",
 			}
-			json.NewEncoder(w).Encode(task)
+			if err := json.NewEncoder(w).Encode(task); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/tasks/task-progress-") && r.Method == http.MethodGet:
 			progressNum := strings.TrimPrefix(taskID, "task-progress-")
-			var status payloads.Status
-			if progressNum == "1" {
-				status = payloads.Pending
-			} else if progressNum == "2" {
-				status = payloads.Running
-			} else {
-				status = payloads.Success
-				resultID := uuid.Must(uuid.NewV4())
-				task := payloads.Task{
-					ID:      taskID,
-					Name:    "test-task-progress",
-					Status:  status,
-					Started: payloads.APITime(time.Now().Add(-5 * time.Second)),
-					EndedAt: payloads.APITime(time.Now()),
-					Result:  payloads.TaskResult{ID: resultID},
-					Message: "Task completed successfully",
-				}
-				json.NewEncoder(w).Encode(task)
-				return
-			}
 
 			task := payloads.Task{
 				ID:      taskID,
 				Name:    "test-task-progress",
-				Status:  status,
 				Started: payloads.APITime(time.Now().Add(-5 * time.Second)),
 			}
-			json.NewEncoder(w).Encode(task)
+
+			switch progressNum {
+			case "1":
+				task.Status = payloads.Pending
+			case "2":
+				task.Status = payloads.Running
+			// TODO: Check what is the third status if it exists..
+			case "3":
+				task.Status = payloads.Running
+			case "4":
+				task.Status = payloads.Success
+				task.EndedAt = payloads.APITime(time.Now())
+				task.Message = "Task completed successfully"
+			}
+			if err := json.NewEncoder(w).Encode(task); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case strings.HasSuffix(r.URL.Path, "/abort") && r.Method == http.MethodPost:
 			result := map[string]bool{"success": true}
-			json.NewEncoder(w).Encode(result)
+			if err := json.NewEncoder(w).Encode(result); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		default:
 			w.WriteHeader(http.StatusNotFound)

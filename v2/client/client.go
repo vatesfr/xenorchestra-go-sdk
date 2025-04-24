@@ -59,9 +59,13 @@ func New(config *config.Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to parse url: %w", err)
 	}
 
-	if baseURL.Scheme == WebSocketScheme {
+	// I am not sure about this however, it was part
+	// of the v1 with JSONRPC and make it easier to
+	// switch to the new v2 REST API instead.
+	switch baseURL.Scheme {
+	case WebSocketScheme:
 		baseURL.Scheme = "http"
-	} else if baseURL.Scheme == SecureWebSocketScheme {
+	case SecureWebSocketScheme:
 		baseURL.Scheme = "https"
 	}
 

@@ -15,8 +15,8 @@ func TestJSONRPC_Integration(t *testing.T) {
 	tc := Setup(t)
 
 	t.Run("backup job operations", func(t *testing.T) {
-		if os.Getenv("XOA_RUN_BACKUP_TESTS") != "true" {
-			t.Skip("Skipping backup job operations test. Set XOA_RUN_BACKUP_TESTS=true to run")
+		if os.Getenv("XOA_RUN_BACKUP_TESTS") != trueStr {
+			t.Skip("Skipping backup job operations test. Set XOA_RUN_BACKUP_TESTS=" + trueStr + " to run")
 			return
 		}
 
@@ -58,8 +58,8 @@ func TestJSONRPC_Integration(t *testing.T) {
 		assert.NoError(t, err)
 		t.Logf("Found %d existing backup jobs", len(existingJobs))
 
-		if os.Getenv("XOA_CREATE_BACKUP_JOB") != "true" {
-			t.Log("Skipping backup job creation. Set XOA_CREATE_BACKUP_JOB=true to create a test backup job")
+		if os.Getenv("XOA_CREATE_BACKUP_JOB") != trueStr {
+			t.Log("Skipping backup job creation. Set XOA_CREATE_BACKUP_JOB=" + trueStr + " to create a test backup job")
 			return
 		}
 
@@ -161,8 +161,8 @@ func TestJSONRPC_Integration(t *testing.T) {
 
 		// TODO: check if this is correct.
 		if tc.Client.VM().Snapshot() != nil {
-			if testing.Short() || os.Getenv("XOA_ALLOW_SNAPSHOT_REVERT") != "true" {
-				t.Log("Skipping snapshot revert test - requires XOA_ALLOW_SNAPSHOT_REVERT=true")
+			if testing.Short() || os.Getenv("XOA_ALLOW_SNAPSHOT_REVERT") != trueStr {
+				t.Log("Skipping snapshot revert test - requires XOA_ALLOW_SNAPSHOT_REVERT=" + trueStr)
 			} else {
 				err = tc.Client.VM().Snapshot().Revert(ctx, vm.ID, snapshot.ID)
 				assert.NoError(t, err)
@@ -179,7 +179,12 @@ func TestJSONRPC_Integration(t *testing.T) {
 	})
 }
 
-func createTestVMForBackup(t *testing.T, ctx context.Context, tc *TestClient, name, poolID, templateID, networkID string) *payloads.VM {
+func createTestVMForBackup(
+	t *testing.T,
+	ctx context.Context,
+	tc *TestClient,
+	name, poolID, templateID, networkID string,
+) *payloads.VM {
 	t.Helper()
 
 	vm := &payloads.VM{

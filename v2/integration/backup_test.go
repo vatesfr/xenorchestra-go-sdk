@@ -11,7 +11,7 @@ import (
 )
 
 func TestBackup(t *testing.T) {
-	if os.Getenv("XOA_RUN_BACKUP_TESTS") != "true" {
+	if os.Getenv("XOA_RUN_BACKUP_TESTS") != trueStr {
 		t.Skip("Skipping backup test. Set XOA_RUN_BACKUP_TESTS=true to run")
 		return
 	}
@@ -76,7 +76,7 @@ func TestBackup(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("Found %d existing backup jobs", len(backupJobs))
 
-	if os.Getenv("XOA_CREATE_BACKUP_JOB") == "true" {
+	if os.Getenv("XOA_CREATE_BACKUP_JOB") == trueStr {
 		backupJobName := tc.GenerateResourceName("backup-test")
 
 		backupJob := &payloads.BackupJob{
@@ -118,7 +118,7 @@ func TestBackup(t *testing.T) {
 // TestBackupVMSelection ensures that backup jobs only target the specific VMs they should,
 // avoiding the critical issue where all VMs are accidentally backed up
 func TestBackupVMSelection(t *testing.T) {
-	if os.Getenv("XOA_RUN_BACKUP_TESTS") != "true" {
+	if os.Getenv("XOA_RUN_BACKUP_TESTS") != trueStr {
 		t.Skip("Skipping backup selection test. Set XOA_RUN_BACKUP_TESTS=true to run")
 		return
 	}
@@ -126,12 +126,10 @@ func TestBackupVMSelection(t *testing.T) {
 	ctx := context.Background()
 	tc := Setup(t)
 
-	// Create two test VMs to verify proper VM selection
 	vmPrefix := tc.GenerateResourceName("vm-select")
 	vmNames := []string{vmPrefix + "-1", vmPrefix + "-2"}
 	var vmIDs []string
 
-	// Setup pool, template, network IDs
 	var poolID, templateID, networkID string
 	if tc.PoolID == "" || tc.TemplateID == "" || tc.NetworkID == "" {
 		t.Skip("Required environment variables for Pool/Template/Network IDs not set")
@@ -140,7 +138,6 @@ func TestBackupVMSelection(t *testing.T) {
 	templateID = tc.TemplateID
 	networkID = tc.NetworkID
 
-	// Create two VMs
 	for _, vmName := range vmNames {
 		tc.CleanupVM(t, vmName)
 
@@ -220,7 +217,7 @@ func TestBackupVMSelection(t *testing.T) {
 		t.Fatalf("Failed to create multiple VM backup job: %v", err)
 	}
 
-	if os.Getenv("XOA_RUN_BACKUP_JOB") == "true" {
+	if os.Getenv("XOA_RUN_BACKUP_JOB") == trueStr {
 		t.Log("Testing RunJobForVMs with a single VM")
 		taskID, err := tc.Client.Backup().RunJobForVMs(ctx, job2.ID, "", []string{vmIDs[0]})
 		assert.NoError(t, err)

@@ -31,8 +31,7 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -42,7 +41,10 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 				"result": "success-result",
 				"id":     request.ID,
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case "error.method":
 			response := map[string]interface{}{
@@ -52,21 +54,30 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 				},
 				"id": request.ID,
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case "boolean.true":
 			response := map[string]interface{}{
 				"result": true,
 				"id":     request.ID,
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case "boolean.false":
 			response := map[string]interface{}{
 				"result": false,
 				"id":     request.ID,
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		case "complex.result":
 			response := map[string]interface{}{
@@ -77,7 +88,10 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 				},
 				"id": request.ID,
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 		default:
 			response := map[string]interface{}{
@@ -87,7 +101,10 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 				},
 				"id": request.ID,
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 	}))
 

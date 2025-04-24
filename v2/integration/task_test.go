@@ -55,7 +55,14 @@ func TestTask_Integration(t *testing.T) {
 	})
 }
 
-func createTestVM(t *testing.T, ctx context.Context, tc *TestClient, name, poolID, templateID, networkID string) *payloads.VM {
+func createTestVM(
+	t *testing.T,
+	ctx context.Context,
+	tc *TestClient,
+	name,
+	poolID,
+	templateID,
+	networkID string) *payloads.VM {
 	t.Helper()
 
 	vm := &payloads.VM{

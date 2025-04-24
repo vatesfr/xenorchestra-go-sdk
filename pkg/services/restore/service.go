@@ -142,7 +142,7 @@ func (s *Service) ImportVM(ctx context.Context, options *payloads.ImportOptions)
 	if options.StartOnBoot {
 		params["startOnBoot"] = options.StartOnBoot
 	}
-	if options.NetworkConfig != nil && len(options.NetworkConfig) > 0 {
+	if len(options.NetworkConfig) > 0 {
 		params["networkMapping"] = options.NetworkConfig
 	}
 

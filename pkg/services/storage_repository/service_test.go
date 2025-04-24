@@ -90,7 +90,10 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 					urls = append(urls, fmt.Sprintf("/srs/%s", sr.ID))
 				}
 
-				json.NewEncoder(w).Encode(urls)
+				if err := json.NewEncoder(w).Encode(urls); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 			}
 
@@ -103,10 +106,12 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 				}
 
 				if id == errorID {
-					w.WriteHeader(http.StatusNotFound)
-					json.NewEncoder(w).Encode(map[string]string{
+					if err := json.NewEncoder(w).Encode(map[string]string{
 						"error": "Storage repository not found",
-					})
+					}); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 					return
 				}
 
@@ -123,7 +128,10 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 					return
 				}
 
-				json.NewEncoder(w).Encode(foundRepo)
+				if err := json.NewEncoder(w).Encode(foundRepo); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 			}
 
@@ -137,10 +145,13 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 
 				if id == errorID {
 					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					if err := json.NewEncoder(w).Encode(map[string]any{
 						"success": false,
 						"error":   "Failed to add tag",
-					})
+					}); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 					return
 				}
 
@@ -177,9 +188,12 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 
 				foundRepo.Tags = append(foundRepo.Tags, tag)
 
-				json.NewEncoder(w).Encode(map[string]bool{
+				if err := json.NewEncoder(w).Encode(map[string]bool{
 					"success": true,
-				})
+				}); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 			}
 
@@ -195,10 +209,13 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 
 				if id == errorID {
 					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]any{
+					if err := json.NewEncoder(w).Encode(map[string]any{
 						"success": false,
 						"error":   "Failed to remove tag",
-					})
+					}); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 					return
 				}
 
@@ -223,9 +240,12 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 				}
 				foundRepo.Tags = newTags
 
-				json.NewEncoder(w).Encode(map[string]bool{
+				if err := json.NewEncoder(w).Encode(map[string]bool{
 					"success": true,
-				})
+				}); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 			}
 		}

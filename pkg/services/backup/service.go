@@ -148,7 +148,10 @@ func (s *Service) CreateJob(ctx context.Context, job *payloads.BackupJob) (*payl
 	}
 
 	if job.Settings.RemoteEnabled {
-		// Remote backup settings would go here if needed
+		innerSettings["remoteEnabled"] = job.Settings.RemoteEnabled
+		if job.Settings.RemoteRetention > 0 {
+			innerSettings["remoteRetention"] = job.Settings.RemoteRetention
+		}
 	}
 
 	if job.Settings.ReportWhenFailOnly {
