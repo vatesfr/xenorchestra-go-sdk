@@ -26,11 +26,11 @@ jobs:
         go-version: '1.24'
         # Either this action or golangci-lint needs to disable the cache
         cache: false
-    - run: go mod tidy
     - name: Install mockgen
       run: go install github.com/golang/mock/mockgen@v1.6.0
     - name: Generate mocks
       run: go generate ./...
+    - run: go mod tidy
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v7
       with:
