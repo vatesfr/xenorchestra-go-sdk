@@ -17,47 +17,9 @@ func TestVM_Snapshot(t *testing.T) {
 	tc := Setup(t)
 
 	vmName := tc.GenerateResourceName("vm-snapshot")
+	t.Cleanup(func() { tc.CleanupVM(t, vmName) })
 
-	tc.CleanupVM(t, vmName)
-
-	var poolID, templateID, networkID string
-	if tc.PoolID != "" {
-		poolID = tc.PoolID
-	} else {
-		t.Logf("Using Pool name: %s", tc.Pool)
-		t.Skip("Pool ID resolution not implemented, please set XOA_POOL_ID")
-	}
-
-	if tc.TemplateID != "" {
-		templateID = tc.TemplateID
-	} else {
-		t.Logf("Using Template name: %s", tc.Template)
-		t.Skip("Template ID resolution not implemented, please set XOA_TEMPLATE_ID")
-	}
-
-	if tc.NetworkID != "" {
-		networkID = tc.NetworkID
-	} else {
-		t.Logf("Using Network name: %s", tc.Network)
-		t.Skip("Network ID resolution not implemented, please set XOA_NETWORK_ID")
-	}
-
-	vm := &payloads.VM{
-		NameLabel:       vmName,
-		NameDescription: "Snapshot test VM",
-		Template:        GetUUID(t, templateID),
-		Memory: payloads.Memory{
-			Size: 1 * 1024 * 1024 * 1024, // 1 GB
-		},
-		CPUs: payloads.CPUs{
-			Number: 1,
-		},
-		VIFs:        []string{networkID},
-		AutoPoweron: false,
-		PoolID:      GetUUID(t, poolID),
-	}
-
-	taskIDVM, err := tc.Client.VM().Create(ctx, vm)
+	taskIDVM, err := CreateTestVM(t, ctx, tc, vmName)
 	require.NoError(t, err)
 	require.NotEmpty(t, taskIDVM)
 
@@ -66,6 +28,7 @@ func TestVM_Snapshot(t *testing.T) {
 	require.Equal(t, payloads.Success, taskVM.Status, "VM creation task failed: %s", taskVM.Message)
 	require.NotEqual(t, uuid.Nil, taskVM.Result.ID, "Task result does not contain VM ID")
 	vmID := taskVM.Result.ID
+	require.NotEqual(t, uuid.Nil, vmID)
 
 	t.Logf("VM created with ID: %s", vmID)
 
@@ -74,22 +37,18 @@ func TestVM_Snapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, taskID)
 
-	// Wait for snapshot creation task
 	task, err := tc.Client.Task().Wait(ctx, string(taskID))
 	require.NoError(t, err)
 	require.Equal(t, payloads.Success, task.Status, "Snapshot creation task failed: %s", task.Message)
 	require.NotEqual(t, uuid.Nil, task.Result.ID, "Task result does not contain Snapshot ID")
 	snapshotID := task.Result.ID
 
-	// Get the created snapshot for further checks
 	snapshot, err := tc.Client.VM().Snapshot().GetByID(ctx, snapshotID)
 	require.NoError(t, err)
 	require.NotNil(t, snapshot)
 	require.Equal(t, snapshotName, snapshot.NameLabel)
 
-	// List (verify snapshot exists)
-	// Note: Snapshot List does not filter by VM ID in the current interface
-	allSnapshots, err := tc.Client.VM().Snapshot().List(ctx, 0) // Use List instead of ListByVM
+	allSnapshots, err := tc.Client.VM().Snapshot().List(ctx, 0)
 	require.NoError(t, err)
 	found := false
 	for _, s := range allSnapshots {

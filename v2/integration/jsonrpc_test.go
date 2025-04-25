@@ -155,8 +155,8 @@ func createTestVMForJsonRpc(
 
 	poolID := uuid.FromStringOrNil(tc.PoolID)
 	templateID := uuid.FromStringOrNil(tc.TemplateID)
-	require.NotEqual(t, uuid.Nil, poolID, "Failed to parse XOA_POOL_ID for JSON-RPC test VM")
-	require.NotEqual(t, uuid.Nil, templateID, "Failed to parse XOA_TEMPLATE_ID for JSON-RPC test VM")
+	require.NotEqual(t, uuid.Nil, poolID, "createTestVMForJsonRpc: Failed to parse XOA_POOL_ID")
+	require.NotEqual(t, uuid.Nil, templateID, "createTestVMForJsonRpc: Failed to parse XOA_TEMPLATE_ID")
 
 	vm := &payloads.VM{
 		NameLabel:       name,
@@ -178,8 +178,8 @@ func createTestVMForJsonRpc(
 
 	task, err := tc.Client.Task().Wait(ctx, string(taskID))
 	require.NoError(t, err)
-	require.Equal(t, payloads.Success, task.Status, "VM creation task failed: %s", task.Message)
-	require.NotEqual(t, uuid.Nil, task.Result.ID, "Task result does not contain VM ID")
+	require.Equal(t, payloads.Success, task.Status, "createTestVMForJsonRpc: VM creation task failed: %s", task.Message)
+	require.NotEqual(t, uuid.Nil, task.Result.ID, "createTestVMForJsonRpc: Task result does not contain VM ID")
 	vmID := task.Result.ID
 
 	createdVM, err := tc.Client.VM().GetByID(ctx, vmID)

@@ -37,7 +37,7 @@ type BackupJob struct {
 // - String VM ID becomes {"id": "vm-id"}
 // - []string VM IDs becomes {"id": {"__or": ["vm-id1", "vm-id2"]}}
 // - map[string]struct{} gets converted to one of the above formats
-func (j *BackupJob) VMSelection() interface{} {
+func (j *BackupJob) VMSelection() any {
 	switch v := j.VMs.(type) {
 	case string:
 		// Single VM ID as string
@@ -63,7 +63,7 @@ func (j *BackupJob) VMSelection() interface{} {
 		}
 		if len(v) == 1 {
 			for vmID := range v {
-				return map[string]interface{}{
+				return map[string]any{
 					"id": vmID,
 				}
 			}

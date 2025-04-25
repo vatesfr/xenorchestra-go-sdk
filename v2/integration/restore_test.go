@@ -16,47 +16,16 @@ func TestVM_Restore(t *testing.T) {
 	tc := Setup(t)
 
 	vmName := tc.GenerateResourceName("vm-restore")
+	t.Cleanup(func() { tc.CleanupVM(t, vmName) })
 
-	tc.CleanupVM(t, vmName)
-
-	var poolID, templateID, networkID string
-	if tc.PoolID != "" {
-		poolID = tc.PoolID
-	} else {
-		t.Logf("Using Pool name: %s", tc.Pool)
-		t.Skip("Pool ID resolution not implemented, please set XOA_POOL_ID")
-	}
-
-	if tc.TemplateID != "" {
-		templateID = tc.TemplateID
-	} else {
-		t.Logf("Using Template name: %s", tc.Template)
-		t.Skip("Template ID resolution not implemented, please set XOA_TEMPLATE_ID")
-	}
-
-	if tc.NetworkID != "" {
-		networkID = tc.NetworkID
-	} else {
-		t.Logf("Using Network name: %s", tc.Network)
-		t.Skip("Network ID resolution not implemented, please set XOA_NETWORK_ID")
-	}
-
-	vm := &payloads.VM{
+	taskIDVM, err := tc.Client.VM().Create(ctx, &payloads.VM{
 		NameLabel:       vmName,
 		NameDescription: "Restore test VM",
-		Template:        GetUUID(t, templateID),
-		Memory: payloads.Memory{
-			Size: 1 * 1024 * 1024 * 1024, // 1 GB
-		},
-		CPUs: payloads.CPUs{
-			Number: 1,
-		},
-		VIFs:        []string{networkID},
-		AutoPoweron: false,
-		PoolID:      GetUUID(t, poolID),
-	}
-
-	taskIDVM, err := tc.Client.VM().Create(ctx, vm)
+		Template:        uuid.FromStringOrNil(tc.TemplateID),
+		PoolID:          uuid.FromStringOrNil(tc.PoolID),
+		CPUs:            payloads.CPUs{Number: 1},
+		Memory:          payloads.Memory{Static: []int64{1073741824, 1073741824}},
+	})
 	require.NoError(t, err)
 	require.NotEmpty(t, taskIDVM)
 

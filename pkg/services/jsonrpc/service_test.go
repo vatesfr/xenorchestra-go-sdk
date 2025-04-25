@@ -37,7 +37,7 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 
 		switch request.Method {
 		case "success.method":
-			response := map[string]interface{}{
+			response := map[string]any{
 				"result": "success-result",
 				"id":     request.ID,
 			}
@@ -47,8 +47,8 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 			}
 
 		case "error.method":
-			response := map[string]interface{}{
-				"error": map[string]interface{}{
+			response := map[string]any{
+				"error": map[string]any{
 					"code":    500,
 					"message": "Internal server error",
 				},
@@ -60,7 +60,7 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 			}
 
 		case "boolean.true":
-			response := map[string]interface{}{
+			response := map[string]any{
 				"result": true,
 				"id":     request.ID,
 			}
@@ -70,7 +70,7 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 			}
 
 		case "boolean.false":
-			response := map[string]interface{}{
+			response := map[string]any{
 				"result": false,
 				"id":     request.ID,
 			}
@@ -80,11 +80,11 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 			}
 
 		case "complex.result":
-			response := map[string]interface{}{
-				"result": map[string]interface{}{
+			response := map[string]any{
+				"result": map[string]any{
 					"id":   "12345",
 					"name": "Test Resource",
-					"data": []interface{}{1, 2, 3},
+					"data": []any{1, 2, 3},
 				},
 				"id": request.ID,
 			}
@@ -94,8 +94,8 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 			}
 
 		default:
-			response := map[string]interface{}{
-				"error": map[string]interface{}{
+			response := map[string]any{
+				"error": map[string]any{
 					"code":    404,
 					"message": fmt.Sprintf("Method not found: %s", request.Method),
 				},
@@ -155,7 +155,7 @@ func TestCall(t *testing.T) {
 	})
 
 	t.Run("complex result", func(t *testing.T) {
-		var result map[string]interface{}
+		var result map[string]any
 		err := jsonrpcSvc.Call("complex.result", map[string]any{}, &result)
 
 		assert.NoError(t, err)

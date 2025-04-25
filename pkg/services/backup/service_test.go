@@ -113,7 +113,7 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 			switch request.Method {
 			case "backupNg.createJob":
 				newJobID := uuid.Must(uuid.NewV4())
-				response := map[string]interface{}{
+				response := map[string]any{
 					"result": newJobID.String(),
 					"id":     request.ID,
 				}
@@ -123,7 +123,7 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 				}
 
 			case "backupNg.updateJob":
-				response := map[string]interface{}{
+				response := map[string]any{
 					"result": true,
 					"id":     request.ID,
 				}
@@ -133,7 +133,7 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 				}
 
 			case "backupNg.deleteJob":
-				response := map[string]interface{}{
+				response := map[string]any{
 					"result": true,
 					"id":     request.ID,
 				}
@@ -146,7 +146,7 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 				taskID := uuid.Must(uuid.NewV4())
 				taskURL := fmt.Sprintf("/rest/v0/tasks/%s", taskID)
 
-				response := map[string]interface{}{
+				response := map[string]any{
 					"result": taskURL,
 					"id":     request.ID,
 				}
@@ -156,8 +156,8 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 				}
 
 			default:
-				response := map[string]interface{}{
-					"error": map[string]interface{}{
+				response := map[string]any{
+					"error": map[string]any{
 						"code":    404,
 						"message": fmt.Sprintf("Method not found: %s", request.Method),
 					},
