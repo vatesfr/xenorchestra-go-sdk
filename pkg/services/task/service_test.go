@@ -19,7 +19,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
-func setupTaskTestServer() (*httptest.Server, library.Task) {
+func setupTaskTestServer(t *testing.T) (*httptest.Server, library.Task) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -92,7 +92,7 @@ func setupTaskTestServer() (*httptest.Server, library.Task) {
 			progressNum := strings.TrimPrefix(taskID, "task-progress-")
 
 			task := payloads.Task{
-				ID:      taskID,
+				ID:      payloads.TaskID(taskID),
 				Name:    "test-task-progress",
 				Started: payloads.APITime(time.Now().Add(-5 * time.Second)),
 			}
@@ -143,7 +143,7 @@ func setupTaskTestServer() (*httptest.Server, library.Task) {
 }
 
 func TestGet(t *testing.T) {
-	server, service := setupTaskTestServer()
+	server, service := setupTaskTestServer(t)
 	defer server.Close()
 
 	ctx := context.Background()
@@ -198,7 +198,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestAbort(t *testing.T) {
-	server, service := setupTaskTestServer()
+	server, service := setupTaskTestServer(t)
 	defer server.Close()
 
 	ctx := context.Background()
@@ -208,7 +208,7 @@ func TestAbort(t *testing.T) {
 }
 
 func TestWait(t *testing.T) {
-	server, service := setupTaskTestServer()
+	server, service := setupTaskTestServer(t)
 	defer server.Close()
 
 	ctx := context.Background()
@@ -249,7 +249,7 @@ func TestWait(t *testing.T) {
 }
 
 func TestHandleTaskResponse(t *testing.T) {
-	server, service := setupTaskTestServer()
+	server, service := setupTaskTestServer(t)
 	defer server.Close()
 
 	ctx := context.Background()
