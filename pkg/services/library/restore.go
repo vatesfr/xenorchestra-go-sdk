@@ -11,7 +11,7 @@ import (
 // It's related to the VM however it's a different concept as well since from
 // the rest perspective it's on his own path... TODO: Check with the DevOps team.
 //
-//go:generate mockgen --build_flags=--mod=mod --destination mock/restore.go . Restore
+//go:generate go run go.uber.org/mock/mockgen -source=$GOFILE -destination=mock/restore.go -package=mock_library Restore
 type Restore interface {
 	GetRestorePoints(ctx context.Context, vmID uuid.UUID) ([]*payloads.RestorePoint, error)
 	RestoreVM(ctx context.Context, backupID uuid.UUID, options *payloads.RestoreOptions) error

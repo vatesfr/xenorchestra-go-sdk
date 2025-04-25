@@ -7,7 +7,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination mock/backup.go . Backup
+//go:generate go run go.uber.org/mock/mockgen -source=$GOFILE -destination=mock/backup.go -package=mock_library Backup
 type Backup interface {
 	ListJobs(ctx context.Context, limit int) ([]*payloads.BackupJob, error)
 	GetJob(ctx context.Context, id string) (*payloads.BackupJob, error)
@@ -17,6 +17,4 @@ type Backup interface {
 	RunJob(ctx context.Context, id uuid.UUID) (string, error)
 
 	RunJobForVMs(ctx context.Context, id uuid.UUID, schedule string, vmIDs []string) (string, error)
-	ListLogs(ctx context.Context, id uuid.UUID, limit int) ([]*payloads.BackupLog, error)
-	ListVMBackups(ctx context.Context, vmID uuid.UUID, limit int) ([]*payloads.VMBackup, error)
 }

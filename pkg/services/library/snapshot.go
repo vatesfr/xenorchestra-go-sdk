@@ -10,11 +10,11 @@ import (
 // This interface will be embedded in the VM interface.
 // It's related to the VM however it's a different concept.
 //
-//go:generate mockgen --build_flags=--mod=mod --destination mock/snapshot.go . Snapshot
+//go:generate go run go.uber.org/mock/mockgen -source=$GOFILE -destination=mock/snapshot.go -package=mock_library Snapshot
 type Snapshot interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.Snapshot, error)
-	ListByVM(ctx context.Context, vmID uuid.UUID, limit int) ([]*payloads.Snapshot, error)
-	Create(ctx context.Context, vmID uuid.UUID, name string) (*payloads.Snapshot, error)
+	List(ctx context.Context, limit int) ([]*payloads.Snapshot, error)
+	Create(ctx context.Context, vmID uuid.UUID, name string) (payloads.TaskID, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	Revert(ctx context.Context, vmID uuid.UUID, snapshotID uuid.UUID) error
 }

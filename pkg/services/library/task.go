@@ -6,7 +6,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination mock/task.go . Task,TaskAction
+//go:generate go run go.uber.org/mock/mockgen -source=$GOFILE -destination=mock/task.go -package=mock_library Task,TaskAction
 
 type Task interface {
 	Get(ctx context.Context, path string) (*payloads.Task, error)

@@ -5,12 +5,12 @@ go 1.24
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/golang/mock v1.6.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750
 	github.com/stretchr/testify v1.10.0
 	github.com/subosito/gotenv v1.6.0
+	go.uber.org/mock v0.5.1
 )
 
 require (
