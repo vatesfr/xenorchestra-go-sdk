@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -25,26 +27,7 @@ func TestJSONRPC_Integration(t *testing.T) {
 		vmName := tc.GenerateResourceName("vm-backup")
 		tc.CleanupVM(t, vmName)
 
-		var poolID, templateID, networkID string
-		if tc.PoolID != "" {
-			poolID = tc.PoolID
-		} else {
-			t.Skip("Pool ID resolution not implemented, please set XOA_POOL_ID")
-		}
-
-		if tc.TemplateID != "" {
-			templateID = tc.TemplateID
-		} else {
-			t.Skip("Template ID resolution not implemented, please set XOA_TEMPLATE_ID")
-		}
-
-		if tc.NetworkID != "" {
-			networkID = tc.NetworkID
-		} else {
-			t.Skip("Network ID resolution not implemented, please set XOA_NETWORK_ID")
-		}
-
-		vm := createTestVMForBackup(t, ctx, tc, vmName, poolID, templateID, networkID)
+		vm := createTestVMForJsonRpc(t, ctx, tc, vmName)
 		defer func() {
 			if !tc.SkipTeardown {
 				err := tc.Client.VM().Delete(ctx, vm.ID)
@@ -66,7 +49,7 @@ func TestJSONRPC_Integration(t *testing.T) {
 		backupJob := &payloads.BackupJob{
 			Name:     backupJobName,
 			Mode:     "full",
-			Schedule: "0 0 * * *", // Midnight every day
+			Schedule: "0 0 * * *", // Midnight every day'
 			Enabled:  false,
 			VMs:      vm.ID.String(),
 			Settings: payloads.BackupSettings{
@@ -112,26 +95,7 @@ func TestJSONRPC_Integration(t *testing.T) {
 		vmName := tc.GenerateResourceName("vm-snapshot-jsonrpc")
 		tc.CleanupVM(t, vmName)
 
-		var poolID, templateID, networkID string
-		if tc.PoolID != "" {
-			poolID = tc.PoolID
-		} else {
-			t.Skip("Pool ID resolution not implemented, please set XOA_POOL_ID")
-		}
-
-		if tc.TemplateID != "" {
-			templateID = tc.TemplateID
-		} else {
-			t.Skip("Template ID resolution not implemented, please set XOA_TEMPLATE_ID")
-		}
-
-		if tc.NetworkID != "" {
-			networkID = tc.NetworkID
-		} else {
-			t.Skip("Network ID resolution not implemented, please set XOA_NETWORK_ID")
-		}
-
-		vm := createTestVMForBackup(t, ctx, tc, vmName, poolID, templateID, networkID)
+		vm := createTestVMForJsonRpc(t, ctx, tc, vmName)
 		defer func() {
 			if !tc.SkipTeardown {
 				err := tc.Client.VM().Delete(ctx, vm.ID)
@@ -142,70 +106,85 @@ func TestJSONRPC_Integration(t *testing.T) {
 		}()
 
 		snapshotName := "jsonrpc-test-snapshot"
-		snapshot, err := tc.Client.VM().Snapshot().Create(ctx, vm.ID, snapshotName)
-		assert.NoError(t, err)
-		assert.NotNil(t, snapshot)
-		assert.Equal(t, snapshotName, snapshot.NameLabel)
-		t.Logf("Created snapshot with ID: %s", snapshot.ID)
+		taskIDSnap, err := tc.Client.VM().Snapshot().Create(ctx, vm.ID, snapshotName)
+		require.NoError(t, err)
+		require.NotEmpty(t, taskIDSnap)
 
-		snapshots, err := tc.Client.VM().Snapshot().ListByVM(ctx, vm.ID, 0)
-		assert.NoError(t, err)
+		taskSnap, err := tc.Client.Task().Wait(ctx, string(taskIDSnap))
+		require.NoError(t, err)
+		require.Equal(t, payloads.Success, taskSnap.Status, "Snapshot creation task failed: %s", taskSnap.Message)
+		require.NotEqual(t, uuid.Nil, taskSnap.Result.ID, "Task result does not contain Snapshot ID")
+		snapshotID := taskSnap.Result.ID
+		t.Logf("Created snapshot with ID: %s", snapshotID)
+
+		allSnapshots, err := tc.Client.VM().Snapshot().List(ctx, 0)
+		require.NoError(t, err)
 		found := false
-		for _, s := range snapshots {
-			if s.ID == snapshot.ID {
+		for _, s := range allSnapshots {
+			if s.ID == snapshotID {
 				found = true
 				break
 			}
 		}
 		assert.True(t, found, "Should find the created snapshot in the list")
 
-		// TODO: check if this is correct.
-		if tc.Client.VM().Snapshot() != nil {
-			if testing.Short() || os.Getenv("XOA_ALLOW_SNAPSHOT_REVERT") != trueStr {
-				t.Log("Skipping snapshot revert test - requires XOA_ALLOW_SNAPSHOT_REVERT=" + trueStr)
-			} else {
-				err = tc.Client.VM().Snapshot().Revert(ctx, vm.ID, snapshot.ID)
-				assert.NoError(t, err)
-				t.Log("Successfully reverted snapshot")
-				time.Sleep(5 * time.Second)
-			}
+		if os.Getenv("XOA_ALLOW_SNAPSHOT_REVERT") == trueStr {
+			err = tc.Client.VM().Snapshot().Revert(ctx, vm.ID, snapshotID)
+			assert.NoError(t, err)
+			t.Log("Successfully reverted snapshot")
+			time.Sleep(5 * time.Second)
+		} else {
+			t.Log("Skipping snapshot revert test - requires XOA_ALLOW_SNAPSHOT_REVERT=" + trueStr)
 		}
 
 		if !tc.SkipTeardown {
-			err = tc.Client.VM().Snapshot().Delete(ctx, snapshot.ID)
+			err = tc.Client.VM().Snapshot().Delete(ctx, snapshotID)
 			assert.NoError(t, err)
 			t.Log("Successfully deleted snapshot")
 		}
 	})
 }
 
-func createTestVMForBackup(
+func createTestVMForJsonRpc(
 	t *testing.T,
 	ctx context.Context,
 	tc *TestClient,
-	name, poolID, templateID, networkID string,
+	name string,
 ) *payloads.VM {
 	t.Helper()
+
+	poolID := uuid.FromStringOrNil(tc.PoolID)
+	templateID := uuid.FromStringOrNil(tc.TemplateID)
+	require.NotEqual(t, uuid.Nil, poolID, "Failed to parse XOA_POOL_ID for JSON-RPC test VM")
+	require.NotEqual(t, uuid.Nil, templateID, "Failed to parse XOA_TEMPLATE_ID for JSON-RPC test VM")
 
 	vm := &payloads.VM{
 		NameLabel:       name,
 		NameDescription: "JSON-RPC test VM",
-		Template:        GetUUID(t, templateID),
+		Template:        templateID,
 		Memory: payloads.Memory{
 			Size: 1 * 1024 * 1024 * 1024, // 1 GB
 		},
 		CPUs: payloads.CPUs{
 			Number: 1,
 		},
-		VIFs:        []string{networkID},
 		AutoPoweron: false,
-		PoolID:      GetUUID(t, poolID),
+		PoolID:      poolID,
 	}
 
-	createdVM, err := tc.Client.VM().Create(ctx, vm)
-	assert.NoError(t, err)
-	assert.NotNil(t, createdVM)
-	t.Logf("VM created with ID: %s", createdVM.ID)
+	taskID, err := tc.Client.VM().Create(ctx, vm)
+	require.NoError(t, err)
+	require.NotEmpty(t, taskID)
 
+	task, err := tc.Client.Task().Wait(ctx, string(taskID))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, task.Status, "VM creation task failed: %s", task.Message)
+	require.NotEqual(t, uuid.Nil, task.Result.ID, "Task result does not contain VM ID")
+	vmID := task.Result.ID
+
+	createdVM, err := tc.Client.VM().GetByID(ctx, vmID)
+	require.NoError(t, err)
+	require.NotNil(t, createdVM)
+	t.Logf("VM created with ID: %s", vmID)
 	return createdVM
 }

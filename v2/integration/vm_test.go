@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -13,61 +15,36 @@ func TestVM_CRUD(t *testing.T) {
 	ctx := context.Background()
 	tc := Setup(t)
 
-	vmName := tc.GenerateResourceName("vm")
-
-	tc.CleanupVM(t, vmName)
-
-	t.Logf("Creating VM %s", vmName)
-
-	var poolID, templateID, networkID string
-	if tc.PoolID != "" {
-		poolID = tc.PoolID
-	} else {
-		t.Logf("Using Pool name: %s", tc.Pool)
-		t.Skip("Pool ID resolution not implemented, please set XOA_POOL_ID")
-	}
-
-	if tc.TemplateID != "" {
-		templateID = tc.TemplateID
-	} else {
-		t.Logf("Using Template name: %s", tc.Template)
-		t.Skip("Template ID resolution not implemented, please set XOA_TEMPLATE_ID")
-	}
-
-	if tc.NetworkID != "" {
-		networkID = tc.NetworkID
-	} else {
-		t.Logf("Using Network name: %s", tc.Network)
-		t.Skip("Network ID resolution not implemented, please set XOA_NETWORK_ID")
-	}
-
-	vm := &payloads.VM{
+	vmName := tc.GenerateResourceName("vm-crud")
+	taskID, err := tc.Client.VM().Create(ctx, &payloads.VM{
 		NameLabel:       vmName,
-		NameDescription: "Integration test VM",
-		Template:        GetUUID(t, templateID),
-		Memory: payloads.Memory{
-			Size: 1 * 1024 * 1024 * 1024, // 1 GB
-		},
-		CPUs: payloads.CPUs{
-			Number: 1,
-		},
-		VIFs:        []string{networkID},
-		AutoPoweron: false,
-		PoolID:      GetUUID(t, poolID),
-	}
+		NameDescription: "Created by integration test",
+		Template:        uuid.FromStringOrNil(tc.TemplateID),
+		PoolID:          uuid.FromStringOrNil(tc.PoolID),
+		CPUs:            payloads.CPUs{Number: 1},
+		Memory:          payloads.Memory{Static: []int64{1073741824, 1073741824}},
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, taskID)
 
-	createdVM, err := tc.Client.VM().Create(ctx, vm)
-	assert.NoError(t, err)
-	assert.NotNil(t, createdVM)
-	assert.Equal(t, vmName, createdVM.NameLabel)
+	task, err := tc.Client.Task().Wait(ctx, string(taskID))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, task.Status, "VM creation task failed: %s", task.Message)
+	require.NotEqual(t, uuid.Nil, task.Result.ID, "Task result does not contain VM ID")
+	vmID := task.Result.ID
 
-	vmID := createdVM.ID
-	t.Logf("VM created with ID: %s", vmID)
+	t.Cleanup(func() { tc.CleanupVM(t, vmName) })
 
-	getVM, err := tc.Client.VM().GetByID(ctx, vmID)
-	assert.NoError(t, err)
-	assert.NotNil(t, getVM)
-	assert.Equal(t, vmName, getVM.NameLabel)
+	vm, err := tc.Client.VM().GetByID(ctx, vmID)
+	require.NoError(t, err)
+	require.NotNil(t, vm)
+	require.Equal(t, vmName, vm.NameLabel)
+
+	// Read
+	readVM, err := tc.Client.VM().GetByID(ctx, vmID)
+	require.NoError(t, err)
+	require.NotNil(t, readVM)
+	require.Equal(t, vmName, readVM.NameLabel)
 
 	allVMs, err := tc.Client.VM().List(ctx, 0)
 	assert.NoError(t, err)
@@ -108,55 +85,29 @@ func TestVM_CRUD(t *testing.T) {
 }
 
 func TestVM_Lifecycle(t *testing.T) {
-	ctx := context.Background()
 	tc := Setup(t)
+	ctx := context.Background()
 
 	vmName := tc.GenerateResourceName("vm-lifecycle")
+	t.Cleanup(func() { tc.CleanupVM(t, vmName) })
 
-	tc.CleanupVM(t, vmName)
-
-	var poolID, templateID, networkID string
-	if tc.PoolID != "" {
-		poolID = tc.PoolID
-	} else {
-		t.Logf("Using Pool name: %s", tc.Pool)
-		t.Skip("Pool ID resolution not implemented, please set XOA_POOL_ID")
-	}
-
-	if tc.TemplateID != "" {
-		templateID = tc.TemplateID
-	} else {
-		t.Logf("Using Template name: %s", tc.Template)
-		t.Skip("Template ID resolution not implemented, please set XOA_TEMPLATE_ID")
-	}
-
-	if tc.NetworkID != "" {
-		networkID = tc.NetworkID
-	} else {
-		t.Logf("Using Network name: %s", tc.Network)
-		t.Skip("Network ID resolution not implemented, please set XOA_NETWORK_ID")
-	}
-
-	vm := &payloads.VM{
+	taskID, err := tc.Client.VM().Create(ctx, &payloads.VM{
 		NameLabel:       vmName,
 		NameDescription: "VM lifecycle integration testing",
-		Template:        GetUUID(t, templateID),
-		Memory: payloads.Memory{
-			Size: 1 * 1024 * 1024 * 1024, // 1 GB
-		},
-		CPUs: payloads.CPUs{
-			Number: 1,
-		},
-		VIFs:        []string{networkID},
-		AutoPoweron: false,
-		PoolID:      GetUUID(t, poolID),
-	}
+		Template:        uuid.FromStringOrNil(tc.TemplateID),
+		PoolID:          uuid.FromStringOrNil(tc.PoolID),
+		CPUs:            payloads.CPUs{Number: 1},
+		Memory:          payloads.Memory{Static: []int64{1073741824, 1073741824}},
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, taskID)
 
-	createdVM, err := tc.Client.VM().Create(ctx, vm)
-	assert.NoError(t, err)
-	assert.NotNil(t, createdVM)
+	task, err := tc.Client.Task().Wait(ctx, string(taskID))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, task.Status, "VM creation task failed: %s", task.Message)
+	require.NotEqual(t, uuid.Nil, task.Result.ID, "Task result does not contain VM ID")
+	vmID := task.Result.ID
 
-	vmID := createdVM.ID
 	t.Logf("VM created with ID: %s", vmID)
 
 	err = tc.Client.VM().Start(ctx, vmID)
@@ -176,6 +127,39 @@ func TestVM_Lifecycle(t *testing.T) {
 	haltedVM, err := tc.Client.VM().GetByID(ctx, vmID)
 	assert.NoError(t, err)
 	assert.Equal(t, payloads.PowerStateHalted, haltedVM.PowerState)
+
+	if !tc.SkipTeardown {
+		err = tc.Client.VM().Delete(ctx, vmID)
+		assert.NoError(t, err)
+	}
+}
+
+func TestVM_PowerCycle(t *testing.T) {
+	tc := Setup(t)
+	ctx := context.Background()
+	vmName := tc.GenerateResourceName("vm-power")
+	t.Cleanup(func() { tc.CleanupVM(t, vmName) })
+
+	taskID, err := tc.Client.VM().Create(ctx, &payloads.VM{
+		NameLabel:       vmName,
+		NameDescription: "VM for power cycle test",
+		Template:        uuid.FromStringOrNil(tc.TemplateID),
+		PoolID:          uuid.FromStringOrNil(tc.PoolID),
+		CPUs:            payloads.CPUs{Number: 1},
+		Memory:          payloads.Memory{Static: []int64{1073741824, 1073741824}},
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, taskID)
+
+	task, err := tc.Client.Task().Wait(ctx, string(taskID))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, task.Status, "VM creation task failed: %s", task.Message)
+	require.NotEqual(t, uuid.Nil, task.Result.ID, "Task result does not contain VM ID")
+	vmID := task.Result.ID
+
+	vm, err := tc.Client.VM().GetByID(ctx, vmID)
+	assert.NoError(t, err)
+	assert.Equal(t, payloads.PowerStateHalted, vm.PowerState)
 
 	if !tc.SkipTeardown {
 		err = tc.Client.VM().Delete(ctx, vmID)

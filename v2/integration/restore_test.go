@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -54,19 +56,29 @@ func TestVM_Restore(t *testing.T) {
 		PoolID:      GetUUID(t, poolID),
 	}
 
-	createdVM, err := tc.Client.VM().Create(ctx, vm)
-	assert.NoError(t, err)
-	assert.NotNil(t, createdVM)
+	taskIDVM, err := tc.Client.VM().Create(ctx, vm)
+	require.NoError(t, err)
+	require.NotEmpty(t, taskIDVM)
 
-	vmID := createdVM.ID
+	taskVM, err := tc.Client.Task().Wait(ctx, string(taskIDVM))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, taskVM.Status, "VM creation task failed: %s", taskVM.Message)
+	require.NotEqual(t, uuid.Nil, taskVM.Result.ID, "Task result does not contain VM ID")
+	vmID := taskVM.Result.ID
+
 	t.Logf("VM created with ID: %s", vmID)
 
 	snapshotName := "integration-test-restore-point"
-	snapshot, err := tc.Client.VM().Snapshot().Create(ctx, vmID, snapshotName)
-	assert.NoError(t, err)
-	assert.NotNil(t, snapshot)
+	taskIDSnap, err := tc.Client.VM().Snapshot().Create(ctx, vmID, snapshotName)
+	require.NoError(t, err)
+	require.NotEmpty(t, taskIDSnap)
 
-	snapshotID := snapshot.ID
+	taskSnap, err := tc.Client.Task().Wait(ctx, string(taskIDSnap))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, taskSnap.Status, "Snapshot creation task failed: %s", taskSnap.Message)
+	require.NotEqual(t, uuid.Nil, taskSnap.Result.ID, "Task result does not contain Snapshot ID")
+	snapshotID := taskSnap.Result.ID
+
 	t.Logf("Snapshot created with ID: %s for restore testing", snapshotID)
 
 	time.Sleep(5 * time.Second)

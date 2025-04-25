@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -55,39 +57,48 @@ func TestVM_Snapshot(t *testing.T) {
 		PoolID:      GetUUID(t, poolID),
 	}
 
-	createdVM, err := tc.Client.VM().Create(ctx, vm)
-	assert.NoError(t, err)
-	assert.NotNil(t, createdVM)
+	taskIDVM, err := tc.Client.VM().Create(ctx, vm)
+	require.NoError(t, err)
+	require.NotEmpty(t, taskIDVM)
 
-	vmID := createdVM.ID
+	taskVM, err := tc.Client.Task().Wait(ctx, string(taskIDVM))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, taskVM.Status, "VM creation task failed: %s", taskVM.Message)
+	require.NotEqual(t, uuid.Nil, taskVM.Result.ID, "Task result does not contain VM ID")
+	vmID := taskVM.Result.ID
+
 	t.Logf("VM created with ID: %s", vmID)
 
 	snapshotName := "integration-test-snapshot"
-	snapshot, err := tc.Client.VM().Snapshot().Create(ctx, vmID, snapshotName)
-	assert.NoError(t, err)
-	assert.NotNil(t, snapshot)
-	assert.Equal(t, snapshotName, snapshot.NameLabel)
-	assert.Equal(t, vmID, snapshot.VmID)
+	taskID, err := tc.Client.VM().Snapshot().Create(ctx, vmID, snapshotName)
+	require.NoError(t, err)
+	require.NotEmpty(t, taskID)
 
-	snapshotID := snapshot.ID
-	t.Logf("Snapshot created with ID: %s", snapshotID)
+	// Wait for snapshot creation task
+	task, err := tc.Client.Task().Wait(ctx, string(taskID))
+	require.NoError(t, err)
+	require.Equal(t, payloads.Success, task.Status, "Snapshot creation task failed: %s", task.Message)
+	require.NotEqual(t, uuid.Nil, task.Result.ID, "Task result does not contain Snapshot ID")
+	snapshotID := task.Result.ID
 
-	retrievedSnapshot, err := tc.Client.VM().Snapshot().GetByID(ctx, snapshotID)
-	assert.NoError(t, err)
-	assert.NotNil(t, retrievedSnapshot)
-	assert.Equal(t, snapshotName, retrievedSnapshot.NameLabel)
+	// Get the created snapshot for further checks
+	snapshot, err := tc.Client.VM().Snapshot().GetByID(ctx, snapshotID)
+	require.NoError(t, err)
+	require.NotNil(t, snapshot)
+	require.Equal(t, snapshotName, snapshot.NameLabel)
 
-	snapshots, err := tc.Client.VM().Snapshot().ListByVM(ctx, vmID, 0)
-	assert.NoError(t, err)
-
-	var found bool
-	for _, s := range snapshots {
+	// List (verify snapshot exists)
+	// Note: Snapshot List does not filter by VM ID in the current interface
+	allSnapshots, err := tc.Client.VM().Snapshot().List(ctx, 0) // Use List instead of ListByVM
+	require.NoError(t, err)
+	found := false
+	for _, s := range allSnapshots {
 		if s.ID == snapshotID {
 			found = true
 			break
 		}
 	}
-	assert.True(t, found, "Expected to find the created snapshot in the list")
+	require.True(t, found, "Created snapshot not found in list")
 
 	if os.Getenv("XOA_ALLOW_SNAPSHOT_REVERT") == "true" {
 		err = tc.Client.VM().Snapshot().Revert(ctx, vmID, snapshotID)
@@ -99,20 +110,38 @@ func TestVM_Snapshot(t *testing.T) {
 	err = tc.Client.VM().Snapshot().Delete(ctx, snapshotID)
 	assert.NoError(t, err)
 
-	snapshots, err = tc.Client.VM().Snapshot().ListByVM(ctx, vmID, 0)
-	assert.NoError(t, err)
-
+	// List (verify snapshot is deleted)
+	// Note: Snapshot List does not filter by VM ID in the current interface
+	allSnapshots, err = tc.Client.VM().Snapshot().List(ctx, 0) // Use List instead of ListByVM
+	require.NoError(t, err)
 	found = false
-	for _, s := range snapshots {
+	for _, s := range allSnapshots {
 		if s.ID == snapshotID {
 			found = true
 			break
 		}
 	}
-	assert.False(t, found, "Expected the snapshot to be deleted")
+	require.False(t, found, "Snapshot should have been deleted")
 
 	if !tc.SkipTeardown {
 		err = tc.Client.VM().Delete(ctx, vmID)
 		assert.NoError(t, err)
 	}
+}
+
+// Helper function to create a VM for snapshot tests
+func CreateTestVM(t *testing.T, ctx context.Context, tc *TestClient, name string) (payloads.TaskID, error) {
+	poolID := uuid.FromStringOrNil(tc.PoolID)
+	templateID := uuid.FromStringOrNil(tc.TemplateID)
+	require.NotEqual(t, uuid.Nil, poolID, "Failed to parse XOA_POOL_ID")
+	require.NotEqual(t, uuid.Nil, templateID, "Failed to parse XOA_TEMPLATE_ID")
+
+	return tc.Client.VM().Create(ctx, &payloads.VM{
+		NameLabel:       name,
+		NameDescription: "VM for snapshot integration test",
+		Template:        templateID,
+		PoolID:          poolID,
+		CPUs:            payloads.CPUs{Number: 1},
+		Memory:          payloads.Memory{Static: []int64{1073741824, 1073741824}},
+	})
 }
