@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
@@ -20,6 +19,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	mock_library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
 

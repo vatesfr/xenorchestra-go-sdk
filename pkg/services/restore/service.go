@@ -84,7 +84,7 @@ func (s *Service) GetRestorePoints(ctx context.Context, vmID uuid.UUID) ([]*payl
 }
 
 func (s *Service) RestoreVM(ctx context.Context, backupID uuid.UUID, options *payloads.RestoreOptions) error {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"id": backupID.String(),
 	}
 
@@ -131,7 +131,7 @@ func (s *Service) RestoreVM(ctx context.Context, backupID uuid.UUID, options *pa
 }
 
 func (s *Service) ImportVM(ctx context.Context, options *payloads.ImportOptions) (*payloads.Task, error) {
-	params := map[string]interface{}{
+	params := map[string]any{
 		"id": options.BackupID.String(),
 		"sr": options.SrID.String(),
 	}
