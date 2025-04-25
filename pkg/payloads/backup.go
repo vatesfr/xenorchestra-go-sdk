@@ -41,18 +41,18 @@ func (j *BackupJob) VMSelection() interface{} {
 	switch v := j.VMs.(type) {
 	case string:
 		// Single VM ID as string
-		return map[string]interface{}{
+		return map[string]any{
 			"id": v,
 		}
 	case []string:
 		// Multiple VM IDs as string slice
 		if len(v) == 1 {
-			return map[string]interface{}{
+			return map[string]any{
 				"id": v[0],
 			}
 		}
-		return map[string]interface{}{
-			"id": map[string]interface{}{
+		return map[string]any{
+			"id": map[string]any{
 				"__or": v,
 			},
 		}
@@ -72,8 +72,8 @@ func (j *BackupJob) VMSelection() interface{} {
 		for vmID := range v {
 			vmIDs = append(vmIDs, vmID)
 		}
-		return map[string]interface{}{
-			"id": map[string]interface{}{
+		return map[string]any{
+			"id": map[string]any{
 				"__or": vmIDs,
 			},
 		}
