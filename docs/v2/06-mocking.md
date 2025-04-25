@@ -26,7 +26,7 @@ If you prefer to run commands manually:
 
 1. Install mockgen:
    ```bash
-   go install github.com/golang/mock/mockgen@v1.6.0
+   go install go.uber.org/mock/mockgen@v0.5.1
    ```
 
 2. Generate mocks for all interfaces:
