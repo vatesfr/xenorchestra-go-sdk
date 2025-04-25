@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/gofrs/uuid"
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
@@ -384,67 +383,4 @@ func (s *Service) RunJobForVMs(ctx context.Context, id uuid.UUID, schedule strin
 	}
 
 	return response, nil
-}
-
-func (s *Service) ListLogs(ctx context.Context, id uuid.UUID, limit int) ([]*payloads.BackupLog, error) {
-	var result []*payloads.BackupLog
-	path := core.NewPathBuilder().
-		Resource("backup").
-		Resource("logs").
-		Build()
-
-	options := map[string]any{
-		"job_id": id.String(),
-	}
-
-	if limit > 0 {
-		options["limit"] = limit
-	}
-
-	err := client.TypedGet(ctx, s.client, path, options, &result)
-	if err != nil {
-		s.log.Error("Failed to list backup logs", zap.Error(err))
-		return nil, err
-	}
-	return result, nil
-}
-
-func (s *Service) ListVMBackups(ctx context.Context, vmID uuid.UUID, limit int) ([]*payloads.VMBackup, error) {
-	var logs []*payloads.BackupLog
-	path := core.NewPathBuilder().
-		Resource("backup").
-		Resource("logs").
-		Build()
-
-	options := map[string]any{}
-
-	if limit > 0 {
-		options["limit"] = limit
-	} else {
-		options["limit"] = 100
-	}
-
-	err := client.TypedGet(ctx, s.client, path, options, &logs)
-	if err != nil {
-		s.log.Error("Failed to list backup logs", zap.Error(err))
-		return nil, err
-	}
-
-	var backups []*payloads.VMBackup
-	for _, log := range logs {
-		if log.Status == payloads.BackupLogStatusSuccess {
-			backup := &payloads.VMBackup{
-				ID:         log.ID,
-				Name:       log.Name,
-				Size:       int64(log.Size),
-				BackupTime: time.Now(),
-				JobID:      "",
-				Type:       "vm",
-				CanRestore: true,
-			}
-			backups = append(backups, backup)
-		}
-	}
-
-	return backups, nil
 }

@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
@@ -19,6 +18,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	mock_library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
 
@@ -87,29 +87,6 @@ func setupBackupTestServer(t *testing.T) (*httptest.Server, library.Backup) {
 				}
 
 				if err := json.NewEncoder(w).Encode(job); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-			case r.URL.Path == "/rest/v0/backup/logs" && r.Method == http.MethodGet:
-				logs := []*payloads.BackupLog{
-					{
-						ID:       uuid.Must(uuid.NewV4()),
-						Name:     "backup-log-1",
-						Status:   payloads.BackupLogStatusSuccess,
-						Duration: 60,
-						Size:     1024 * 1024 * 1024, // 1 GB
-					},
-					{
-						ID:       uuid.Must(uuid.NewV4()),
-						Name:     "backup-log-2",
-						Status:   payloads.BackupLogStatusSuccess,
-						Duration: 120,
-						Size:     2 * 1024 * 1024 * 1024, // 2 GB
-					},
-				}
-
-				if err := json.NewEncoder(w).Encode(logs); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -371,33 +348,4 @@ func TestRunJob(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, taskID)
-}
-
-func TestListLogs(t *testing.T) {
-	server, service := setupBackupTestServer(t)
-	defer server.Close()
-
-	ctx := context.Background()
-
-	jobID := uuid.Must(uuid.NewV4())
-	logs, err := service.ListLogs(ctx, jobID, 0)
-
-	assert.NoError(t, err)
-	assert.NotNil(t, logs)
-	assert.Len(t, logs, 2)
-}
-
-func TestListVMBackups(t *testing.T) {
-	server, service := setupBackupTestServer(t)
-	defer server.Close()
-
-	ctx := context.Background()
-
-	vmID := uuid.Must(uuid.NewV4())
-	backups, err := service.ListVMBackups(ctx, vmID, 0)
-
-	assert.NoError(t, err)
-	assert.NotNil(t, backups)
-	// Note: this may return empty since we didn't add specific VM backup configs
-	// but we're testing the API endpoint works without error
 }

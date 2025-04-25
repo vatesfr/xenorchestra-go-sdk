@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
@@ -20,6 +19,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	mock_library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
 
@@ -55,8 +55,8 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 					ID:              id,
 					NameLabel:       "test-snapshot",
 					NameDescription: "Test snapshot description",
-					VmID:            vmID,
-					CreationDate:    time.Now(),
+					SnapshotOf:      vmID,
+					SnapshotTime:    time.Now().Unix(),
 				}
 
 				if err := json.NewEncoder(w).Encode(snapshot); err != nil {
@@ -129,8 +129,8 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 					ID:              snapshotID,
 					NameLabel:       params.NameLabel,
 					NameDescription: "Created via API",
-					VmID:            vmID,
-					CreationDate:    time.Now(),
+					SnapshotOf:      vmID,
+					SnapshotTime:    time.Now().Unix(),
 				}
 
 				if err := json.NewEncoder(w).Encode(snapshot); err != nil {
@@ -279,31 +279,6 @@ func TestGetByID(t *testing.T) {
 	})
 }
 
-func TestListByVM(t *testing.T) {
-	server, service := setupSnapshotTestServer(t)
-	defer server.Close()
-
-	ctx := context.Background()
-
-	t.Run("successful list", func(t *testing.T) {
-		vmID := uuid.Must(uuid.NewV4())
-		snapshots, err := service.ListByVM(ctx, vmID, 0)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, snapshots)
-		assert.Len(t, snapshots, 2)
-	})
-
-	t.Run("list with limit", func(t *testing.T) {
-		vmID := uuid.Must(uuid.NewV4())
-		snapshots, err := service.ListByVM(ctx, vmID, 1)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, snapshots)
-		assert.Len(t, snapshots, 1)
-	})
-}
-
 func TestCreate(t *testing.T) {
 	server, service := setupSnapshotTestServer(t)
 	defer server.Close()
@@ -314,12 +289,10 @@ func TestCreate(t *testing.T) {
 		vmID := uuid.Must(uuid.NewV4())
 		name := "test-create-snapshot"
 
-		snapshot, err := service.Create(ctx, vmID, name)
+		taskID, err := service.Create(ctx, vmID, name)
 
 		assert.NoError(t, err)
-		assert.NotNil(t, snapshot)
-		assert.Equal(t, name, snapshot.NameLabel)
-		assert.Equal(t, vmID, snapshot.VmID)
+		assert.NotEmpty(t, taskID)
 	})
 }
 
