@@ -69,8 +69,3 @@ func TestFormatPath(t *testing.T) {
 	path := FormatPath("vms", id)
 	assert.Equal(t, "vms/12345678-1234-1234-1234-123456789012", path)
 }
-
-func TestFormatActionPath(t *testing.T) {
-	path := FormatActionPath("vms", "start")
-	assert.Equal(t, "vms/_/actions/start", path)
-}

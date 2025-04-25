@@ -64,12 +64,6 @@ func FormatPath(resource string, id uuid.UUID) string {
 	return fmt.Sprintf("%s/%s", resource, id.String())
 }
 
-// FormatActionPath is a convenience function for resource wildcard action paths.
-// It creates paths like "vms/_/actions/start".
-func FormatActionPath(resource string, action string) string {
-	return fmt.Sprintf("%s/_/actions/%s", resource, action)
-}
-
 func ExtractTaskID(response string) payloads.TaskID {
 	return payloads.TaskID(strings.TrimPrefix(response, "/rest/v0/tasks/"))
 }
