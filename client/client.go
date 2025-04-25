@@ -15,7 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff/v3"
+	// For some reason golangci-lint declared backoff as undefined.
+	// This is weird because no changes have been made to the import.
+	backoff "github.com/cenkalti/backoff/v3"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sourcegraph/jsonrpc2/websocket"
