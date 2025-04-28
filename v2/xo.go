@@ -10,6 +10,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/backup"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/hub_recipe"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/jsonrpc"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/restore"
@@ -29,6 +30,9 @@ type XOClient struct {
 
 	// Storage repository service
 	storageRepositoryService library.StorageRepository
+
+	// Hub recipe service
+	hubRecipeService library.HubRecipe
 
 	// They have been added to the VM service because they are related to the VM.
 	// However shall we let the user to have access to the restore and snapshot services ?
@@ -86,12 +90,14 @@ func New(config *config.Config) (library.Library, error) {
 	snapshotService := snapshot.New(client, legacyClient, jsonrpcSvc, log)
 	storageRepositoryService := storage_repository.New(client, log)
 	backupService := backup.New(client, legacyClient, taskService, jsonrpcSvc, log)
+	hubRecipeService := hub_recipe.New(client, legacyClient, jsonrpcSvc, log)
 
 	return &XOClient{
 		vmService:                vm.New(client, restoreService, snapshotService, log),
 		taskService:              taskService,
 		backupService:            backupService,
 		storageRepositoryService: storageRepositoryService,
+		hubRecipeService:         hubRecipeService,
 		v1Client:                 v1Client,
 		jsonrpcSvc:               jsonrpc.New(legacyClient, log),
 	}, nil
@@ -118,6 +124,10 @@ func (c *XOClient) Backup() library.Backup {
 
 func (c *XOClient) StorageRepository() library.StorageRepository {
 	return c.storageRepositoryService
+}
+
+func (c *XOClient) HubRecipe() library.HubRecipe {
+	return c.hubRecipeService
 }
 
 func (c *XOClient) V1Client() v1.XOClient {

@@ -1,8 +1,6 @@
-package client
+package payloads
 
-import "encoding/json"
-
-type K8sCluster struct {
+type K8sClusterOptions struct {
 	ClusterName string `json:"clusterName"`
 	// Ip address of the control plane node, if the is only one control plane node (No HA).
 	// Required to use static IP addresses configuration
@@ -38,27 +36,4 @@ type K8sCluster struct {
 	// Worker nodes IP addresses.
 	// Required to use static IP addresses configuration
 	WorkerNodeIpAddresses []string `json:"workerNodeIpAddresses,omitempty"`
-}
-
-/**
-* Create a Kubernetes cluster
-* @param {K8sCluster} cluster
-* @returns {string} The tag added to VMs created by the recipe
-* @returns {Error} An error if the operation failed
- */
-func (c *Client) CreateK8sCluster(cluster *K8sCluster) (string, error) {
-
-	var tag string
-
-	var params map[string]interface{}
-	tmp, _ := json.Marshal(cluster)
-	json.Unmarshal(tmp, &params)
-
-	err := c.Call("xoa.recipe.createKubernetesCluster", params, &tag)
-
-	if err != nil {
-		return "", err
-	}
-
-	return tag, nil
 }
