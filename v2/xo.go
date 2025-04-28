@@ -34,6 +34,10 @@ type XOClient struct {
 	vbdService  library.VBD
 	pbdService  library.PBD
 	srService   library.SR
+
+	// Hub recipe service
+	hubRecipeService library.HubRecipe
+
 	// We can provide access to the v1 client directly, allowing users to:
 	// 1. Access v1 functionality without initializing a separate client
 	// 2. Use v2 features while maintaining backward compatibility
@@ -99,18 +103,20 @@ func New(config *config.Config) (library.Library, error) {
 	vbdService := vbd.New(client, taskService, log)
 	pbdService := pbd.New(client, taskService, log)
 	srService := sr.New(client, taskService, log)
+	hubRecipeService := hub_recipe.New(client, legacyClient, jsonrpcSvc, log)
 
 	xoClient := &XOClient{
-		vmService:   vm.New(client, taskService, poolService, log),
-		taskService: taskService,
-		poolService: poolService,
-		hostService: hostService,
-		vdiService:  vdiService,
-		vbdService:  vbdService,
-		pbdService:  pbdService,
-		srService:   srService,
-		v1Config:    v1Config,
-		log:         log,
+		vmService:        vm.New(client, taskService, poolService, log),
+		taskService:      taskService,
+		poolService:      poolService,
+		hostService:      hostService,
+		vdiService:       vdiService,
+		vbdService:       vbdService,
+		pbdService:       pbdService,
+		srService:        srService,
+		hubRecipeService: hubRecipeService,
+		v1Config:         v1Config,
+		log:              log,
 	}
 
 	// Create a lazy JSONRPC service that will trigger v1Client creation on first call
@@ -167,6 +173,10 @@ func (c *XOClient) PBD() library.PBD {
 
 func (c *XOClient) SR() library.SR {
 	return c.srService
+}
+
+func (c *XOClient) HubRecipe() library.HubRecipe {
+	return c.hubRecipeService
 }
 
 func (c *XOClient) V1Client() v1.XOClient {
