@@ -134,6 +134,8 @@ type XOClient interface {
 	GetCdroms(vm *Vm) ([]Disk, error)
 	EjectCd(id string) error
 	InsertCd(vmId, cdId string) error
+
+	CreateK8sCluster(cluster *K8sCluster) (string, error)
 }
 
 type Client struct {
