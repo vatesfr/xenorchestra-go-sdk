@@ -226,7 +226,9 @@ func GetConfigFromEnv() Config {
 }
 
 func NewClient(config Config) (XOClient, error) {
-	wsURL := config.Url
+	// Trim the URL to remove any trailing slashes
+	// To avoid the websocket client from failing
+	wsURL := strings.TrimSuffix(config.Url, "/")
 	username := config.Username
 	password := config.Password
 	token := config.Token
