@@ -1,6 +1,6 @@
 module github.com/vatesfr/xenorchestra-go-sdk
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
@@ -10,12 +10,15 @@ require (
 	github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750
 	github.com/stretchr/testify v1.10.0
 	github.com/subosito/gotenv v1.6.0
-	go.uber.org/mock v0.5.1
+	go.uber.org/mock v0.5.2
 )
 
 require (
 	go.uber.org/multierr v1.10.0 // indirect
+	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/tools v0.22.0 // indirect
 )
 
 require (
