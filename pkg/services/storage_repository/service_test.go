@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -53,14 +54,13 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 		NameDescription: "Test Storage Repository 3",
 		PoolID:          poolID,
 		SRType:          "local",
-		PhysicalUsage:   500 * 1024 * 1024,      // 500 MB
-		Size:            5 * 1024 * 1024 * 1024, // 5 GB
-		Usage:           1 * 1024 * 1024 * 1024, // 1 GB
+		PhysicalUsage:   500 * 1024 * 1024,
+		Size:            5 * 1024 * 1024 * 1024,
+		Usage:           1 * 1024 * 1024 * 1024,
 		Tags:            []string{"tag1", "tag4"},
 	})
 
-	errorID := uuid.Must(uuid.NewV4())
-
+	errorID := uuid.Must(uuid.FromString("b509922c-6982-4711-86a4-cb6784c07468"))
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -72,27 +72,44 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 				poolIDFilter := r.URL.Query().Get("$poolId")
 				nameFilter := r.URL.Query().Get("name_label")
 				typeFilter := r.URL.Query().Get("SR_type")
+				tagsFilterStr := r.URL.Query().Get("tags")
+				tagsFilter := []string{}
+				if tagsFilterStr != "" {
+					tagsFilter = strings.Split(tagsFilterStr, ",")
+				}
 
 				for _, sr := range storageRepos {
+					include := true
 					if poolIDFilter != "" {
 						poolUUID, err := uuid.FromString(poolIDFilter)
 						if err != nil || sr.PoolID != poolUUID {
-							continue
+							include = false
 						}
 					}
-					if nameFilter != "" && sr.NameLabel != nameFilter {
-						continue
+					if include && nameFilter != "" && sr.NameLabel != nameFilter {
+						include = false
 					}
-					if typeFilter != "" && sr.SRType != typeFilter {
-						continue
+					if include && typeFilter != "" && sr.SRType != typeFilter {
+						include = false
+					}
+					if include && len(tagsFilter) > 0 && !containsAllTags(sr.Tags, tagsFilter) {
+						include = false
 					}
 
-					urls = append(urls, fmt.Sprintf("/srs/%s", sr.ID))
+					if include {
+						urls = append(urls, fmt.Sprintf("/srs/%s", sr.ID))
+					}
+				}
+
+				limitStr := r.URL.Query().Get("limit")
+				if limitStr != "" {
+					if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 && len(urls) > limit {
+						urls = urls[:limit]
+					}
 				}
 
 				if err := json.NewEncoder(w).Encode(urls); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
 				}
 				return
 			}
@@ -106,12 +123,10 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 				}
 
 				if id == errorID {
-					if err := json.NewEncoder(w).Encode(map[string]string{
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{
 						"error": "Storage repository not found",
-					}); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
+					})
 					return
 				}
 
@@ -130,7 +145,6 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 
 				if err := json.NewEncoder(w).Encode(foundRepo); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
 				}
 				return
 			}
@@ -145,13 +159,10 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 
 				if id == errorID {
 					w.WriteHeader(http.StatusInternalServerError)
-					if err := json.NewEncoder(w).Encode(map[string]any{
+					_ = json.NewEncoder(w).Encode(map[string]any{
 						"success": false,
-						"error":   "Failed to add tag",
-					}); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
+						"error":   "Simulated failure to add tag",
+					})
 					return
 				}
 
@@ -180,24 +191,26 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 					return
 				}
 
+				found := false
 				for _, t := range foundRepo.Tags {
 					if t == tag {
+						found = true
 						break
 					}
 				}
-
-				foundRepo.Tags = append(foundRepo.Tags, tag)
+				if !found {
+					foundRepo.Tags = append(foundRepo.Tags, tag)
+				}
 
 				if err := json.NewEncoder(w).Encode(map[string]bool{
 					"success": true,
 				}); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
 				}
 				return
 			}
 
-			if len(pathParts) == 5 && pathParts[3] == "tags" && r.Method == http.MethodDelete {
+			if len(pathParts) == 5 && pathParts[3] == "tags" && r.Method == http.MethodDelete { // Remove Tag
 				idStr := pathParts[2]
 				id, err := uuid.FromString(idStr)
 				if err != nil {
@@ -209,13 +222,10 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 
 				if id == errorID {
 					w.WriteHeader(http.StatusInternalServerError)
-					if err := json.NewEncoder(w).Encode(map[string]any{
+					_ = json.NewEncoder(w).Encode(map[string]any{
 						"success": false,
-						"error":   "Failed to remove tag",
-					}); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
+						"error":   "Simulated failure to remove tag",
+					})
 					return
 				}
 
@@ -244,7 +254,6 @@ func setupStorageRepositoryTestServer(t *testing.T) (*httptest.Server, *Service)
 					"success": true,
 				}); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
 				}
 				return
 			}

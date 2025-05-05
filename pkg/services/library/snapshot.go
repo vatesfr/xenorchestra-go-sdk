@@ -13,7 +13,7 @@ import (
 //go:generate go run go.uber.org/mock/mockgen -source=$GOFILE -destination=mock/snapshot.go -package=mock_library Snapshot
 type Snapshot interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.Snapshot, error)
-	List(ctx context.Context, limit int) ([]*payloads.Snapshot, error)
+	List(ctx context.Context, options map[string]any) ([]*payloads.Snapshot, error)
 	Create(ctx context.Context, vmID uuid.UUID, name string) (payloads.TaskID, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	Revert(ctx context.Context, vmID uuid.UUID, snapshotID uuid.UUID) error

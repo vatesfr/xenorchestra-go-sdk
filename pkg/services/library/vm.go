@@ -11,7 +11,10 @@ import (
 
 type VM interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error)
-	List(ctx context.Context, limit int) ([]*payloads.VM, error)
+
+	// NOTE: We could force a type on options instead.
+	List(ctx context.Context, options map[string]any) ([]*payloads.VM, error)
+
 	Create(ctx context.Context, vm *payloads.VM) (payloads.TaskID, error)
 	Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
 	Delete(ctx context.Context, id uuid.UUID) error

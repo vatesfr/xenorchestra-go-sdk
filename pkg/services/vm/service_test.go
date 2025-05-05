@@ -180,7 +180,8 @@ func TestList(t *testing.T) {
 	server, service := setupTestServer(t)
 	defer server.Close()
 
-	vms, err := service.List(context.Background(), 10)
+	options := map[string]any{"limit": 10}
+	vms, err := service.List(context.Background(), options)
 
 	assert.NoError(t, err)
 	assert.Len(t, vms, 2)

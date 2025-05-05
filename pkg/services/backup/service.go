@@ -42,57 +42,59 @@ func New(
 
 func (s *Service) ListJobs(ctx context.Context, limit int) ([]*payloads.BackupJob, error) {
 	var allJobs []*payloads.BackupJob
-
 	jobTypes := []string{"vm", "metadata", "mirror"}
 
+	params := make(map[string]any)
+	if limit <= 0 {
+		params["limit"] = core.DefaultTaskListLimit
+	} else {
+		params["limit"] = limit
+	}
+
 	for _, jobType := range jobTypes {
-		var jobURLs []string
 		typePath := core.NewPathBuilder().Resource("backup").Resource("jobs").Resource(jobType).Build()
 
-		params := make(map[string]any)
-		if limit > 0 {
-			params["limit"] = limit
-		}
-
-		err := client.TypedGet(ctx, s.client, typePath, params, &jobURLs)
+		// The API returns backup job paths, not full backup job objects directly
+		var jobPaths []string
+		err := client.TypedGet(ctx, s.client, typePath, params, &jobPaths)
 		if err != nil {
-			s.log.Warn("Failed to get backup job URLs for type",
+			s.log.Warn("Failed to get backup job paths for type",
 				zap.String("type", jobType),
 				zap.Error(err))
 			continue
 		}
 
-		for _, urlPath := range jobURLs {
-			parts := strings.Split(urlPath, "/")
-			if len(parts) < 1 {
-				s.log.Warn("Invalid job URL format", zap.String("url", urlPath))
+		s.log.Debug("Retrieved backup job paths",
+			zap.String("type", jobType),
+			zap.Int("count", len(jobPaths)))
+
+		// Fetch each backup job by ID
+		for _, jobPath := range jobPaths {
+			// Extract the job ID from the path (/rest/v0/backup/jobs/{type}/{id})
+			pathParts := strings.Split(jobPath, "/")
+			if len(pathParts) < 7 {
+				s.log.Warn("Invalid backup job path format, skipping",
+					zap.String("jobPath", jobPath))
 				continue
 			}
 
-			idStr := parts[len(parts)-1]
-
-			var job payloads.BackupJob
-			jobPath := core.NewPathBuilder().
-				Resource("backup").
-				Resource("jobs").
-				Resource(jobType).
-				IDString(idStr).
-				Build()
-
-			err := client.TypedGet(ctx, s.client, jobPath, core.EmptyParams, &job)
+			jobID := pathParts[len(pathParts)-1]
+			job, err := s.GetJob(ctx, jobID)
 			if err != nil {
-				s.log.Warn("Failed to get backup job by ID",
-					zap.String("type", jobType),
-					zap.String("id", idStr),
+				s.log.Warn("Failed to get backup job details, skipping",
+					zap.String("jobPath", jobPath),
+					zap.String("jobID", jobID),
 					zap.Error(err))
 				continue
 			}
 
+			// Ensure the job type is set
 			job.Type = jobType
-			allJobs = append(allJobs, &job)
+			allJobs = append(allJobs, job)
 		}
 	}
 
+	s.log.Debug("Retrieved full backup job objects", zap.Int("count", len(allJobs)))
 	return allJobs, nil
 }
 

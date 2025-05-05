@@ -41,44 +41,39 @@ func New(
 }
 
 func (s *Service) GetRestorePoints(ctx context.Context, vmID uuid.UUID) ([]*payloads.RestorePoint, error) {
-	var result []*payloads.RestorePoint
-
 	path := core.NewPathBuilder().
 		Resource("backup").
 		Resource("logs").
 		Build()
 
-	// TODO: Filter logs by VM ID
-	options := map[string]any{
-		"limit": 200,
+	params := map[string]any{
+		"vm":     vmID.String(),
+		"status": "success",
 	}
 
 	var logs []*payloads.BackupLog
-	err := client.TypedGet(ctx, s.client, path, options, &logs)
+	err := client.TypedGet(ctx, s.client, path, params, &logs)
 	if err != nil {
-		s.log.Error("Failed to get backup logs", zap.Error(err))
+		s.log.Error("Failed to get backup logs for VM",
+			zap.String("vmID", vmID.String()),
+			zap.Error(err))
 		return nil, err
 	}
 
-	s.log.Debug("Retrieved backup logs", zap.Int("count", len(logs)))
-
-	// TODO: Filter logs by VM ID
-	for _, log := range logs {
-		if log.Status == payloads.BackupLogStatusSuccess {
-			restorePoint := &payloads.RestorePoint{
-				ID:         log.ID,
-				Name:       log.Name,
-				BackupTime: time.Now().Add(-time.Duration(log.Duration) * time.Second),
-				Type:       "backup",
-			}
-			result = append(result, restorePoint)
-		}
-	}
-
-	s.log.Debug("Filtered restore points for VM",
+	s.log.Debug("Retrieved backup logs for VM",
 		zap.String("vmID", vmID.String()),
-		zap.Int("totalLogs", len(logs)),
-		zap.Int("matchingPoints", len(result)))
+		zap.Int("count", len(logs)))
+
+	result := make([]*payloads.RestorePoint, 0, len(logs))
+	for _, log := range logs {
+		restorePoint := &payloads.RestorePoint{
+			ID:         log.ID,
+			Name:       log.Name,
+			BackupTime: time.Now().Add(-time.Duration(log.Duration) * time.Second),
+			Type:       "backup",
+		}
+		result = append(result, restorePoint)
+	}
 
 	return result, nil
 }
@@ -167,42 +162,4 @@ func (s *Service) ImportVM(ctx context.Context, options *payloads.ImportOptions)
 	return &payloads.Task{
 		Status: payloads.Success,
 	}, nil
-}
-
-func (s *Service) ListRestoreLogs(ctx context.Context, limit int) ([]*payloads.RestoreLog, error) {
-	var result []*payloads.RestoreLog
-	path := core.NewPathBuilder().
-		Resource("restore").
-		Resource("logs").
-		Build()
-
-	options := map[string]any{}
-	if limit > 0 {
-		options["limit"] = limit
-	}
-
-	err := client.TypedGet(ctx, s.client, path, options, &result)
-	if err != nil {
-		s.log.Error("Failed to list restore logs", zap.Error(err))
-		return nil, err
-	}
-
-	return result, nil
-}
-
-func (s *Service) GetRestoreLog(ctx context.Context, id string) (*payloads.RestoreLog, error) {
-	var result payloads.RestoreLog
-	path := core.NewPathBuilder().
-		Resource("restore").
-		Resource("logs").
-		IDString(id).
-		Build()
-
-	err := client.TypedGet(ctx, s.client, path, core.EmptyParams, &result)
-	if err != nil {
-		s.log.Error("Failed to get restore log", zap.Error(err))
-		return nil, err
-	}
-
-	return &result, nil
 }

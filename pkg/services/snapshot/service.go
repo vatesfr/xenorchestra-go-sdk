@@ -48,26 +48,57 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.Snapshot
 	return &result, nil
 }
 
-func (s *Service) List(ctx context.Context, limit int) ([]*payloads.Snapshot, error) {
+func (s *Service) List(ctx context.Context, options map[string]any) ([]*payloads.Snapshot, error) {
 	path := core.NewPathBuilder().Resource("vm-snapshots").Build()
-
-	params := map[string]any{
-		"limit": limit,
+	params := make(map[string]any)
+	for k, v := range options {
+		params[k] = v
+	}
+	if _, ok := options["limit"]; !ok {
+		params["limit"] = core.DefaultTaskListLimit
 	}
 
-	var result []*payloads.Snapshot
-	err := client.TypedGet(ctx, s.client, path, params, &result)
+	var snapshotPaths []string
+	err := client.TypedGet(ctx, s.client, path, params, &snapshotPaths)
 	if err != nil {
-		s.log.Error("failed to list snapshots", zap.Error(err))
+		s.log.Error("Failed to list snapshot paths", zap.Error(err), zap.Any("options", options))
 		return nil, err
 	}
-	return result, nil
+	s.log.Debug("Retrieved snapshot paths", zap.Int("count", len(snapshotPaths)))
+
+	var snapshots []*payloads.Snapshot
+	for _, snapshotPath := range snapshotPaths {
+		idStr := strings.TrimPrefix(snapshotPath, "/rest/v0/vm-snapshots/")
+		if idStr == snapshotPath {
+			idStr = strings.TrimPrefix(snapshotPath, "/vm-snapshots/")
+		}
+		snapshotID, err := uuid.FromString(idStr)
+		if err != nil {
+			s.log.Warn("Invalid snapshot path format, skipping",
+				zap.String("snapshotPath", snapshotPath),
+				zap.Error(err))
+			continue
+		}
+
+		snapshot, err := s.GetByID(ctx, snapshotID)
+		if err != nil {
+			s.log.Warn("Failed to get snapshot details, skipping",
+				zap.String("snapshotPath", snapshotPath),
+				zap.String("snapshotID", snapshotID.String()),
+				zap.Error(err))
+			continue
+		}
+		snapshots = append(snapshots, snapshot)
+	}
+
+	s.log.Debug("Retrieved full snapshot objects", zap.Int("count", len(snapshots)))
+	return snapshots, nil
 }
 
 func (s *Service) Create(ctx context.Context, vmID uuid.UUID, name string) (payloads.TaskID, error) {
 	payload := map[string]any{
 		"name_label": name,
-		"vm":         vmID.String(),
+		"id":         vmID.String(),
 	}
 
 	path := core.NewPathBuilder().
@@ -134,7 +165,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *Service) Revert(ctx context.Context, vmID uuid.UUID, snapshotID uuid.UUID) error {
 	params := map[string]any{
-		"vm":       vmID.String(),
+		"id":       vmID.String(),
 		"snapshot": snapshotID.String(),
 	}
 

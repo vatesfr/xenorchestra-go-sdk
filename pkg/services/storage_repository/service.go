@@ -49,14 +49,12 @@ func (s *Service) List(
 	filter *payloads.StorageRepositoryFilter,
 	limit int,
 ) ([]*payloads.StorageRepository, error) {
-	var urlPaths []string
 	path := core.NewPathBuilder().
 		Resource("srs").
 		Build()
 
-	var params map[string]any
+	params := make(map[string]any)
 	if filter != nil {
-		params = make(map[string]any)
 		if filter.NameLabel != "" {
 			params["name_label"] = filter.NameLabel
 		}
@@ -66,56 +64,55 @@ func (s *Service) List(
 		if filter.SRType != "" {
 			params["SR_type"] = filter.SRType
 		}
-	} else {
-		params = make(map[string]any)
+		if len(filter.Tags) > 0 {
+			params["tags"] = strings.Join(filter.Tags, ",")
+		}
 	}
 
 	if limit > 0 {
 		params["limit"] = limit
 	}
 
-	err := client.TypedGet(ctx, s.client, path, params, &urlPaths)
+	var srPaths []string
+	err := client.TypedGet(ctx, s.client, path, params, &srPaths)
 	if err != nil {
-		s.log.Error("Failed to get storage repository URLs", zap.Error(err))
+		s.log.Error("Failed to list storage repository paths",
+			zap.Error(err),
+			zap.Any("filter", filter))
 		return nil, err
 	}
 
-	var result []*payloads.StorageRepository
-	for _, urlPath := range urlPaths {
-		parts := strings.Split(urlPath, "/")
-		idStr := parts[len(parts)-1]
+	s.log.Debug("Retrieved storage repository paths", zap.Int("count", len(srPaths)))
 
-		id, err := uuid.FromString(idStr)
+	var srs []*payloads.StorageRepository
+	for _, srPath := range srPaths {
+		idStr := strings.TrimPrefix(srPath, "/rest/v0/srs/")
+		if idStr == srPath {
+			idStr = strings.TrimPrefix(srPath, "/srs/")
+		}
+
+		srID, err := uuid.FromString(idStr)
 		if err != nil {
-			s.log.Warn("Failed to parse UUID from URL path",
-				zap.String("path", urlPath),
-				zap.String("id", idStr),
+			s.log.Warn("Invalid storage repository path format, skipping",
+				zap.String("srPath", srPath),
 				zap.Error(err))
 			continue
 		}
 
-		sr, err := s.GetByID(ctx, id)
+		sr, err := s.GetByID(ctx, srID)
 		if err != nil {
-			s.log.Warn("Failed to get storage repository details",
-				zap.String("id", id.String()),
+			s.log.Warn("Failed to get storage repository details, skipping",
+				zap.String("srPath", srPath),
+				zap.String("srID", srID.String()),
 				zap.Error(err))
 			continue
 		}
 
-		result = append(result, sr)
+		srs = append(srs, sr)
 	}
 
-	if filter != nil && len(filter.Tags) > 0 {
-		var filtered []*payloads.StorageRepository
-		for _, sr := range result {
-			if containsAllTags(sr.Tags, filter.Tags) {
-				filtered = append(filtered, sr)
-			}
-		}
-		result = filtered
-	}
-
-	return result, nil
+	s.log.Debug("Retrieved full storage repository objects", zap.Int("count", len(srs)))
+	return srs, nil
 }
 
 func (s *Service) ListByPool(ctx context.Context, poolID uuid.UUID, limit int) ([]*payloads.StorageRepository, error) {

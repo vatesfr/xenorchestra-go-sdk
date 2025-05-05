@@ -24,10 +24,9 @@ import (
 )
 
 const (
-	// errorID is a UUID string used to trigger error conditions in tests
-	// It's used to simulate failures in API calls like delete and revert operations
-	// This is defined here since we were using different values in different tests
 	errorID = "b509922c-6982-4711-86a4-cb6784c07468"
+	// notFoundID is a UUID string used to trigger not found errors in tests
+	notFoundID = "11111111-1111-1111-1111-111111111111"
 )
 
 func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) {
@@ -38,19 +37,21 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/rest/v0/vm-snapshots/") && r.Method == http.MethodGet:
 				parts := strings.Split(r.URL.Path, "/")
-				snapshotID := parts[len(parts)-1]
-				id, err := uuid.FromString(snapshotID)
+				snapshotIDStr := parts[len(parts)-1]
+				id, err := uuid.FromString(snapshotIDStr)
 				if err != nil {
 					w.WriteHeader(http.StatusBadRequest)
+					_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid snapshot UUID format"})
+					return
+				}
+
+				if id == uuid.Must(uuid.FromString(notFoundID)) {
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"error": "snapshot not found"})
 					return
 				}
 
 				vmID := uuid.Must(uuid.NewV4())
-				if snapshotID == "nonexistent-id" {
-					w.WriteHeader(http.StatusNotFound)
-					return
-				}
-
 				snapshot := payloads.Snapshot{
 					ID:              id,
 					NameLabel:       "test-snapshot",
@@ -61,8 +62,9 @@ func setupSnapshotTestServer(t *testing.T) (*httptest.Server, library.Snapshot) 
 
 				if err := json.NewEncoder(w).Encode(snapshot); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
-					return
+					fmt.Printf("Error encoding snapshot response: %v\n", err)
 				}
+				return
 
 			case r.URL.Path == "/rest/v0/vm-snapshots" && r.Method == http.MethodGet:
 				var snapshotURLs []string
@@ -271,7 +273,7 @@ func TestGetByID(t *testing.T) {
 	})
 
 	t.Run("nonexistent snapshot", func(t *testing.T) {
-		id, _ := uuid.FromString("nonexistent-id")
+		id := uuid.Must(uuid.FromString(notFoundID))
 		snapshot, err := service.GetByID(ctx, id)
 
 		assert.Error(t, err)

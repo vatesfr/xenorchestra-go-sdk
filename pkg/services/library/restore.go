@@ -16,7 +16,4 @@ type Restore interface {
 	GetRestorePoints(ctx context.Context, vmID uuid.UUID) ([]*payloads.RestorePoint, error)
 	RestoreVM(ctx context.Context, backupID uuid.UUID, options *payloads.RestoreOptions) error
 	ImportVM(ctx context.Context, options *payloads.ImportOptions) (*payloads.Task, error)
-
-	ListRestoreLogs(ctx context.Context, limit int) ([]*payloads.RestoreLog, error)
-	GetRestoreLog(ctx context.Context, id string) (*payloads.RestoreLog, error)
 }

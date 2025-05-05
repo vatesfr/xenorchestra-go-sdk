@@ -52,6 +52,49 @@ func (s *Service) Get(ctx context.Context, path string) (*payloads.Task, error) 
 	return &result, nil
 }
 
+func (s *Service) List(ctx context.Context, options map[string]any) ([]*payloads.Task, error) {
+	path := core.NewPathBuilder().Resource("tasks").Build()
+
+	params := make(map[string]any)
+
+	// Copy all options to params
+	for k, v := range options {
+		params[k] = v
+	}
+
+	if _, ok := options["limit"]; !ok {
+		params["limit"] = core.DefaultTaskListLimit
+	}
+
+	var taskPaths []string
+	err := client.TypedGet(ctx, s.client, path, params, &taskPaths)
+	if err != nil {
+		s.log.Error("Failed to list task paths", zap.Error(err))
+		return nil, err
+	}
+
+	s.log.Debug("Retrieved task paths", zap.Int("count", len(taskPaths)))
+
+	var tasks []*payloads.Task
+	for _, taskPath := range taskPaths {
+		taskID := s.cleanDuplicateV0Path(taskPath)
+
+		task, err := s.Get(ctx, taskID)
+		if err != nil {
+			s.log.Warn("Failed to get task details, skipping",
+				zap.String("taskPath", taskPath),
+				zap.String("taskID", taskID),
+				zap.Error(err))
+			continue
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	s.log.Debug("Retrieved full task objects", zap.Int("count", len(tasks)))
+	return tasks, nil
+}
+
 func (s *Service) Abort(ctx context.Context, id string) error {
 	path := core.NewPathBuilder().Resource("tasks").IDString(id).Action("abort").Build()
 

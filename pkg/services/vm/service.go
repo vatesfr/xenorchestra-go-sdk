@@ -53,60 +53,46 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, erro
 	return &result, nil
 }
 
-func (s *Service) List(ctx context.Context, limit int) ([]*payloads.VM, error) {
-	var vmURLs []string
-	err := client.TypedGet(ctx, s.client, "vms", core.EmptyParams, &vmURLs)
+func (s *Service) List(ctx context.Context, options map[string]any) ([]*payloads.VM, error) {
+	path := core.NewPathBuilder().Resource("vms").Build()
+
+	// The API returns VM URL paths, not VM objects directly
+	var vmPaths []string
+	err := client.TypedGet(ctx, s.client, path, options, &vmPaths)
 	if err != nil {
+		s.log.Error("failed to list VM paths", zap.Error(err))
 		return nil, err
 	}
 
-	if len(vmURLs) == 0 {
-		return []*payloads.VM{}, nil
-	}
+	s.log.Debug("Retrieved VM paths", zap.Int("count", len(vmPaths)))
 
-	// TODO: add a config to set the max number of VMs to fetch
-	// We can also use the fields name_label, name_description,
-	// power_state to filter the VMs we want to fetch...
-	maxVMs := limit
-	if len(vmURLs) < maxVMs {
-		maxVMs = len(vmURLs)
-	}
-
-	fmt.Printf("Found %d VM references, fetching details for first %d\n", len(vmURLs), maxVMs)
-
-	result := make([]*payloads.VM, 0, maxVMs)
-
-	for i := 0; i < maxVMs; i++ {
-		urlPath := vmURLs[i]
-
-		parts := strings.Split(urlPath, "/")
-		if len(parts) < 5 {
-			continue
-		}
-
-		vmID := parts[len(parts)-1]
-
-		id, err := uuid.FromString(vmID)
+	// Fetch each VM by ID
+	var vms []*payloads.VM
+	for _, vmPath := range vmPaths {
+		// Extract the VM ID from the path (/rest/v0/vms/uuid)
+		idStr := strings.TrimPrefix(vmPath, "/rest/v0/vms/")
+		vmID, err := uuid.FromString(idStr)
 		if err != nil {
-			s.log.Error("invalid UUID in VM URL", zap.String("vmID", vmID))
+			s.log.Warn("Invalid VM path format, skipping",
+				zap.String("vmPath", vmPath),
+				zap.Error(err))
 			continue
 		}
 
-		vm, err := s.GetByID(ctx, id)
+		vm, err := s.GetByID(ctx, vmID)
 		if err != nil {
-			s.log.Error("failed to fetch VM", zap.String("vmID", id.String()), zap.Error(err))
+			s.log.Warn("Failed to get VM details, skipping",
+				zap.String("vmPath", vmPath),
+				zap.String("vmID", vmID.String()),
+				zap.Error(err))
 			continue
 		}
 
-		result = append(result, vm)
+		vms = append(vms, vm)
 	}
 
-	if len(result) == 0 {
-		s.log.Error("no valid VMs found")
-		return nil, fmt.Errorf("no valid VMs found")
-	}
-
-	return result, nil
+	s.log.Debug("Retrieved full VM objects", zap.Int("count", len(vms)))
+	return vms, nil
 }
 
 func (s *Service) Create(ctx context.Context, vm *payloads.VM) (payloads.TaskID, error) {
@@ -160,15 +146,48 @@ func (s *Service) Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
-	var result struct {
-		Success bool `json:"success"`
-	}
 	path := core.NewPathBuilder().Resource("vms").ID(id).Build()
-	err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result)
-	if err != nil {
-		s.log.Error("failed to delete VM", zap.String("vmID", id.String()), zap.Error(err))
-		return err
+
+	// Try getting the result as a string first to handle "OK" responses
+	// This is for debugging purposes
+	var stringResult string
+	err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &stringResult)
+
+	if err == nil {
+		// Check for plain text "OK" response
+		if strings.TrimSpace(stringResult) == "OK" {
+			s.log.Debug("Successfully deleted VM with string response",
+				zap.String("vmID", id.String()),
+				zap.String("response", stringResult))
+			return nil
+		}
+
+		s.log.Debug("VM delete response",
+			zap.String("vmID", id.String()),
+			zap.String("response", stringResult))
+	} else if strings.Contains(err.Error(), "invalid character 'O' looking for beginning of value") {
+		// This error happens when the API returns "OK" but TypedDelete tries to parse it as JSON
+		s.log.Debug("Received 'OK' response for VM deletion", zap.String("vmID", id.String()))
+		return nil
 	}
+
+	// If the string approach didn't work, try with a structured response
+	if err != nil {
+		var result struct {
+			Success bool `json:"success"`
+		}
+		err = client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result)
+		if err != nil {
+			s.log.Error("failed to delete VM", zap.String("vmID", id.String()), zap.Error(err))
+			return err
+		}
+
+		if !result.Success {
+			s.log.Warn("VM delete operation reported non-success", zap.String("vmID", id.String()))
+			return fmt.Errorf("vm delete operation returned success=false")
+		}
+	}
+
 	return nil
 }
 
