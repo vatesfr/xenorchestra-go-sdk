@@ -48,7 +48,7 @@ func TestVM_Snapshot(t *testing.T) {
 	require.NotNil(t, snapshot)
 	require.Equal(t, snapshotName, snapshot.NameLabel)
 
-	allSnapshots, err := tc.Client.VM().Snapshot().List(ctx, 0)
+	allSnapshots, err := tc.Client.VM().Snapshot().List(ctx, map[string]any{"limit": 10})
 	require.NoError(t, err)
 	found := false
 	for _, s := range allSnapshots {
@@ -71,7 +71,7 @@ func TestVM_Snapshot(t *testing.T) {
 
 	// List (verify snapshot is deleted)
 	// Note: Snapshot List does not filter by VM ID in the current interface
-	allSnapshots, err = tc.Client.VM().Snapshot().List(ctx, 0) // Use List instead of ListByVM
+	allSnapshots, err = tc.Client.VM().Snapshot().List(ctx, map[string]any{})
 	require.NoError(t, err)
 	found = false
 	for _, s := range allSnapshots {

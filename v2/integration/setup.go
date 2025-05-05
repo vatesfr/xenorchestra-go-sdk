@@ -141,7 +141,7 @@ func (tc *TestClient) CleanupVM(t *testing.T, nameLabel string) {
 	}
 
 	ctx := context.Background()
-	vms, err := tc.Client.VM().List(ctx, 0)
+	vms, err := tc.Client.VM().List(ctx, map[string]any{"limit": 10})
 	if err != nil {
 		t.Logf("Failed to list VMs for cleanup: %v", err)
 		return

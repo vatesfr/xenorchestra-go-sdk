@@ -46,7 +46,7 @@ func TestVM_CRUD(t *testing.T) {
 	require.NotNil(t, readVM)
 	require.Equal(t, vmName, readVM.NameLabel)
 
-	allVMs, err := tc.Client.VM().List(ctx, 0)
+	allVMs, err := tc.Client.VM().List(ctx, map[string]any{"limit": 10})
 	assert.NoError(t, err)
 	var found bool
 	for _, v := range allVMs {

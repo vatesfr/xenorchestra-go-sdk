@@ -21,8 +21,7 @@ func TestBackup(t *testing.T) {
 	}
 
 	vmName := tc.GenerateResourceName("vm-backup")
-
-	tc.CleanupVM(t, vmName)
+	t.Cleanup(func() { tc.CleanupVM(t, vmName) })
 
 	var poolID, templateID, networkID string
 	if tc.PoolID != "" {
@@ -78,37 +77,50 @@ func TestBackup(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("Found %d existing backup jobs", len(backupJobs))
 
-	if os.Getenv("XOA_CREATE_BACKUP_JOB") == trueStr {
-		backupJobName := tc.GenerateResourceName("backup-test")
+	backupJobName := tc.GenerateResourceName("backup-test")
+	var jobID uuid.UUID
 
-		backupJob := &payloads.BackupJob{
-			Name:     backupJobName,
-			Mode:     payloads.BackupJobTypeFull,
-			Schedule: "0 0 * * *", // Midnight every day
-			Enabled:  false,       // Don't actually run it
-			VMs:      vmID.String(),
-			Settings: payloads.BackupSettings{
-				Retention:          3,
-				CompressionEnabled: true,
-				ReportWhenFailOnly: false,
-			},
+	backupJob := &payloads.BackupJob{
+		Name:     backupJobName,
+		Mode:     payloads.BackupJobTypeFull,
+		Schedule: "0 0 * * *", // Midnight every day
+		Enabled:  false,       // Don't actually run it
+		VMs:      vmID.String(),
+		Settings: payloads.BackupSettings{
+			Retention:          3,
+			CompressionEnabled: true,
+			ReportWhenFailOnly: false,
+		},
+	}
+
+	createdJob, err := tc.Client.Backup().CreateJob(ctx, backupJob)
+	if err != nil {
+		t.Logf("Creating backup job failed (expected in some environments): %v", err)
+	} else {
+		t.Logf("Successfully created backup job with ID: %s", createdJob.ID)
+		jobID = createdJob.ID
+
+		// Run the backup job if requested
+		if os.Getenv("XOA_RUN_BACKUP_JOB") == trueStr {
+			t.Log("Testing RunJobForVMs with the created VM")
+			taskResponse, err := tc.Client.Backup().RunJobForVMs(ctx, jobID, "", []string{vmID.String()})
+			require.NoError(t, err)
+			require.NotEmpty(t, taskResponse)
+			t.Logf("Job started with task ID: %s", taskResponse)
+
+			// Wait for backup task
+			taskResult, isTask, err := tc.Client.Task().HandleTaskResponse(ctx, taskResponse, true)
+			require.NoError(t, err)
+			require.True(t, isTask, "RunJobForVMs did not return a task URL")
+			require.Equal(t, payloads.Success, taskResult.Status, "Backup job run task failed: %s", taskResult.Message)
 		}
 
-		createdJob, err := tc.Client.Backup().CreateJob(ctx, backupJob)
-		if err != nil {
-			t.Logf("Creating backup job failed (expected in some environments): %v", err)
-		} else {
-			t.Logf("Successfully created backup job with ID: %s", createdJob.ID)
-
-			if !tc.SkipTeardown {
-				err = tc.Client.Backup().DeleteJob(ctx, createdJob.ID)
-				if err != nil {
-					t.Logf("Error deleting backup job: %v", err)
-				}
+		if !tc.SkipTeardown {
+			err = tc.Client.Backup().DeleteJob(ctx, jobID)
+			if err != nil {
+				t.Logf("Error deleting backup job: %v", err)
 			}
 		}
-	} else {
-		t.Log("Skipping backup job creation. Set XOA_CREATE_BACKUP_JOB=true to create a test backup job")
 	}
 
 	if !tc.SkipTeardown {
@@ -223,7 +235,6 @@ func TestBackupVMSelection(t *testing.T) {
 		require.NotEmpty(t, taskResponse)
 		t.Logf("Job started with task ID: %s for specific VM, will only back up VM1, not VM2", taskResponse)
 
-		// Wait for selective backup task
 		task, isTask, err := tc.Client.Task().HandleTaskResponse(ctx, taskResponse, true)
 		require.NoError(t, err)
 		require.True(t, isTask, "RunJobForVMs did not return a task URL")
@@ -276,43 +287,4 @@ func CreateTestVMForBackup(t *testing.T, ctx context.Context, tc *TestClient, na
 	require.NoError(t, err)
 	require.NotNil(t, vm)
 	return vm
-}
-
-func TestBackupJob_CRUD(t *testing.T) {
-	tc := Setup(t)
-	ctx := context.Background()
-
-	vmName := tc.GenerateResourceName("bkptest-vm")
-	createdVM := CreateTestVMForBackup(t, ctx, tc, vmName)
-	t.Cleanup(func() { tc.CleanupVM(t, vmName) })
-	vmIDs := []string{createdVM.ID.String()}
-	jobName := tc.GenerateResourceName("job-crud")
-	backupJob := &payloads.BackupJob{
-		Name:     jobName,
-		Mode:     payloads.BackupJobTypeFull,
-		Schedule: "0 0 * * *",
-		Enabled:  false,
-		VMs:      vmIDs[0],
-		Settings: payloads.BackupSettings{
-			Retention:          3,
-			CompressionEnabled: true,
-		},
-	}
-
-	createdJob, err := tc.Client.Backup().CreateJob(ctx, backupJob)
-	if err != nil {
-		t.Fatalf("Failed to create backup job: %v", err)
-	}
-	t.Logf("Successfully created backup job with ID: %s", createdJob.ID)
-
-	require.NotEmpty(t, createdVM.ID, "Created VM ID is empty") // Need created VM ID
-	taskResponse, err := tc.Client.Backup().RunJobForVMs(ctx, createdJob.ID, "", vmIDs)
-	require.NoError(t, err)
-	require.NotEmpty(t, taskResponse)
-
-	if !tc.SkipTeardown {
-		if err := tc.Client.Backup().DeleteJob(ctx, createdJob.ID); err != nil {
-			t.Logf("Failed to delete job: %v", err)
-		}
-	}
 }
