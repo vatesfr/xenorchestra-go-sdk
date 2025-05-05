@@ -29,15 +29,3 @@ type ImportOptions struct {
 	StartOnBoot   bool              `json:"start_on_boot,omitempty"`
 	NetworkConfig map[string]string `json:"network_config,omitempty"`
 }
-
-type RestoreLog struct {
-	ID        string    `json:"id"`
-	Message   string    `json:"message"`
-	Status    string    `json:"status"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time,omitempty"`
-	VMName    string    `json:"vm_name,omitempty"`
-	BackupID  string    `json:"backup_id,omitempty"`
-	SrID      string    `json:"sr_id,omitempty"`
-	Error     string    `json:"error,omitempty"`
-}
