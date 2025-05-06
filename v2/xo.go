@@ -12,7 +12,6 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/backup"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/jsonrpc"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
-	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/restore"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/snapshot"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/storage_repository"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/task"
@@ -82,13 +81,12 @@ func New(config *config.Config) (library.Library, error) {
 
 	taskService := task.New(client, log)
 	jsonrpcSvc := jsonrpc.New(legacyClient, log)
-	restoreService := restore.New(client, legacyClient, taskService, jsonrpcSvc, log)
 	snapshotService := snapshot.New(client, legacyClient, jsonrpcSvc, log)
 	storageRepositoryService := storage_repository.New(client, log)
 	backupService := backup.New(client, legacyClient, taskService, jsonrpcSvc, log)
 
 	return &XOClient{
-		vmService:                vm.New(client, restoreService, snapshotService, log),
+		vmService:                vm.New(client, snapshotService, log),
 		taskService:              taskService,
 		backupService:            backupService,
 		storageRepositoryService: storageRepositoryService,

@@ -7,7 +7,6 @@ import (
 type Library interface {
 	VM() VM
 	Task() Task
-	// Restore() Restore
 	Backup() Backup
 	StorageRepository() StorageRepository
 	// Added to provide access to the v1 client, allowing users to:

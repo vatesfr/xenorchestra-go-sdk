@@ -16,7 +16,6 @@ import (
 
 type Service struct {
 	// Part of the VM interface with their own interfaces
-	restoreService  library.Restore
 	snapshotService library.Snapshot
 
 	client *client.Client
@@ -25,13 +24,11 @@ type Service struct {
 
 func New(
 	client *client.Client,
-	restore library.Restore,
 	snapshot library.Snapshot,
 	log *logger.Logger,
 ) library.VM {
 	return &Service{
 		client:          client,
-		restoreService:  restore,
 		snapshotService: snapshot,
 		log:             log,
 	}
@@ -313,8 +310,4 @@ func (s *Service) HardReboot(ctx context.Context, id uuid.UUID) error {
 
 func (s *Service) Snapshot() library.Snapshot {
 	return s.snapshotService
-}
-
-func (s *Service) Restore() library.Restore {
-	return s.restoreService
 }

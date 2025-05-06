@@ -98,7 +98,6 @@ func (s *Service) List(ctx context.Context, options map[string]any) ([]*payloads
 func (s *Service) Create(ctx context.Context, vmID uuid.UUID, name string) (payloads.TaskID, error) {
 	payload := map[string]any{
 		"name_label": name,
-		"id":         vmID.String(),
 	}
 
 	path := core.NewPathBuilder().

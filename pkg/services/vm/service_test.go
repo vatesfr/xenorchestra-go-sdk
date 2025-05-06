@@ -157,10 +157,9 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM) {
 
 	var ctrl = gomock.NewController(t)
 
-	restoreService := mock_library.NewMockRestore(ctrl)
 	snapshotService := mock_library.NewMockSnapshot(ctrl)
 
-	return server, New(restClient, restoreService, snapshotService, log)
+	return server, New(restClient, snapshotService, log)
 }
 
 func TestGetByID(t *testing.T) {
