@@ -19,7 +19,6 @@ The v2 client uses the REST API and provides a more modern, type-safe interface.
 - [Architecture](docs/v2/02-architecture.md) - Design patterns and components
 - [Migration Guide](docs/v2/03-migration-guide.md) - How to migrate from v1 to v2
 - [Service Implementation Guide](docs/v2/04-service-implementation.md) - How to add new services
-- [Integration Testing](docs/v2/05-integration-testing.md) - How to run integration tests with WireGuard VPN
 
 ## 🧑🏻‍💻 Usage
 
