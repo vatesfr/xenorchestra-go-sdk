@@ -54,7 +54,6 @@ func (s *Service) ListJobs(ctx context.Context, limit int) ([]*payloads.BackupJo
 	for _, jobType := range jobTypes {
 		typePath := core.NewPathBuilder().Resource("backup").Resource("jobs").Resource(jobType).Build()
 
-		// The API returns backup job paths, not full backup job objects directly
 		var jobPaths []string
 		err := client.TypedGet(ctx, s.client, typePath, params, &jobPaths)
 		if err != nil {
@@ -68,9 +67,7 @@ func (s *Service) ListJobs(ctx context.Context, limit int) ([]*payloads.BackupJo
 			zap.String("type", jobType),
 			zap.Int("count", len(jobPaths)))
 
-		// Fetch each backup job by ID
 		for _, jobPath := range jobPaths {
-			// Extract the job ID from the path (/rest/v0/backup/jobs/{type}/{id})
 			pathParts := strings.Split(jobPath, "/")
 			if len(pathParts) < 7 {
 				s.log.Warn("Invalid backup job path format, skipping",
@@ -88,7 +85,6 @@ func (s *Service) ListJobs(ctx context.Context, limit int) ([]*payloads.BackupJo
 				continue
 			}
 
-			// Ensure the job type is set
 			job.Type = jobType
 			allJobs = append(allJobs, job)
 		}
@@ -215,46 +211,41 @@ func (s *Service) UpdateJob(ctx context.Context, job *payloads.BackupJob) (*payl
 	}
 
 	params := map[string]any{
-		"id":      job.ID.String(),
-		"name":    job.Name,
-		"mode":    job.Mode,
-		"vms":     job.VMSelection(),
-		"enabled": job.Enabled,
+		"id":   job.ID.String(),
+		"name": job.Name,
+		"mode": job.Mode,
+		"vms":  job.VMSelection(),
 	}
 
-	settings := map[string]any{}
-
+	settings := map[string]any{
+		"enabled": job.Enabled,
+	}
 	if job.Settings.Retention > 0 {
 		settings["retention"] = job.Settings.Retention
 	}
-
 	if job.Settings.RemoteEnabled {
 		settings["remoteEnabled"] = job.Settings.RemoteEnabled
 		if job.Settings.RemoteRetention > 0 {
 			settings["remoteRetention"] = job.Settings.RemoteRetention
 		}
 	}
-
 	if job.Settings.ReportWhenFailOnly {
 		settings["reportWhen"] = "failure"
 	} else {
 		settings["reportWhen"] = "always"
 	}
-
 	if len(job.Settings.ReportRecipients) > 0 {
 		settings["reportRecipients"] = job.Settings.ReportRecipients
 	}
-
 	if job.Settings.CompressionEnabled {
 		settings["compression"] = "native"
 	}
-
 	settings["offlineBackup"] = job.Settings.OfflineBackup
 	settings["checkpointSnapshot"] = job.Settings.CheckpointSnapshot
 
 	if len(settings) > 0 {
-		for k, v := range settings {
-			params[k] = v
+		params["settings"] = map[string]any{
+			"": settings,
 		}
 	}
 
