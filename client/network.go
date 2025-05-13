@@ -96,7 +96,7 @@ func (c CreateBondedNetworkRequest) Propagated(obj interface{}) bool {
 type UpdateNetworkRequest struct {
 	Id              string  `mapstructure:"id"`
 	Automatic       bool    `mapstructure:"automatic"`
-	DefaultIsLocked bool    `mapstructure:"defaultIsLocked"`
+	DefaultIsLocked *bool   `mapstructure:"defaultIsLocked,omitempty"`
 	NameDescription *string `mapstructure:"name_description,omitempty"`
 	NameLabel       *string `mapstructure:"name_label,omitempty"`
 	Nbd             bool    `mapstructure:"nbd"`
@@ -138,7 +138,7 @@ func (c *Client) CreateNetwork(netReq CreateNetworkRequest) (*Network, error) {
 		_, err = c.UpdateNetwork(UpdateNetworkRequest{
 			Id:              id,
 			Automatic:       netReq.Automatic,
-			DefaultIsLocked: netReq.DefaultIsLocked,
+			DefaultIsLocked: &netReq.DefaultIsLocked,
 		})
 		if err != nil {
 			return nil, err
@@ -173,7 +173,7 @@ func (c *Client) CreateBondedNetwork(netReq CreateBondedNetworkRequest) (*Networ
 		_, err = c.UpdateNetwork(UpdateNetworkRequest{
 			Id:              id,
 			Automatic:       netReq.Automatic,
-			DefaultIsLocked: netReq.DefaultIsLocked,
+			DefaultIsLocked: &netReq.DefaultIsLocked,
 		})
 		if err != nil {
 			return nil, err
