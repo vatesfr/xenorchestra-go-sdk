@@ -42,10 +42,7 @@ func (v VDI) Compare(obj interface{}) bool {
 		return true
 	}
 
-	labelsMatch := false
-	if v.NameLabel == other.NameLabel {
-		labelsMatch = true
-	}
+	labelsMatch := v.NameLabel == other.NameLabel
 
 	if v.PoolId == other.PoolId && labelsMatch {
 		return true
@@ -367,7 +364,7 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	fmt.Printf("[DEBUG] Received response from rest api: %s\n", bodyStr)
 
 	if res.StatusCode != 200 {
-		return VDI{}, fmt.Errorf("failed to create VDI, received response from server: %v\n", bodyStr)
+		return VDI{}, fmt.Errorf("failed to create VDI, received response from server: %v", bodyStr)
 	}
 
 	return c.GetVDI(VDI{

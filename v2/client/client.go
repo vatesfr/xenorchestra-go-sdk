@@ -59,9 +59,13 @@ func New(config *config.Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to parse url: %w", err)
 	}
 
-	if baseURL.Scheme == WebSocketScheme {
+	// I am not sure about this however, it was part
+	// of the v1 with JSONRPC and make it easier to
+	// switch to the new v2 REST API instead.
+	switch baseURL.Scheme {
+	case WebSocketScheme:
 		baseURL.Scheme = "http"
-	} else if baseURL.Scheme == SecureWebSocketScheme {
+	case SecureWebSocketScheme:
 		baseURL.Scheme = "https"
 	}
 
@@ -87,12 +91,16 @@ func New(config *config.Config) (*Client, error) {
 
 	if config.Token != "" {
 		client.AuthToken = Token(config.Token)
+		// No need to create a new token
+		return client, nil
 	} else if config.Username != "" && config.Password != "" {
 		token, err := client.authenticate(config.Username, config.Password)
 		if err != nil {
 			return nil, fmt.Errorf("failed to authenticate: %w", err)
 		}
 		client.AuthToken = token
+	} else {
+		return nil, errors.New("either token or username/password are required for authentication")
 	}
 
 	return client, nil
@@ -140,13 +148,19 @@ func (c *Client) authenticate(username, password string) (Token, error) {
 
 func (c *Client) do(ctx context.Context, method, endpoint string, params map[string]any, result any) error {
 	reqURL := *c.BaseURL
-	reqURL.Path = path.Join(reqURL.Path, endpoint)
+
+	// We are using the v0 REST API, but also the previous REST API
+	if strings.HasPrefix(endpoint, "api/") {
+		reqURL.Path = strings.TrimSuffix(reqURL.Path, core.RestV0Path)
+	} else {
+		reqURL.Path = path.Join(reqURL.Path, endpoint)
+	}
 
 	var reqBody io.Reader
 	if params != nil && (method == "POST" || method == "PUT" || method == "PATCH") {
 		jsonData, err := json.Marshal(params)
 		if err != nil {
-			return err
+			return core.ErrFailedToMarshalParams.WithArgs(err, string(jsonData))
 		}
 		reqBody = bytes.NewBuffer(jsonData)
 	} else if params != nil {
@@ -159,7 +173,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 
 	req, err := http.NewRequestWithContext(ctx, method, reqURL.String(), reqBody)
 	if err != nil {
-		return err
+		return core.ErrFailedToMakeRequest.WithArgs(err, reqURL.String())
 	}
 
 	req.Header.Set("Accept", "application/json")
@@ -174,13 +188,13 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
-		return err
+		return core.ErrFailedToDoRequest.WithArgs(err, reqURL.String())
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
+		return core.ErrFailedToReadResponse.WithArgs(err, string(bodyBytes))
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -188,8 +202,13 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 	}
 
 	if result != nil && len(bodyBytes) > 0 {
+		if strPtr, ok := result.(*string); ok {
+			*strPtr = string(bodyBytes)
+			return nil
+		}
+
 		if err := json.Unmarshal(bodyBytes, result); err != nil {
-			return fmt.Errorf("failed to parse response: %w, body: %s", err, string(bodyBytes))
+			return core.ErrFailedToUnmarshalResponse.WithArgs(err, string(bodyBytes))
 		}
 	}
 
@@ -213,10 +232,10 @@ func TypedGet[P any, R any](ctx context.Context, c *Client, endpoint string, par
 	if !reflect.ValueOf(params).IsZero() {
 		data, err := json.Marshal(params)
 		if err != nil {
-			return err
+			return core.ErrFailedToMarshalParams.WithArgs(err, string(data))
 		}
 		if err := json.Unmarshal(data, &paramsMap); err != nil {
-			return err
+			return core.ErrFailedToUnmarshalParams.WithArgs(err, string(data))
 		}
 	}
 
@@ -229,22 +248,29 @@ func (c *Client) post(ctx context.Context, endpoint string, params map[string]an
 
 // TypedPost performs a type-safe POST request to the API.
 // It converts the params struct to a map and unmarshals the response into the result struct.
+// If the API returns a string (like a URL) and the result type is a string, it will handle
+// that case appropriately without attempting JSON unmarshaling.
 //
 // Example:
 //
 //	var result MyResponseType
 //	err := TypedPost(ctx, client, "vms", MyParamsType{Name: "new-vm"}, &result)
+//
+//	// For string responses like URLs
+//	var urlResult string
+//	err := TypedPost(ctx, client, "generate-link", MyParamsType{ID: "123"}, &urlResult)
 func TypedPost[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
 	var paramsMap map[string]any
 	if !reflect.ValueOf(params).IsZero() {
 		data, err := json.Marshal(params)
 		if err != nil {
-			return err
+			return core.ErrFailedToMarshalParams.WithArgs(err, string(data))
 		}
 		if err := json.Unmarshal(data, &paramsMap); err != nil {
-			return err
+			return core.ErrFailedToUnmarshalParams.WithArgs(err, string(data))
 		}
 	}
+
 	return c.post(ctx, endpoint, paramsMap, result)
 }
 
@@ -264,11 +290,61 @@ func TypedDelete[P any, R any](ctx context.Context, c *Client, endpoint string, 
 	if !reflect.ValueOf(params).IsZero() {
 		data, err := json.Marshal(params)
 		if err != nil {
-			return err
+			return core.ErrFailedToMarshalParams.WithArgs(err, string(data))
 		}
 		if err := json.Unmarshal(data, &paramsMap); err != nil {
-			return err
+			return core.ErrFailedToUnmarshalParams.WithArgs(err, string(data))
 		}
 	}
 	return c.delete(ctx, endpoint, paramsMap, result)
+}
+
+func (c *Client) put(ctx context.Context, endpoint string, params map[string]any, result any) error {
+	return c.do(ctx, "PUT", endpoint, params, result)
+}
+
+// TypedPut performs a type-safe PUT request to the API.
+// It converts the params struct to a map and unmarshals the response into the result struct.
+//
+// Example:
+//
+//	var result MyResponseType
+//	err := TypedPut(ctx, client, "vms/123", MyParamsType{Name: "new-vm"}, &result)
+func TypedPut[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
+	var paramsMap map[string]any
+	if !reflect.ValueOf(params).IsZero() {
+		data, err := json.Marshal(params)
+		if err != nil {
+			return core.ErrFailedToMarshalParams.WithArgs(err, string(data))
+		}
+		if err := json.Unmarshal(data, &paramsMap); err != nil {
+			return core.ErrFailedToUnmarshalParams.WithArgs(err, string(data))
+		}
+	}
+	return c.put(ctx, endpoint, paramsMap, result)
+}
+
+func (c *Client) patch(ctx context.Context, endpoint string, params map[string]any, result any) error {
+	return c.do(ctx, "PATCH", endpoint, params, result)
+}
+
+// TypedPatch performs a type-safe PATCH request to the API.
+// It converts the params struct to a map and unmarshals the response into the result struct.
+//
+// Example:
+//
+//	var result MyResponseType
+//	err := TypedPatch(ctx, client, "vms/123", MyParamsType{Name: "new-vm"}, &result)
+func TypedPatch[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
+	var paramsMap map[string]any
+	if !reflect.ValueOf(params).IsZero() {
+		data, err := json.Marshal(params)
+		if err != nil {
+			return core.ErrFailedToMarshalParams.WithArgs(err, string(data))
+		}
+		if err := json.Unmarshal(data, &paramsMap); err != nil {
+			return core.ErrFailedToUnmarshalParams.WithArgs(err, string(data))
+		}
+	}
+	return c.patch(ctx, endpoint, paramsMap, result)
 }
