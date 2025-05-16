@@ -6,8 +6,10 @@ package v2
 
 import (
 	"github.com/subosito/gotenv"
+	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/jsonrpc"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vm"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
@@ -15,6 +17,17 @@ import (
 
 type XOClient struct {
 	vmService library.VM
+	// We can provide access to the v1 client directly, allowing users to:
+	// 1. Access v1 functionality without initializing a separate client
+	// 2. Use v2 features while maintaining backward compatibility
+	// 3. Gradually migrate from v1 to v2 without managing multiple clients
+	v1Client v1.XOClient
+	// Internal JSON-RPC service, we won't expose it to the user.
+	// The purpose of this service is to provide a common interface for the
+	// JSON-RPC calls, and to handle the errors and logging. When the REST
+	// API will be fully released, this service will be removed. FYI, this
+	// is only for methods that are not part of the v1 client.
+	jsonrpcSvc library.JSONRPC
 }
 
 // Added to load the .env file in the root of the project,
@@ -29,6 +42,19 @@ func New(config *config.Config) (library.Library, error) {
 	if err != nil {
 		return nil, err
 	}
+	v1Config := v1.Config{
+		Url:                config.Url,
+		Username:           config.Username,
+		Password:           config.Password,
+		Token:              config.Token,
+		InsecureSkipVerify: config.InsecureSkipVerify,
+	}
+
+	v1Client, err := v1.NewClient(v1Config)
+	if err != nil {
+		return nil, err
+	}
+	legacyClient := v1Client.(*v1.Client)
 
 	log, err := logger.New(config.Development)
 	if err != nil {
@@ -36,10 +62,16 @@ func New(config *config.Config) (library.Library, error) {
 	}
 
 	return &XOClient{
-		vmService: vm.New(client, log),
+		vmService:  vm.New(client, log),
+		v1Client:   v1Client,
+		jsonrpcSvc: jsonrpc.New(legacyClient, log),
 	}, nil
 }
 
 func (c *XOClient) VM() library.VM {
 	return c.vmService
+}
+
+func (c *XOClient) V1Client() v1.XOClient {
+	return c.v1Client
 }

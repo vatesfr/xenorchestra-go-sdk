@@ -15,7 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff/v3"
+	// For some reason golangci-lint declared backoff as undefined.
+	// This is weird because no changes have been made to the import.
+	backoff "github.com/cenkalti/backoff/v3"
 	gorillawebsocket "github.com/gorilla/websocket"
 	"github.com/sourcegraph/jsonrpc2"
 	"github.com/sourcegraph/jsonrpc2/websocket"
@@ -238,10 +240,7 @@ func NewClient(config Config) (XOClient, error) {
 			fmt.Errorf("one of the following environment variable(s) must be set: XOA_USER and XOA_PASSWORD or XOA_TOKEN")
 	}
 
-	useTokenAuth := false
-	if token != "" {
-		useTokenAuth = true
-	}
+	var useTokenAuth = token != ""
 
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: config.InsecureSkipVerify, // #nosec G402
