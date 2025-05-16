@@ -12,6 +12,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/backup"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/jsonrpc"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/schedule"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/snapshot"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/storage_repository"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/task"
@@ -28,6 +29,8 @@ type XOClient struct {
 
 	// Storage repository service
 	storageRepositoryService library.StorageRepository
+
+	scheduleService library.Schedule
 
 	// They have been added to the VM service because they are related to the VM.
 	// However shall we let the user to have access to the restore and snapshot services ?
@@ -79,19 +82,17 @@ func New(config *config.Config) (library.Library, error) {
 		return nil, err
 	}
 
-	taskService := task.New(client, log)
 	jsonrpcSvc := jsonrpc.New(legacyClient, log)
 	snapshotService := snapshot.New(client, legacyClient, jsonrpcSvc, log)
-	storageRepositoryService := storage_repository.New(client, log)
-	backupService := backup.New(client, legacyClient, taskService, jsonrpcSvc, log)
 
 	return &XOClient{
 		vmService:                vm.New(client, snapshotService, log),
-		taskService:              taskService,
-		backupService:            backupService,
-		storageRepositoryService: storageRepositoryService,
+		taskService:              task.New(client, log),
+		backupService:            backup.New(client, legacyClient, jsonrpcSvc, log),
+		storageRepositoryService: storage_repository.New(client, log),
+		scheduleService:          schedule.New(jsonrpcSvc, log),
 		v1Client:                 v1Client,
-		jsonrpcSvc:               jsonrpc.New(legacyClient, log),
+		jsonrpcSvc:               jsonrpcSvc,
 	}, nil
 }
 
@@ -103,19 +104,16 @@ func (c *XOClient) Task() library.Task {
 	return c.taskService
 }
 
-/*
-See comments on the XOClient struct.
-func (c *XOClient) Restore() library.Restore {
-	return c.restoreService
-}
-*/
-
 func (c *XOClient) Backup() library.Backup {
 	return c.backupService
 }
 
 func (c *XOClient) StorageRepository() library.StorageRepository {
 	return c.storageRepositoryService
+}
+
+func (c *XOClient) Schedule() library.Schedule {
+	return c.scheduleService
 }
 
 func (c *XOClient) V1Client() v1.XOClient {

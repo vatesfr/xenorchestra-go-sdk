@@ -16,5 +16,5 @@ type Backup interface {
 	DeleteJob(ctx context.Context, id uuid.UUID) error
 	RunJob(ctx context.Context, id uuid.UUID) (string, error)
 
-	RunJobForVMs(ctx context.Context, id uuid.UUID, schedule string, vmIDs []string) (string, error)
+	RunJobForVMs(ctx context.Context, id uuid.UUID, vmIDs []string, settingsOverride *payloads.BackupSettings) (string, error)
 }

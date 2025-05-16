@@ -12,25 +12,25 @@ type BackupJobType string
 const (
 	BackupJobTypeDelta    BackupJobType = "delta"
 	BackupJobTypeFull     BackupJobType = "full"
+	BackupJobTypeVM       BackupJobType = "vm" // Often used as the general type for backupNg
 	BackupJobTypeMetadata BackupJobType = "metadata"
+	BackupJobTypeMirror   BackupJobType = "mirror"
 )
 
 type BackupJob struct {
-	ID       uuid.UUID     `json:"id,omitempty"`
-	Name     string        `json:"name"`
-	Mode     BackupJobType `json:"mode"`
-	Schedule string        `json:"schedule"`
-	Enabled  bool          `json:"enabled"`
-	// VMs can be one of:
-	// - A string for a single VM ID
-	// - A []string for multiple VM IDs
-	// - A map[string]struct{} for backward compatibility
-	// - Raw API response data when retrieving jobs
-	VMs      any            `json:"vms,omitempty"`
-	Settings BackupSettings `json:"settings,omitempty"`
-	// Type represents the job type (vm, metadata, mirror)
-	// This is not part of the API response but is set by the service
-	Type string `json:"-"`
+	ID           uuid.UUID                 `json:"id,omitempty"`
+	Name         string                    `json:"name"`
+	Mode         BackupJobType             `json:"mode"`
+	VMs          any                       `json:"vms,omitempty"`
+	Type         BackupJobType             `json:"type"`
+	Schedule     string                    `json:"schedule"`
+	Enabled      bool                      `json:"enabled"`
+	Settings     map[string]BackupSettings `json:"settings,omitempty"`
+	Pools        any                       `json:"pools,omitempty"`
+	XOMetadata   bool                      `json:"xoMetadata,omitempty"`
+	SourceRemote *string                   `json:"sourceRemote,omitempty"`
+	Filter       map[string]any            `json:"filter,omitempty"`
+	Remotes      map[string]any            `json:"remotes,omitempty"`
 }
 
 // VMSelection converts the VMs field to the proper API format
@@ -84,14 +84,27 @@ func (j *BackupJob) VMSelection() any {
 }
 
 type BackupSettings struct {
-	Retention          int      `json:"retention,omitempty"`
-	RemoteEnabled      bool     `json:"remoteEnabled,omitempty"`
-	RemoteRetention    int      `json:"remote_retention,omitempty"`
-	ReportRecipients   []string `json:"report_recipients,omitempty"`
-	ReportWhenFailOnly bool     `json:"report_when_fail_only,omitempty"`
-	OfflineBackup      bool     `json:"offline_backup,omitempty"`
-	CheckpointSnapshot bool     `json:"checkpoint_snapshot,omitempty"`
-	CompressionEnabled bool     `json:"compression_enabled,omitempty"`
+	Retention                int            `json:"retention"`
+	ReportWhenFailOnly       bool           `json:"report_when_fail_only"`
+	ReportRecipients         []string       `json:"report_recipients,omitempty"`
+	OfflineBackup            bool           `json:"offline_backup"`
+	CheckpointSnapshot       bool           `json:"checkpoint_snapshot"`
+	CompressionEnabled       bool           `json:"compression_enabled"`
+	RemoteEnabled            bool           `json:"remoteEnabled"`
+	RemoteRetention          int            `json:"remote_retention,omitempty"`
+	Timezone                 *string        `json:"timezone,omitempty"`
+	CopyRetention            *int           `json:"copyRetention,omitempty"`
+	ExportRetention          *int           `json:"exportRetention,omitempty"`
+	DeleteFirst              *bool          `json:"deleteFirst,omitempty"`
+	CbtDestroySnapshotData   *bool          `json:"cbtDestroySnapshotData,omitempty"`
+	Concurrency              *int           `json:"concurrency,omitempty"`
+	LongTermRetention        map[string]any `json:"longTermRetention"`
+	MaxExportRate            *int           `json:"maxExportRate,omitempty"`
+	NRetriesVmBackupFailures *int           `json:"nRetriesVmBackupFailures,omitempty"`
+	NbdConcurrency           *int           `json:"nbdConcurrency,omitempty"`
+	PreferNbd                *bool          `json:"preferNbd,omitempty"`
+	RetentionPoolMetadata    *int           `json:"retentionPoolMetadata,omitempty"`
+	RetentionXOMetadata      *int           `json:"retentionXoMetadata,omitempty"`
 }
 
 type BackupLogOptions struct {
