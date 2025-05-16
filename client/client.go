@@ -132,6 +132,9 @@ type XOClient interface {
 	GetCdroms(vm *Vm) ([]Disk, error)
 	EjectCd(id string) error
 	InsertCd(vmId, cdId string) error
+
+	GetBond(bondReq Bond) (*Bond, error)
+	GetBonds(bondReq Bond) ([]Bond, error)
 }
 
 type Client struct {
@@ -405,6 +408,8 @@ func (c *Client) getObjectTypeFilter(obj XoObject) map[string]interface{} {
 		xoApiType = "VBD"
 	case VDI:
 		xoApiType = "VDI"
+	case Bond:
+		xoApiType = "bond"
 	default:
 		panic(fmt.Sprintf("XO client does not support type: %T", t))
 	}
