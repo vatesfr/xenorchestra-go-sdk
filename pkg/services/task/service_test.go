@@ -87,7 +87,8 @@ func setupTaskTestServer(t *testing.T) (*httptest.Server, library.Task) {
 			}
 			return
 
-		case strings.HasPrefix(r.URL.Path, "/rest/v0/tasks/") && !strings.HasSuffix(r.URL.Path, "/abort") && r.Method == http.MethodGet:
+		case strings.HasPrefix(r.URL.Path, "/rest/v0/tasks/") &&
+			!strings.HasSuffix(r.URL.Path, "/abort") && r.Method == http.MethodGet:
 			parts := strings.Split(r.URL.Path, "/")
 			if len(parts) != 5 {
 				w.WriteHeader(http.StatusNotFound)
@@ -298,8 +299,8 @@ func TestHelperFunctions(t *testing.T) {
 	})
 
 	t.Run("ExtractTaskID", func(t *testing.T) {
-		assert.Equal(t, "task-id", string(ExtractTaskID("/rest/v0/tasks/task-id")))
-		assert.Equal(t, "task-id-with-dash", string(ExtractTaskID("/rest/v0/tasks/task-id-with-dash")))
+		assert.Equal(t, "task-id", ExtractTaskID("/rest/v0/tasks/task-id"))
+		assert.Equal(t, "task-id-with-dash", ExtractTaskID("/rest/v0/tasks/task-id-with-dash"))
 	})
 }
 

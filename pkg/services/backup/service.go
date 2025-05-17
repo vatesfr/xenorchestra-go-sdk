@@ -202,11 +202,14 @@ func (s *Service) CreateJob(ctx context.Context, job *payloads.BackupJob) (*payl
 		zap.String("name", job.Name),
 	}
 
-	apiMethod := "backupNg.createJob"
-	if job.Type == payloads.BackupJobTypeMetadata {
+	var apiMethod string
+	switch job.Type {
+	case payloads.BackupJobTypeMetadata:
 		apiMethod = "metadataBackup.createJob"
-	} else if job.Type == payloads.BackupJobTypeMirror {
+	case payloads.BackupJobTypeMirror:
 		apiMethod = "mirrorBackup.createJob"
+	default:
+		apiMethod = "backupNg.createJob"
 	}
 
 	var jobIDResponse string
@@ -267,8 +270,15 @@ func (s *Service) UpdateJob(ctx context.Context, job *payloads.BackupJob) (*payl
 		zap.String("jobID", job.ID.String()),
 	}
 
-	if err := s.jsonrpcSvc.Call("backupNg.editJob", params, nil, logContext...); err != nil {
-		return nil, fmt.Errorf("API call to backupNg.editJob failed: %w", err)
+	switch job.Type {
+	case payloads.BackupJobTypeMetadata:
+		if err := s.jsonrpcSvc.Call("metadataBackup.editJob", params, nil, logContext...); err != nil {
+			return nil, fmt.Errorf("API call to metadataBackup.editJob failed: %w", err)
+		}
+	default:
+		if err := s.jsonrpcSvc.Call("backupNg.editJob", params, nil, logContext...); err != nil {
+			return nil, fmt.Errorf("API call to backupNg.editJob failed: %w", err)
+		}
 	}
 
 	return s.GetJob(ctx, job.ID.String())
@@ -319,17 +329,18 @@ func (s *Service) RunJob(ctx context.Context, id uuid.UUID) (string, error) {
 		zap.String("type", jobTypeStr),
 	}
 
-	apiMethod := "backupNg.runJob"
-
-	if job.Type == payloads.BackupJobTypeMetadata {
-		apiMethod = "metadataBackup.runJob"
-	} else if job.Type == payloads.BackupJobTypeMirror {
-		apiMethod = "mirrorBackup.runJob"
-	}
-
 	var response string
-	if err := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); err != nil {
-		return "", err
+	switch job.Type {
+	case payloads.BackupJobTypeMetadata:
+		apiMethod := "metadataBackup.runJob"
+		if err := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); err != nil {
+			return "", err
+		}
+	default:
+		apiMethod := "backupNg.runJob"
+		if err := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); err != nil {
+			return "", err
+		}
 	}
 
 	if task.IsTaskURL(response) {
@@ -340,7 +351,12 @@ func (s *Service) RunJob(ctx context.Context, id uuid.UUID) (string, error) {
 	return response, nil
 }
 
-func (s *Service) RunJobForVMs(ctx context.Context, id uuid.UUID, vmIDs []string, settingsOverride *payloads.BackupSettings) (string, error) {
+func (s *Service) RunJobForVMs(
+	ctx context.Context,
+	id uuid.UUID,
+	vmIDs []string,
+	settingsOverride *payloads.BackupSettings,
+) (string, error) {
 	if len(vmIDs) == 0 {
 		return "", fmt.Errorf("no VM IDs specified for RunJobForVMs")
 	}
@@ -378,16 +394,17 @@ func (s *Service) RunJobForVMs(ctx context.Context, id uuid.UUID, vmIDs []string
 	}
 
 	var response string
-	apiMethod := "backupNg.runJob"
-
-	if job.Type == payloads.BackupJobTypeMetadata {
-		apiMethod = "metadataBackup.runJob"
-	} else if job.Type == payloads.BackupJobTypeMirror {
-		apiMethod = "mirrorBackup.runJob"
-	}
-
-	if errCall := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); errCall != nil {
-		return "", fmt.Errorf("API call to %s for job ID %s failed: %w", apiMethod, id.String(), errCall)
+	switch job.Type {
+	case payloads.BackupJobTypeMetadata:
+		apiMethod := "metadataBackup.runJob"
+		if err := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); err != nil {
+			return "", fmt.Errorf("API call to %s for job ID %s failed: %w", apiMethod, id.String(), err)
+		}
+	default:
+		apiMethod := "backupNg.runJob"
+		if err := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); err != nil {
+			return "", fmt.Errorf("API call to %s for job ID %s failed: %w", apiMethod, id.String(), err)
+		}
 	}
 
 	if task.IsTaskURL(response) {

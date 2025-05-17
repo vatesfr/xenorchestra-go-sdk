@@ -28,7 +28,12 @@ func New(
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.Schedule, error) {
 	var result payloads.Schedule
-	if err := s.jsonrpcSrv.Call("schedule.get", map[string]any{"id": id}, &result, zap.String("scheduleID", id.String())); err != nil {
+	if err := s.jsonrpcSrv.Call(
+		"schedule.get",
+		map[string]any{"id": id},
+		&result,
+		zap.String("scheduleID", id.String()),
+	); err != nil {
 		return nil, err
 	}
 	return &result, nil
