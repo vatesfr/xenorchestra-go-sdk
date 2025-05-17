@@ -27,7 +27,7 @@ func main() {
 	vmService := client.VM()
 
 	fmt.Println("Listing all VMs...")
-	vms, err := vmService.List(ctx, 10)
+	vms, err := vmService.List(ctx, map[string]any{"limit": 10})
 	if err != nil {
 		log.Fatalf("Failed to list VMs: %v", err)
 	}
