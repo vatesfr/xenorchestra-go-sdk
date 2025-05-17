@@ -1,0 +1,19 @@
+package library
+
+import (
+	"context"
+
+	"github.com/gofrs/uuid"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
+)
+
+//go:generate go run go.uber.org/mock/mockgen -source=$GOFILE -destination=mock/storage_repository.go -package=mock_library StorageRepository
+type StorageRepository interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*payloads.StorageRepository, error)
+	List(ctx context.Context,
+		filter *payloads.StorageRepositoryFilter,
+		limit int) ([]*payloads.StorageRepository, error)
+	ListByPool(ctx context.Context, poolID uuid.UUID, limit int) ([]*payloads.StorageRepository, error)
+	AddTag(ctx context.Context, id uuid.UUID, tag string) error
+	RemoveTag(ctx context.Context, id uuid.UUID, tag string) error
+}

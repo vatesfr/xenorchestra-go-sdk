@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/uuid"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
 // PathBuilder helps construct API endpoint paths in a consistent way.
@@ -45,13 +46,6 @@ func (p *PathBuilder) Action(action string) *PathBuilder {
 	return p
 }
 
-// Wildcard adds a wildcard segment ("_") to the path.
-// This is used in XO API for actions that apply to any resource of a type.
-func (p *PathBuilder) Wildcard() *PathBuilder {
-	p.segments = append(p.segments, "_")
-	return p
-}
-
 // ActionsGroup adds an "actions" segment to the path.
 // This is used in XO API to group actions on a resource.
 func (p *PathBuilder) ActionsGroup() *PathBuilder {
@@ -70,8 +64,6 @@ func FormatPath(resource string, id uuid.UUID) string {
 	return fmt.Sprintf("%s/%s", resource, id.String())
 }
 
-// FormatActionPath is a convenience function for resource wildcard action paths.
-// It creates paths like "vms/_/actions/start".
-func FormatActionPath(resource string, action string) string {
-	return fmt.Sprintf("%s/_/actions/%s", resource, action)
+func ExtractTaskID(response string) payloads.TaskID {
+	return payloads.TaskID(strings.TrimPrefix(response, "/rest/v0/tasks/"))
 }
