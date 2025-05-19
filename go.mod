@@ -7,7 +7,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gorilla/websocket v1.4.2
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/sourcegraph/jsonrpc2 v0.0.0-20210201082850-366fbb520750
+	github.com/sourcegraph/jsonrpc2 v0.2.1
 	github.com/stretchr/testify v1.10.0
 	github.com/subosito/gotenv v1.6.0
 )
