@@ -12,6 +12,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/backup"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/jsonrpc"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/pool"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/schedule"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/snapshot"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/storage_repository"
@@ -31,6 +32,8 @@ type XOClient struct {
 	storageRepositoryService library.StorageRepository
 
 	scheduleService library.Schedule
+
+	poolService library.Pool
 
 	// They have been added to the VM service because they are related to the VM.
 	// However shall we let the user to have access to the restore and snapshot services ?
@@ -91,6 +94,7 @@ func New(config *config.Config) (library.Library, error) {
 		backupService:            backup.New(client, legacyClient, jsonrpcSvc, log),
 		storageRepositoryService: storage_repository.New(client, log),
 		scheduleService:          schedule.New(jsonrpcSvc, log),
+		poolService:              pool.New(client, log),
 		v1Client:                 v1Client,
 		jsonrpcSvc:               jsonrpcSvc,
 	}, nil
@@ -114,6 +118,10 @@ func (c *XOClient) StorageRepository() library.StorageRepository {
 
 func (c *XOClient) Schedule() library.Schedule {
 	return c.scheduleService
+}
+
+func (c *XOClient) Pool() library.Pool {
+	return c.poolService
 }
 
 func (c *XOClient) V1Client() v1.XOClient {
