@@ -9,6 +9,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/pool"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/task"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vm"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
@@ -17,6 +18,7 @@ import (
 type XOClient struct {
 	vmService   library.VM
 	taskService library.Task
+	poolService library.Pool
 }
 
 // Added to load the .env file in the root of the project,
@@ -40,7 +42,9 @@ func New(config *config.Config) (library.Library, error) {
 	taskService := task.New(client, log)
 
 	return &XOClient{
-		vmService: vm.New(client, taskService, log),
+		vmService:   vm.New(client, taskService, log),
+		taskService: task.New(client, log),
+		poolService: pool.New(client, log),
 	}, nil
 }
 
@@ -50,4 +54,8 @@ func (c *XOClient) VM() library.VM {
 
 func (c *XOClient) Task() library.Task {
 	return c.taskService
+}
+
+func (c *XOClient) Pool() library.Pool {
+	return c.poolService
 }
