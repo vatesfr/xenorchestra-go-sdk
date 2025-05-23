@@ -260,32 +260,28 @@ func TestHandleTaskResponse(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("not task url", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(ctx, "not-a-task-url", false)
+		task, err := service.HandleTaskResponse(ctx, "not-a-task-url")
 		assert.NoError(t, err)
-		assert.False(t, isTask)
 		assert.Nil(t, task)
 	})
 
 	t.Run("is task url without wait", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(ctx, "/rest/v0/tasks/task-success", false)
+		task, err := service.HandleTaskResponse(ctx, "/rest/v0/tasks/task-success")
 		assert.NoError(t, err)
-		assert.True(t, isTask)
 		assert.NotNil(t, task)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
 	t.Run("is task url with wait", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(ctx, "/rest/v0/tasks/task-success", true)
+		task, err := service.HandleTaskResponse(ctx, "/rest/v0/tasks/task-success")
 		assert.NoError(t, err)
-		assert.True(t, isTask)
 		assert.NotNil(t, task)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
 	t.Run("failed task with wait", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(ctx, "/rest/v0/tasks/task-failure", true)
+		task, err := service.HandleTaskResponse(ctx, "/rest/v0/tasks/task-failure")
 		assert.NoError(t, err)
-		assert.True(t, isTask)
 		assert.NotNil(t, task)
 		assert.Equal(t, payloads.Failure, task.Status)
 	})

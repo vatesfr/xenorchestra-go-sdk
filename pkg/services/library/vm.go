@@ -12,7 +12,7 @@ import (
 type VM interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error)
 
-	// NOTE: We could force a type on options instead.
+	// NOTE: Request XO team to offer a list of options.
 	List(ctx context.Context, options map[string]any) ([]*payloads.VM, error)
 
 	Create(ctx context.Context, vm *payloads.VM) (payloads.TaskID, error)

@@ -21,21 +21,14 @@ import (
 )
 
 type XOClient struct {
-	vmService   library.VM
-	taskService library.Task
-	// As I shared in the library package, I am not sure if
-	// this interface shouldn't be in the VM service.
+	vmService     library.VM
+	taskService   library.Task
 	backupService library.Backup
 
 	// Storage repository service
 	storageRepositoryService library.StorageRepository
 
 	scheduleService library.Schedule
-
-	// They have been added to the VM service because they are related to the VM.
-	// However shall we let the user to have access to the restore and snapshot services ?
-	// restoreService library.Restore
-	// snapshotService library.Snapshot
 
 	// We can provide access to the v1 client directly, allowing users to:
 	// 1. Access v1 functionality without initializing a separate client
@@ -48,6 +41,8 @@ type XOClient struct {
 	// API will be fully released, this service will be removed. FYI, this
 	// is only for methods that are not part of the v1 client.
 	jsonrpcSvc library.JSONRPC
+
+	log *logger.Logger
 }
 
 // Added to load the .env file in the root of the project,
@@ -93,6 +88,7 @@ func New(config *config.Config) (library.Library, error) {
 		scheduleService:          schedule.New(jsonrpcSvc, log),
 		v1Client:                 v1Client,
 		jsonrpcSvc:               jsonrpcSvc,
+		log:                      log,
 	}, nil
 }
 
@@ -109,6 +105,7 @@ func (c *XOClient) Backup() library.Backup {
 }
 
 func (c *XOClient) StorageRepository() library.StorageRepository {
+	c.log.Warn("Storage repository service is experimental, use with caution")
 	return c.storageRepositoryService
 }
 

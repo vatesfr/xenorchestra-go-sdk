@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -24,22 +25,8 @@ func New(client *client.Client, log *logger.Logger) library.Task {
 	return &Service{client: client, log: log}
 }
 
-// cleanDuplicateV0Path removes the redundant "/rest/v0" from paths.
-// This is needed because VM creation returns a path with "/rest/v0" prefix,
-// but our client already includes "/v0/rest" in the base URL.
-func (s *Service) cleanDuplicateV0Path(path string) string {
-	if !strings.HasPrefix(path, "/") {
-		return path
-	}
-	return strings.TrimPrefix(path, "/rest/v0/tasks/")
-}
-
-func (s *Service) ExtractTaskID(taskURL string) payloads.TaskID {
-	return payloads.TaskID(strings.TrimPrefix(taskURL, "/rest/v0/tasks/"))
-}
-
 func (s *Service) Get(ctx context.Context, path string) (*payloads.Task, error) {
-	taskID := s.cleanDuplicateV0Path(path)
+	taskID := core.CleanDuplicateV0Path(path)
 	taskPath := core.NewPathBuilder().Resource("tasks").IDString(taskID).Build()
 
 	var result payloads.Task
@@ -57,10 +44,7 @@ func (s *Service) List(ctx context.Context, options map[string]any) ([]*payloads
 
 	params := make(map[string]any)
 
-	// Copy all options to params
-	for k, v := range options {
-		params[k] = v
-	}
+	maps.Copy(params, options)
 
 	if _, ok := options["limit"]; !ok {
 		params["limit"] = core.DefaultTaskListLimit
@@ -77,7 +61,7 @@ func (s *Service) List(ctx context.Context, options map[string]any) ([]*payloads
 
 	var tasks []*payloads.Task
 	for _, taskPath := range taskPaths {
-		taskID := s.cleanDuplicateV0Path(taskPath)
+		taskID := core.CleanDuplicateV0Path(taskPath)
 
 		task, err := s.Get(ctx, taskID)
 		if err != nil {
@@ -120,7 +104,7 @@ func (s *Service) Wait(ctx context.Context, id string) (*payloads.Task, error) {
 }
 
 func (s *Service) WaitWithTimeout(ctx context.Context, id string, timeout time.Duration) (*payloads.Task, error) {
-	taskID := s.cleanDuplicateV0Path(id)
+	taskID := core.CleanDuplicateV0Path(id)
 
 	deadline := time.Now().Add(timeout)
 	pollInterval := 7 * time.Second
@@ -161,33 +145,25 @@ func ExtractTaskID(taskURL string) string {
 	return strings.TrimPrefix(taskURL, "/rest/v0/tasks/")
 }
 
-// TODO: we don't need to return a bool, we can just return the task and handle the error
 func (s *Service) HandleTaskResponse(
 	ctx context.Context,
 	response string,
-	waitForCompletion bool,
-) (*payloads.Task, bool, error) {
+) (*payloads.Task, error) {
 	s.log.Info("Handling potential task response", zap.String("response", response))
 
 	if !IsTaskURL(response) {
 		s.log.Info("Response is not a task URL", zap.String("response", response))
-		return nil, false, nil
+		return nil, nil
 	}
 
 	taskID := ExtractTaskID(response)
 	s.log.Info("Response is a task URL", zap.String("taskID", taskID))
 
-	if !waitForCompletion {
-		s.log.Info("Not waiting for task completion, just getting current status", zap.String("taskID", taskID))
-		task, err := s.Get(ctx, taskID)
-		return task, true, err
-	}
-
 	task, err := s.Wait(ctx, taskID)
 	if err != nil {
 		s.log.Error("Failed waiting for task", zap.String("taskID", taskID), zap.Error(err))
-		return nil, false, err
+		return nil, err
 	}
 
-	return task, true, err
+	return task, nil
 }

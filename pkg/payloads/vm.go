@@ -40,7 +40,6 @@ func (v *Videoram) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Introducing stronger type for UUID by using a package rather than a string.
 type VM struct {
 	// Core Identifiers & Type
 	ID       uuid.UUID `json:"id"`

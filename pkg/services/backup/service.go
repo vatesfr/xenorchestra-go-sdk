@@ -37,42 +37,11 @@ func New(
 	}
 }
 
-func (s *Service) mapSettingsToAPIMap(settings payloads.BackupSettings) map[string]any {
-	apiMap := make(map[string]any)
-
-	if settings.Retention > 0 {
-		apiMap["retention"] = settings.Retention
-	}
-	if settings.RemoteEnabled {
-		apiMap["remoteEnabled"] = settings.RemoteEnabled
-		if settings.RemoteRetention > 0 {
-			apiMap["remoteRetention"] = settings.RemoteRetention
-		}
-	}
-	if settings.ReportWhenFailOnly {
-		apiMap["reportWhen"] = "failure"
-	} else {
-		apiMap["reportWhen"] = "always"
-	}
-	if len(settings.ReportRecipients) > 0 {
-		apiMap["reportRecipients"] = settings.ReportRecipients
-	}
-	if settings.CompressionEnabled {
-		apiMap["compression"] = "native"
-	}
-	apiMap["offlineBackup"] = settings.OfflineBackup
-	apiMap["checkpointSnapshot"] = settings.CheckpointSnapshot
-
-	if settings.Timezone != nil && *settings.Timezone != "" {
-		apiMap["timezone"] = *settings.Timezone
-	}
-
-	return apiMap
-}
-
-func (s *Service) ListJobs(ctx context.Context, limit int) ([]*payloads.BackupJob, error) {
-	var allJobs []*payloads.BackupJob
-	jobTypes := []string{"vm", "metadata", "mirror", "full"}
+func (s *Service) ListJobs(
+	ctx context.Context,
+	limit int,
+	query payloads.RestAPIJobQuery) ([]*payloads.BackupJobResponse, error) {
+	var allJobs []*payloads.BackupJobResponse
 
 	params := make(map[string]any)
 	if limit <= 0 {
@@ -81,121 +50,72 @@ func (s *Service) ListJobs(ctx context.Context, limit int) ([]*payloads.BackupJo
 		params["limit"] = limit
 	}
 
-	for _, jobType := range jobTypes {
-		typePath := core.NewPathBuilder().Resource("backup").Resource("jobs").Resource(jobType).Build()
+	typePath := core.NewPathBuilder().
+		Resource("backup").
+		Resource("jobs").
+		Resource(string(query)).Build()
 
-		var jobPaths []string
-		err := client.TypedGet(ctx, s.client, typePath, params, &jobPaths)
+	var jobPaths []string
+	err := client.TypedGet(ctx, s.client, typePath, params, &jobPaths)
+	if err != nil {
+		s.log.Warn("Failed to get backup job paths for type",
+			zap.String("type", string(query)),
+			zap.Error(err))
+		return nil, err
+	}
+
+	for _, jobPath := range jobPaths {
+		pathParts := strings.Split(jobPath, "/")
+		if len(pathParts) < 7 {
+			s.log.Warn("Invalid backup job path format, skipping",
+				zap.String("jobPath", jobPath))
+			continue
+		}
+
+		jobID := pathParts[len(pathParts)-1]
+		job, err := s.GetJob(ctx, jobID, query)
 		if err != nil {
-			s.log.Warn("Failed to get backup job paths for type",
-				zap.String("type", jobType),
+			s.log.Warn("Failed to get backup job details, skipping",
+				zap.String("jobPath", jobPath),
+				zap.String("jobID", jobID),
 				zap.Error(err))
 			continue
 		}
 
-		for _, jobPath := range jobPaths {
-			pathParts := strings.Split(jobPath, "/")
-			if len(pathParts) < 7 {
-				s.log.Warn("Invalid backup job path format, skipping",
-					zap.String("jobPath", jobPath))
-				continue
-			}
-
-			jobID := pathParts[len(pathParts)-1]
-			job, err := s.GetJob(ctx, jobID)
-			if err != nil {
-				s.log.Warn("Failed to get backup job details, skipping",
-					zap.String("jobPath", jobPath),
-					zap.String("jobID", jobID),
-					zap.Error(err))
-				continue
-			}
-
-			// Convert string jobType to payloads.BackupJobType
-			switch jobType {
-			case "vm":
-				job.Type = payloads.BackupJobTypeVM
-			case "metadata":
-				job.Type = payloads.BackupJobTypeMetadata
-			case "mirror":
-				job.Type = payloads.BackupJobTypeMirror
-			default:
-				job.Type = payloads.BackupJobType(jobType)
-			}
-
-			allJobs = append(allJobs, job)
-		}
+		allJobs = append(allJobs, job)
 	}
 
 	return allJobs, nil
 }
 
-func (s *Service) GetJob(ctx context.Context, id string) (*payloads.BackupJob, error) {
-	jobTypes := []payloads.BackupJobType{
-		payloads.BackupJobTypeVM,
-		payloads.BackupJobTypeMetadata,
-		payloads.BackupJobTypeMirror,
-	}
+func (s *Service) GetJob(
+	ctx context.Context,
+	id string,
+	query payloads.RestAPIJobQuery) (*payloads.BackupJobResponse, error) {
+	var result payloads.BackupJobResponse
+	path := core.NewPathBuilder().
+		Resource("backup").
+		Resource("jobs").
+		Resource(string(query)).
+		IDString(id).
+		Build()
 
-	for _, jobType := range jobTypes {
-		var result payloads.BackupJob
-		path := core.NewPathBuilder().
-			Resource("backup").
-			Resource("jobs").
-			Resource(string(jobType)).
-			IDString(id).
-			Build()
-
-		err := client.TypedGet(ctx, s.client, path, core.EmptyParams, &result)
-		if err == nil {
-			result.Type = jobType
-
-			return &result, nil
-		}
+	err := client.TypedGet(ctx, s.client, path, core.EmptyParams, &result)
+	if err == nil {
+		result.Type = payloads.BackupJobModeBackup
+		return &result, nil
 	}
 
 	s.log.Error("Failed to get backup job", zap.String("id", id))
 	return nil, fmt.Errorf("backup job not found with id: %s", id)
 }
 
-func (s *Service) CreateJob(ctx context.Context, job *payloads.BackupJob) (*payloads.BackupJob, error) {
+func (s *Service) CreateJob(ctx context.Context, job *payloads.BackupJob) (*payloads.BackupJobResponse, error) {
 	if job.Type == "" {
-		if job.Mode == payloads.BackupJobTypeDelta || job.Mode == payloads.BackupJobTypeFull {
-			job.Type = payloads.BackupJobTypeVM
-		} else {
-			job.Type = job.Mode
-		}
+		job.Type = payloads.BackupJobModeBackup
 	}
 
-	if job.Settings == nil {
-		job.Settings = make(map[string]payloads.BackupSettings)
-	}
-	defaultSettings, hasDefaultSettings := job.Settings[""]
-	if !hasDefaultSettings {
-		defaultSettings = payloads.BackupSettings{}
-	}
-
-	apiSettings := s.mapSettingsToAPIMap(defaultSettings)
-
-	params := map[string]any{
-		"name": job.Name,
-		"mode": string(job.Mode),
-		"vms":  job.VMSelection(),
-	}
-
-	if len(apiSettings) > 0 {
-		fullSettingsMap := map[string]any{"": apiSettings}
-		for key, val := range job.Settings {
-			if key != "" {
-				fullSettingsMap[key] = s.mapSettingsToAPIMap(val)
-			}
-		}
-		params["settings"] = fullSettingsMap
-	}
-
-	if job.Remotes != nil {
-		params["remotes"] = job.Remotes
-	}
+	params := job.ToJSONRPCPayload()
 
 	logContext := []zap.Field{
 		zap.String("type", string(job.Type)),
@@ -204,9 +124,9 @@ func (s *Service) CreateJob(ctx context.Context, job *payloads.BackupJob) (*payl
 
 	var apiMethod string
 	switch job.Type {
-	case payloads.BackupJobTypeMetadata:
+	case payloads.BackupJobModeMetadata:
 		apiMethod = "metadataBackup.createJob"
-	case payloads.BackupJobTypeMirror:
+	case payloads.BackupJobModeMirror:
 		apiMethod = "mirrorBackup.createJob"
 	default:
 		apiMethod = "backupNg.createJob"
@@ -224,54 +144,39 @@ func (s *Service) CreateJob(ctx context.Context, job *payloads.BackupJob) (*payl
 		return nil, fmt.Errorf("failed to parse job ID '%s': %w", jobIDResponse, err)
 	}
 
-	fullJob, getErr := s.GetJob(ctx, jobID.String())
+	var query payloads.RestAPIJobQuery
+	switch job.Type {
+	case payloads.BackupJobModeMetadata:
+		query = payloads.RestAPIJobQueryMetadata
+	case payloads.BackupJobModeMirror:
+		query = payloads.RestAPIJobQueryMirror
+	default:
+		query = payloads.RestAPIJobQueryVM
+	}
+
+	fullJob, getErr := s.GetJob(ctx, jobID.String(), query)
 	if getErr != nil {
-		s.log.Warn("CreateJob: Successfully created job but failed to GET its full details. Returning minimal info.",
-			append(logContext, zap.String("jobID", jobID.String()), zap.Error(getErr))...)
-		job.ID = jobID
-		return job, nil
+		s.log.Error("Failed to get backup job", zap.String("id", jobID.String()), zap.Error(getErr))
+		return &payloads.BackupJobResponse{
+			ID:   jobID,
+			Name: job.Name,
+			Type: job.Type,
+			Mode: job.Mode,
+		}, nil
 	}
 
 	return fullJob, nil
 }
 
-func (s *Service) UpdateJob(ctx context.Context, job *payloads.BackupJob) (*payloads.BackupJob, error) {
-	if job.ID == uuid.Nil {
-		return nil, fmt.Errorf("job ID is required for update")
-	}
-
-	params := map[string]any{
-		"id": job.ID.String(),
-	}
-
-	if job.Name != "" {
-		params["name"] = job.Name
-	}
-
-	if job.Mode != "" {
-		params["mode"] = string(job.Mode)
-	}
-
-	settings := make(map[string]any)
-
-	if job.Settings != nil {
-		for key, val := range job.Settings {
-			settings[key] = s.mapSettingsToAPIMap(val)
-		}
-	}
-
-	params["settings"] = settings
-
-	if job.Remotes != nil {
-		params["remotes"] = job.Remotes
-	}
+func (s *Service) UpdateJob(ctx context.Context, job *payloads.BackupJob) (*payloads.BackupJobResponse, error) {
+	params := job.ToJSONRPCPayload()
 
 	logContext := []zap.Field{
 		zap.String("jobID", job.ID.String()),
 	}
 
 	switch job.Type {
-	case payloads.BackupJobTypeMetadata:
+	case payloads.BackupJobModeMetadata:
 		if err := s.jsonrpcSvc.Call("metadataBackup.editJob", params, nil, logContext...); err != nil {
 			return nil, fmt.Errorf("API call to metadataBackup.editJob failed: %w", err)
 		}
@@ -281,7 +186,15 @@ func (s *Service) UpdateJob(ctx context.Context, job *payloads.BackupJob) (*payl
 		}
 	}
 
-	return s.GetJob(ctx, job.ID.String())
+	var query payloads.RestAPIJobQuery
+	switch job.Type {
+	case payloads.BackupJobModeMetadata:
+		query = payloads.RestAPIJobQueryMetadata
+	default:
+		query = payloads.RestAPIJobQueryVM
+	}
+
+	return s.GetJob(ctx, job.ID.String(), query)
 }
 
 func (s *Service) DeleteJob(ctx context.Context, id uuid.UUID) error {
@@ -313,7 +226,7 @@ func (s *Service) RunJob(ctx context.Context, id uuid.UUID) (string, error) {
 		zap.String("jobID", id.String()),
 		zap.String("recommendation", "Use RunJobForVMs with explicit VM IDs instead"))
 
-	job, err := s.GetJob(ctx, id.String())
+	job, err := s.GetJob(ctx, id.String(), payloads.RestAPIJobQueryVM)
 	if err != nil {
 		return "", fmt.Errorf("failed to get job details for RunJob: %w", err)
 	}
@@ -331,7 +244,7 @@ func (s *Service) RunJob(ctx context.Context, id uuid.UUID) (string, error) {
 
 	var response string
 	switch job.Type {
-	case payloads.BackupJobTypeMetadata:
+	case payloads.BackupJobModeMetadata:
 		apiMethod := "metadataBackup.runJob"
 		if err := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); err != nil {
 			return "", err
@@ -361,7 +274,7 @@ func (s *Service) RunJobForVMs(
 		return "", fmt.Errorf("no VM IDs specified for RunJobForVMs")
 	}
 
-	job, err := s.GetJob(ctx, id.String())
+	job, err := s.GetJob(ctx, id.String(), payloads.RestAPIJobQueryVM)
 	if err != nil {
 		return "", fmt.Errorf("RunJobForVMs: failed to get job details for job ID %s: %w", id.String(), err)
 	}
@@ -376,15 +289,6 @@ func (s *Service) RunJobForVMs(
 		params["vms"] = vmIDs
 	}
 
-	if settingsOverride != nil {
-		apiOverrideSettings := s.mapSettingsToAPIMap(*settingsOverride)
-		if len(apiOverrideSettings) > 0 {
-			params["settings"] = map[string]any{
-				"": apiOverrideSettings,
-			}
-		}
-	}
-
 	jobTypeStr := string(job.Type)
 
 	logContext := []zap.Field{
@@ -395,7 +299,7 @@ func (s *Service) RunJobForVMs(
 
 	var response string
 	switch job.Type {
-	case payloads.BackupJobTypeMetadata:
+	case payloads.BackupJobModeMetadata:
 		apiMethod := "metadataBackup.runJob"
 		if err := s.jsonrpcSvc.Call(apiMethod, params, &response, logContext...); err != nil {
 			return "", fmt.Errorf("API call to %s for job ID %s failed: %w", apiMethod, id.String(), err)

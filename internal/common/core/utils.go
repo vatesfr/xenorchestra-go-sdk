@@ -67,3 +67,13 @@ func FormatPath(resource string, id uuid.UUID) string {
 func ExtractTaskID(response string) payloads.TaskID {
 	return payloads.TaskID(strings.TrimPrefix(response, "/rest/v0/tasks/"))
 }
+
+// CleanDuplicateV0Path removes the redundant "/rest/v0" from paths.
+// This is needed because VM creation returns a path with "/rest/v0" prefix,
+// but our client already includes "/v0/rest" in the base URL.
+func CleanDuplicateV0Path(path string) string {
+	if !strings.HasPrefix(path, "/") {
+		return path
+	}
+	return strings.TrimPrefix(path, "/rest/v0/tasks/")
+}
