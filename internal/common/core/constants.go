@@ -14,3 +14,7 @@ const (
 const (
 	RestV0Path = "rest/v0"
 )
+
+// DefaultTaskListLimit is the default number of tasks to return when listing tasks.
+// This is smaller than the general API limit because tasks can be more numerous.
+const DefaultTaskListLimit = 50

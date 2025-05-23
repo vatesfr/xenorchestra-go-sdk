@@ -1,7 +1,7 @@
 PROJECT_NAME := xenorchestra-go-sdk
 GO := go
 GOFLAGS :=
-MOCKGEN_VERSION := 1.6.0
+MOCKGEN_VERSION := 0.5.1
 
 # Colors
 BLUE := \033[0;34m
@@ -50,13 +50,8 @@ lint:
 	@echo "$(BLUE)Running linter...$(NC)"
 	golangci-lint run
 
-.PHONY: install-mockgen
-install-mockgen: 
-	@echo "$(BLUE)Installing mockgen v$(MOCKGEN_VERSION)...$(NC)"
-	$(GO) install github.com/golang/mock/mockgen@v$(MOCKGEN_VERSION)
-
 .PHONY: mock
-mock: install-mockgen 
+mock: 
 	@echo "$(BLUE)Generating mocks...$(NC)"
 	$(GO) generate ./...
 
@@ -73,6 +68,12 @@ run-example-v2:
 .PHONY: run-examples
 run-examples: run-example-v1 run-example-v2 
 	@echo "$(GREEN)All examples executed successfully$(NC)"
+
+.PHONY: run-integration-tests
+run-integration-tests:
+	@echo "$(BLUE)Running integration tests...$(NC)"
+	@mkdir -p v2/integration/logs
+	$(GO) test -v ./v2/integration 2>&1 | tee v2/integration/integration_tests.log
 
 .PHONY: clean
 clean: 

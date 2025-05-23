@@ -29,11 +29,19 @@ var (
 	}
 )
 
+func ToRetryMode(mode string) core.RetryMode {
+	retry, ok := retryModeMap[mode]
+	if !ok {
+		return core.None
+	}
+	return retry
+}
+
 // NOTE: Same as the shared types or constants, we could have in the internal package,
 // errors message declared to be used in the different v2 packages. (OPTIONAL)
 const (
 	// #nosec G101 -- Not actual credentials, just environment variable names
-	errMissingAuthInfo = `Authentication information not provided. Please set XOA_TOKEN or both XOA_USER and XOA_PASSWORD`
+	errMissingAuthInfo = `authentication information not provided. Please set XOA_TOKEN or both XOA_USER and XOA_PASSWORD`
 	errMissingUrl      = `XOA_URL is not set, please set it`
 )
 
@@ -106,5 +114,37 @@ func New() (*Config, error) {
 		Development:        development,
 		RetryMode:          retryMode,
 		RetryMaxTime:       retryMaxTime,
+	}, nil
+}
+
+// NewWithValues returns a new Config with the values provided.
+//
+// The purpose of this function is to allow the user to use the SDK without
+// having to set the environment variables, for example in the terraform
+// provider where the variables are part of the config files rather than
+// the environment variables.
+//
+// The following fields are required:
+// - Url
+// - Token or Username and Password
+func NewWithValues(config *Config) (*Config, error) {
+
+	if config.Url == "" {
+		return nil, errors.New(errMissingUrl)
+	}
+
+	if config.Token == "" && (config.Username == "" || config.Password == "") {
+		return nil, errors.New(errMissingAuthInfo)
+	}
+
+	return &Config{
+		Url:                config.Url,
+		Username:           config.Username,
+		Password:           config.Password,
+		Token:              config.Token,
+		InsecureSkipVerify: config.InsecureSkipVerify,
+		RetryMode:          config.RetryMode,
+		RetryMaxTime:       config.RetryMaxTime,
+		Development:        config.Development,
 	}, nil
 }

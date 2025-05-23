@@ -6,15 +6,43 @@ package v2
 
 import (
 	"github.com/subosito/gotenv"
+	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/backup"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/jsonrpc"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/schedule"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/snapshot"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/storage_repository"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/task"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vm"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
 type XOClient struct {
-	vmService library.VM
+	vmService     library.VM
+	taskService   library.Task
+	backupService library.Backup
+
+	// Storage repository service
+	storageRepositoryService library.StorageRepository
+
+	scheduleService library.Schedule
+
+	// We can provide access to the v1 client directly, allowing users to:
+	// 1. Access v1 functionality without initializing a separate client
+	// 2. Use v2 features while maintaining backward compatibility
+	// 3. Gradually migrate from v1 to v2 without managing multiple clients
+	v1Client v1.XOClient
+	// Internal JSON-RPC service, we won't expose it to the user.
+	// The purpose of this service is to provide a common interface for the
+	// JSON-RPC calls, and to handle the errors and logging. When the REST
+	// API will be fully released, this service will be removed. FYI, this
+	// is only for methods that are not part of the v1 client.
+	jsonrpcSvc library.JSONRPC
+
+	log *logger.Logger
 }
 
 // Added to load the .env file in the root of the project,
@@ -30,16 +58,61 @@ func New(config *config.Config) (library.Library, error) {
 		return nil, err
 	}
 
+	v1Config := v1.Config{
+		Url:                config.Url,
+		Username:           config.Username,
+		Password:           config.Password,
+		Token:              config.Token,
+		InsecureSkipVerify: config.InsecureSkipVerify,
+	}
+
+	v1Client, err := v1.NewClient(v1Config)
+	if err != nil {
+		return nil, err
+	}
+	legacyClient := v1Client.(*v1.Client)
+
 	log, err := logger.New(config.Development)
 	if err != nil {
 		return nil, err
 	}
 
+	jsonrpcSvc := jsonrpc.New(legacyClient, log)
+	snapshotService := snapshot.New(client, legacyClient, jsonrpcSvc, log)
+
 	return &XOClient{
-		vmService: vm.New(client, log),
+		vmService:                vm.New(client, snapshotService, log),
+		taskService:              task.New(client, log),
+		backupService:            backup.New(client, legacyClient, jsonrpcSvc, log),
+		storageRepositoryService: storage_repository.New(client, log),
+		scheduleService:          schedule.New(jsonrpcSvc, log),
+		v1Client:                 v1Client,
+		jsonrpcSvc:               jsonrpcSvc,
+		log:                      log,
 	}, nil
 }
 
 func (c *XOClient) VM() library.VM {
 	return c.vmService
+}
+
+func (c *XOClient) Task() library.Task {
+	return c.taskService
+}
+
+func (c *XOClient) Backup() library.Backup {
+	return c.backupService
+}
+
+func (c *XOClient) StorageRepository() library.StorageRepository {
+	c.log.Warn("Storage repository service is experimental, use with caution")
+	return c.storageRepositoryService
+}
+
+func (c *XOClient) Schedule() library.Schedule {
+	return c.scheduleService
+}
+
+func (c *XOClient) V1Client() v1.XOClient {
+	return c.v1Client
 }

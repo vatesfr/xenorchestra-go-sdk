@@ -59,6 +59,9 @@ make mock
 make example-v1
 make example-v2
 
+# Run integration tests (requires WireGuard VPN setup)
+make run-integration-tests
+
 # See all available commands
 make help
 ```
