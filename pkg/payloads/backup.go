@@ -6,67 +6,76 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// This is used to query the different path for the rest api
+// RestAPIJobQuery represents the different query paths available for the REST API
+// when working with backup jobs. These are used to specify which type of data
+// or operation you want to perform through the REST endpoints.
 type RestAPIJobQuery string
 
 const (
-	RestAPIJobQueryVM       RestAPIJobQuery = "vm"
-	RestAPIJobQueryMetadata RestAPIJobQuery = "metadata"
-	RestAPIJobQueryMirror   RestAPIJobQuery = "mirror"
+	RestAPIJobQueryVM       RestAPIJobQuery = "vm"       // Query for VM-related backup operations
+	RestAPIJobQueryMetadata RestAPIJobQuery = "metadata" // Query for metadata backup operations
+	RestAPIJobQueryMirror   RestAPIJobQuery = "mirror"   // Query for mirror backup operations
 )
 
-// BackupJobType defines the type of backup job
+// BackupJobType defines the specific type of backup operation to be performed.
+// Each type has different characteristics in terms of data transfer and storage efficiency.
 type BackupJobType string
 
 const (
-	BackupJobTypeDelta    BackupJobType = "delta"
-	BackupJobTypeFull     BackupJobType = "full"
-	BackupJobTypeMetadata BackupJobType = "metadata"
-	BackupJobTypeMirror   BackupJobType = "mirror"
+	BackupJobTypeDelta    BackupJobType = "delta"    // Incremental backup containing only changes since last backup
+	BackupJobTypeFull     BackupJobType = "full"     // Complete backup of all VM data
+	BackupJobTypeMetadata BackupJobType = "metadata" // Backup of VM metadata only (configuration, etc.)
+	BackupJobTypeMirror   BackupJobType = "mirror"   // Mirror/replication backup for disaster recovery
 )
 
+// BackupJobMode represents the operational mode of the backup job.
+// This determines the overall behavior and purpose of the backup operation.
 type BackupJobMode string
 
 const (
-	BackupJobModeBackup   BackupJobMode = "backup"
-	BackupJobModeMirror   BackupJobMode = "mirror"
-	BackupJobModeMetadata BackupJobMode = "metadata"
+	BackupJobModeBackup   BackupJobMode = "backup"   // Standard backup operation
+	BackupJobModeMirror   BackupJobMode = "mirror"   // Mirror/replication mode
+	BackupJobModeMetadata BackupJobMode = "metadata" // Metadata-only backup mode
 )
 
-// BackupJob represents the structure for creating/updating backup jobs (request payload ONLY)
+// BackupJob represents the structure for creating and updating backup jobs.
+// This struct is used as the request payload when communicating with the XenOrchestra API
+// to define backup job configurations including VMs to backup, schedules, and settings.
 type BackupJob struct {
-	ID           uuid.UUID      `json:"id,omitempty"`
-	Name         string         `json:"name"`
-	Mode         BackupJobType  `json:"mode"`
-	VMs          any            `json:"vms,omitempty"`
-	Type         BackupJobMode  `json:"type"`
-	Schedule     uuid.UUID      `json:"schedule"`
-	Enabled      bool           `json:"enabled"`
-	Settings     BackupSettings `json:"settings,omitempty"`
-	Pools        any            `json:"pools,omitempty"`
-	XOMetadata   bool           `json:"xoMetadata,omitempty"`
-	SourceRemote *string        `json:"sourceRemote,omitempty"`
-	Filter       map[string]any `json:"filter,omitempty"`
-	Remotes      any            `json:"remotes,omitempty"`
-	Compression  *string        `json:"compression,omitempty"`
+	ID           uuid.UUID      `json:"id,omitempty"`           // Unique identifier for the backup job
+	Name         string         `json:"name"`                   // Human-readable name for the backup job
+	Mode         BackupJobType  `json:"mode"`                   // Type of backup operation (delta, full, etc.)
+	VMs          any            `json:"vms,omitempty"`          // VM selection criteria (can be string, []string, or map)
+	Type         BackupJobMode  `json:"type"`                   // Operational mode of the backup job
+	Schedule     uuid.UUID      `json:"schedule"`               // Reference to the schedule that triggers this job
+	Enabled      bool           `json:"enabled"`                // Whether the backup job is active
+	Settings     BackupSettings `json:"settings,omitempty"`     // Detailed backup configuration settings
+	Pools        any            `json:"pools,omitempty"`        // Pool selection criteria for the backup
+	XOMetadata   bool           `json:"xoMetadata,omitempty"`   // Whether to include XenOrchestra metadata
+	SourceRemote *string        `json:"sourceRemote,omitempty"` // Source remote for mirror/replication jobs
+	Filter       map[string]any `json:"filter,omitempty"`       // Additional filtering criteria for VM selection
+	Remotes      any            `json:"remotes,omitempty"`      // Remote storage targets (can be string, []string, or map)
+	Compression  *string        `json:"compression,omitempty"`  // Compression algorithm to use (e.g., "zstd")
 }
 
-// BackupJobResponse represents the structure returned by the REST API (response payload ONLY)
+// BackupJobResponse represents the structure returned by the XenOrchestra REST API
+// when querying backup jobs. This is the response payload format and may differ
+// slightly from the request format, particularly in how settings are structured.
 type BackupJobResponse struct {
-	ID           uuid.UUID      `json:"id,omitempty"`
-	Name         string         `json:"name"`
-	Mode         BackupJobType  `json:"mode"`
-	VMs          any            `json:"vms,omitempty"`
-	Type         BackupJobMode  `json:"type"`
-	Schedule     uuid.UUID      `json:"schedule"`
-	Enabled      bool           `json:"enabled"`
-	Settings     map[string]any `json:"settings,omitempty"` // Raw REST API format
-	Pools        any            `json:"pools,omitempty"`
-	XOMetadata   bool           `json:"xoMetadata,omitempty"`
-	SourceRemote *string        `json:"sourceRemote,omitempty"`
-	Filter       map[string]any `json:"filter,omitempty"`
-	Remotes      any            `json:"remotes,omitempty"`
-	Compression  *string        `json:"compression,omitempty"`
+	ID           uuid.UUID      `json:"id,omitempty"`           // Unique identifier for the backup job
+	Name         string         `json:"name"`                   // Human-readable name for the backup job
+	Mode         BackupJobType  `json:"mode"`                   // Type of backup operation (delta, full, etc.)
+	VMs          any            `json:"vms,omitempty"`          // VM selection criteria as returned by API
+	Type         BackupJobMode  `json:"type"`                   // Operational mode of the backup job
+	Schedule     uuid.UUID      `json:"schedule"`               // Reference to the schedule that triggers this job
+	Enabled      bool           `json:"enabled"`                // Whether the backup job is active
+	Settings     map[string]any `json:"settings,omitempty"`     // Raw settings format as returned by REST API
+	Pools        any            `json:"pools,omitempty"`        // Pool selection criteria for the backup
+	XOMetadata   bool           `json:"xoMetadata,omitempty"`   // Whether to include XenOrchestra metadata
+	SourceRemote *string        `json:"sourceRemote,omitempty"` // Source remote for mirror/replication jobs
+	Filter       map[string]any `json:"filter,omitempty"`       // Additional filtering criteria for VM selection
+	Remotes      any            `json:"remotes,omitempty"`      // Remote storage targets as returned by API
+	Compression  *string        `json:"compression,omitempty"`  // Compression algorithm being used
 }
 
 func (job *BackupJob) ToJSONRPCPayload() map[string]any {
@@ -299,76 +308,94 @@ func (j *BackupJob) RemoteSelection() any {
 	}
 }
 
+// LongTermRetentionDurationKey defines the available time periods for long-term retention policies.
+// These keys are used to configure how long backups should be kept for different retention cycles.
 type LongTermRetentionDurationKey string
 
 const (
-	Weekly  LongTermRetentionDurationKey = "weekly"
-	Monthly LongTermRetentionDurationKey = "monthly"
-	Yearly  LongTermRetentionDurationKey = "yearly"
+	Weekly  LongTermRetentionDurationKey = "weekly"  // Weekly retention cycle
+	Monthly LongTermRetentionDurationKey = "monthly" // Monthly retention cycle
+	Yearly  LongTermRetentionDurationKey = "yearly"  // Yearly retention cycle
 )
 
+// LongTermRetentionDuration specifies the retention period and associated settings
+// for a particular time cycle (weekly, monthly, yearly). This allows for complex
+// retention policies where different types of backups are kept for different durations.
 type LongTermRetentionDuration struct {
-	Retention int            `json:"retention"`
-	Settings  map[string]any `json:"settings"`
+	Retention int            `json:"retention"` // Number of backups to retain for this cycle
+	Settings  map[string]any `json:"settings"`  // Additional settings specific to this retention cycle
 }
 
-// LongTermRetentionObject is the object for the long term retention settings
+// LongTermRetentionObject is a map that defines the complete long-term retention policy
+// by associating each retention duration key (weekly, monthly, yearly) with its
+// corresponding retention configuration.
 type LongTermRetentionObject map[LongTermRetentionDurationKey]LongTermRetentionDuration
 
+// ReportWhen defines when backup job reports should be sent to configured recipients.
+// This allows administrators to control notification frequency based on job outcomes.
 type ReportWhen string
 
 const (
-	ReportWhenFailOnly ReportWhen = "failure"
-	ReportWhenAlways   ReportWhen = "always"
-	ReportWhenError    ReportWhen = "error"
+	ReportWhenFailOnly ReportWhen = "failure" // Send reports only when backups fail
+	ReportWhenAlways   ReportWhen = "always"  // Send reports for all backup jobs (success and failure)
+	ReportWhenError    ReportWhen = "error"   // Send reports only when errors occur
 )
 
+// Compression defines the available compression algorithms for backup data.
+// Using compression can significantly reduce backup size and transfer time.
 type Compression string
 
 const (
-	Zstd Compression = "zstd"
+	Zstd Compression = "zstd" // Zstandard compression algorithm
 )
 
+// BackupSettings contains all the detailed configuration options for backup jobs.
+// These settings control various aspects of the backup process including retention,
+// performance, notifications, and advanced features.
 type BackupSettings struct {
-	Retention                 *int                    `json:"retention,omitempty"`
-	ReportWhen                *ReportWhen             `json:"reportWhen,omitempty"`
-	ReportRecipients          []string                `json:"reportRecipients,omitempty"`
-	OfflineBackup             *bool                   `json:"offlineBackup,omitempty"`
-	OfflineSnapshot           *bool                   `json:"offlineSnapshot,omitempty"`
-	CheckpointSnapshot        *bool                   `json:"checkpointSnapshot,omitempty"`
-	CompressionEnabled        *bool                   `json:"compressionEnabled,omitempty"`
-	RemoteEnabled             *bool                   `json:"remoteEnabled,omitempty"`
-	RemoteRetention           *int                    `json:"remote_retention,omitempty"`
-	Timezone                  *string                 `json:"timezone,omitempty"`
-	CopyRetention             *int                    `json:"copyRetention,omitempty"`
-	ExportRetention           *int                    `json:"exportRetention,omitempty"`
-	DeleteFirst               *bool                   `json:"deleteFirst,omitempty"`
-	MergeBackupsSynchronously *bool                   `json:"mergeBackupsSynchronously,omitempty"`
-	CbtDestroySnapshotData    *bool                   `json:"cbtDestroySnapshotData,omitempty"`
-	Concurrency               *int                    `json:"concurrency,omitempty"`
-	LongTermRetention         LongTermRetentionObject `json:"longTermRetention,omitempty"`
-	MaxExportRate             *int                    `json:"maxExportRate,omitempty"`
-	NRetriesVmBackupFailures  *int                    `json:"nRetriesVmBackupFailures,omitempty"`
-	NbdConcurrency            *int                    `json:"nbdConcurrency,omitempty"`
-	PreferNbd                 *bool                   `json:"preferNbd,omitempty"`
-	RetentionPoolMetadata     *int                    `json:"retentionPoolMetadata,omitempty"`
-	RetentionXOMetadata       *int                    `json:"retentionXoMetadata,omitempty"`
-	Timeout                   *int                    `json:"timeout,omitempty"`
-	BackupReportTpl           *string                 `json:"backupReportTpl,omitempty"`
+	Retention                 *int                    `json:"retention,omitempty"`                 // Number of backups to retain locally
+	ReportWhen                *ReportWhen             `json:"reportWhen,omitempty"`                // When to send backup reports
+	ReportRecipients          []string                `json:"reportRecipients,omitempty"`          // Email addresses to receive backup reports
+	OfflineBackup             *bool                   `json:"offlineBackup,omitempty"`             // Whether to shutdown VM during backup
+	OfflineSnapshot           *bool                   `json:"offlineSnapshot,omitempty"`           // Whether to shutdown VM during snapshot
+	CheckpointSnapshot        *bool                   `json:"checkpointSnapshot,omitempty"`        // Whether to use checkpoint snapshots
+	CompressionEnabled        *bool                   `json:"compressionEnabled,omitempty"`        // Whether to enable backup compression
+	RemoteEnabled             *bool                   `json:"remoteEnabled,omitempty"`             // Whether to copy backups to remote storage
+	RemoteRetention           *int                    `json:"remote_retention,omitempty"`          // Number of backups to retain on remote storage
+	Timezone                  *string                 `json:"timezone,omitempty"`                  // Timezone for backup scheduling
+	CopyRetention             *int                    `json:"copyRetention,omitempty"`             // Retention for backup copies
+	ExportRetention           *int                    `json:"exportRetention,omitempty"`           // Retention for exported backups
+	DeleteFirst               *bool                   `json:"deleteFirst,omitempty"`               // Whether to delete old backups before creating new ones
+	MergeBackupsSynchronously *bool                   `json:"mergeBackupsSynchronously,omitempty"` // Whether to merge delta backups synchronously
+	CbtDestroySnapshotData    *bool                   `json:"cbtDestroySnapshotData,omitempty"`    // Whether to destroy snapshot data for CBT
+	Concurrency               *int                    `json:"concurrency,omitempty"`               // Number of concurrent backup operations
+	LongTermRetention         LongTermRetentionObject `json:"longTermRetention,omitempty"`         // Long-term retention policy configuration
+	MaxExportRate             *int                    `json:"maxExportRate,omitempty"`             // Maximum export rate in bytes per second
+	NRetriesVmBackupFailures  *int                    `json:"nRetriesVmBackupFailures,omitempty"`  // Number of retries for failed VM backups
+	NbdConcurrency            *int                    `json:"nbdConcurrency,omitempty"`            // NBD connection concurrency level
+	PreferNbd                 *bool                   `json:"preferNbd,omitempty"`                 // Whether to prefer NBD over VHD streaming
+	RetentionPoolMetadata     *int                    `json:"retentionPoolMetadata,omitempty"`     // Retention period for pool metadata
+	RetentionXOMetadata       *int                    `json:"retentionXoMetadata,omitempty"`       // Retention period for XenOrchestra metadata
+	Timeout                   *int                    `json:"timeout,omitempty"`                   // Backup operation timeout in seconds
+	BackupReportTpl           *string                 `json:"backupReportTpl,omitempty"`           // Custom template for backup reports
 }
 
+// BackupLogOptions defines the parameters for querying backup job execution logs.
+// This allows filtering and pagination of backup history for monitoring and debugging purposes.
 type BackupLogOptions struct {
-	Limit  int       `json:"limit,omitempty"`
-	Start  time.Time `json:"start,omitempty"`
-	End    time.Time `json:"end,omitempty"`
-	JobID  string    `json:"job_id,omitempty"`
-	Status string    `json:"status,omitempty"`
+	Limit  int       `json:"limit,omitempty"`  // Maximum number of log entries to return
+	Start  time.Time `json:"start,omitempty"`  // Start date/time for log query range
+	End    time.Time `json:"end,omitempty"`    // End date/time for log query range
+	JobID  string    `json:"job_id,omitempty"` // Filter logs by specific backup job ID
+	Status string    `json:"status,omitempty"` // Filter logs by backup execution status
 }
 
+// BackupLogStatus represents the possible execution states of a backup job.
+// These statuses help track the lifecycle and outcome of backup operations.
 type BackupLogStatus string
 
 const (
-	BackupLogStatusPending BackupLogStatus = "pending"
-	BackupLogStatusRunning BackupLogStatus = "running"
-	BackupLogStatusSuccess BackupLogStatus = "success"
+	BackupLogStatusPending BackupLogStatus = "pending" // Backup job is queued but not yet started
+	BackupLogStatusRunning BackupLogStatus = "running" // Backup job is currently executing
+	BackupLogStatusSuccess BackupLogStatus = "success" // Backup job completed successfully
 )

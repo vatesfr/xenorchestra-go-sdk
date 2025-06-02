@@ -111,10 +111,6 @@ func (s *Service) GetJob(
 }
 
 func (s *Service) CreateJob(ctx context.Context, job *payloads.BackupJob) (*payloads.BackupJobResponse, error) {
-	if job.Type == "" {
-		job.Type = payloads.BackupJobModeBackup
-	}
-
 	params := job.ToJSONRPCPayload()
 
 	logContext := []zap.Field{

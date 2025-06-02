@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	v2 "github.com/vatesfr/xenorchestra-go-sdk/v2"
 )
 
