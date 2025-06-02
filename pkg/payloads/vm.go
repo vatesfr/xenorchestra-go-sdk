@@ -3,8 +3,82 @@ package payloads
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 
 	"github.com/gofrs/uuid"
+)
+
+// VMQueryOptions represents the query parameters for VM listing operations.
+// This provides a type-safe way to build REST API query parameters.
+type VMQueryOptions struct {
+	Fields []string `json:"fields,omitempty"` // Fields to return in the response
+	Filter string   `json:"filter,omitempty"` // Filter string in field:value format
+	Limit  int      `json:"limit,omitempty"`  // Maximum number of results to return
+}
+
+// ToMap converts VMQueryOptions to a map[string]any for use with the REST API.
+func (q *VMQueryOptions) ToMap() map[string]any {
+	if q == nil {
+		return map[string]any{}
+	}
+
+	options := make(map[string]any)
+
+	if len(q.Fields) > 0 {
+		options[VMQueryFields] = strings.Join(q.Fields, ",")
+	}
+	if q.Filter != "" {
+		options[VMQueryFilter] = q.Filter
+	}
+	if q.Limit > 0 {
+		options[VMQueryLimit] = q.Limit
+	}
+
+	return options
+}
+
+// VMFilter defines the available filtering options for VM queries.
+// Use this struct with BuildFilterOptions() or construct the options map directly.
+type VMFilter struct {
+	PowerState string `json:"power_state,omitempty"` // Filter by VM power state (Running, Halted, Paused, Suspended)
+	NameLabel  string `json:"name_label,omitempty"`  // Filter by VM name (supports partial matching)
+	PoolID     string `json:"$poolId,omitempty"`     // Filter by pool ID
+	Tags       string `json:"tags,omitempty"`        // Filter by tags
+}
+
+// REST API query parameter constants for VM endpoints
+const (
+	// Query parameter names
+	VMQueryFields = "fields" // Specify which fields to return (comma-separated)
+	VMQueryFilter = "filter" // Filter VMs using field:value format
+	VMQueryLimit  = "limit"  // Limit number of results returned
+)
+
+// Common field names for the fields query parameter
+const (
+	VMFieldNameLabel  = "name_label"
+	VMFieldPowerState = "power_state"
+	VMFieldUUID       = "uuid"
+	VMFieldPoolID     = "$poolId"
+	VMFieldTags       = "tags"
+	VMFieldMemory     = "memory"
+	VMFieldCPUs       = "CPUs"
+	VMFieldAddresses  = "addresses"
+	VMFieldTemplate   = "template"
+)
+
+// Filter format examples:
+// - Single filter: "power_state:Running"
+// - Multiple filters: "power_state:Running,tags:production" (comma-separated)
+// - Name matching: "name_label:web-server"
+// - Pool filtering: "$poolId:pool-uuid"
+
+// Power state constants for VM filtering and status
+const (
+	PowerStateHalted    = "Halted"
+	PowerStateRunning   = "Running"
+	PowerStatePaused    = "Paused"
+	PowerStateSuspended = "Suspended"
 )
 
 /*
@@ -113,17 +187,3 @@ type OsVersion struct {
 	Major  string `json:"major,omitempty"`
 	Minor  string `json:"minor,omitempty"`
 }
-
-type VMFilter struct {
-	PowerState string `json:"power_state,omitempty"`
-	NameLabel  string `json:"name_label,omitempty"`
-	PoolID     string `json:"$poolId,omitempty"`
-	Tags       string `json:"tags,omitempty"`
-}
-
-const (
-	PowerStateHalted    = "Halted"
-	PowerStateRunning   = "Running"
-	PowerStatePaused    = "Paused"
-	PowerStateSuspended = "Suspended"
-)

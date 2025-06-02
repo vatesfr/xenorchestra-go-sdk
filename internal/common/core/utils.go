@@ -77,3 +77,101 @@ func CleanDuplicateV0Path(path string) string {
 	}
 	return strings.TrimPrefix(path, "/rest/v0/tasks/")
 }
+
+// VM Query Utility Functions
+
+// NewVMQuery creates a new VMQueryOptions with optional initial values.
+func NewVMQuery() *payloads.VMQueryOptions {
+	return &payloads.VMQueryOptions{}
+}
+
+// WithFields adds field selection to the query.
+func WithFields(q *payloads.VMQueryOptions, fields ...string) *payloads.VMQueryOptions {
+	q.Fields = fields
+	return q
+}
+
+// WithFilter adds a filter string to the query.
+func WithFilter(q *payloads.VMQueryOptions, filter string) *payloads.VMQueryOptions {
+	q.Filter = filter
+	return q
+}
+
+// WithLimit adds a result limit to the query.
+func WithLimit(q *payloads.VMQueryOptions, limit int) *payloads.VMQueryOptions {
+	q.Limit = limit
+	return q
+}
+
+// BuildFilter creates a filter string from individual field:value pairs.
+func BuildFilter(filters ...string) string {
+	return strings.Join(filters, ",")
+}
+
+// FilterByPowerState creates a power state filter string.
+func FilterByPowerState(state string) string {
+	return fmt.Sprintf("%s:%s", payloads.VMFieldPowerState, state)
+}
+
+// FilterByNameLabel creates a name label filter string.
+func FilterByNameLabel(nameLabel string) string {
+	return fmt.Sprintf("%s:%s", payloads.VMFieldNameLabel, nameLabel)
+}
+
+// FilterByPoolID creates a pool ID filter string.
+func FilterByPoolID(poolID string) string {
+	return fmt.Sprintf("%s:%s", payloads.VMFieldPoolID, poolID)
+}
+
+// FilterByTags creates a tags filter string.
+func FilterByTags(tags string) string {
+	return fmt.Sprintf("%s:%s", payloads.VMFieldTags, tags)
+}
+
+// BuildFilterFromStruct creates a filter string from a VMFilter struct.
+func BuildFilterFromStruct(filter *payloads.VMFilter) string {
+	if filter == nil {
+		return ""
+	}
+
+	var filters []string
+
+	if filter.PowerState != "" {
+		filters = append(filters, FilterByPowerState(filter.PowerState))
+	}
+	if filter.NameLabel != "" {
+		filters = append(filters, FilterByNameLabel(filter.NameLabel))
+	}
+	if filter.PoolID != "" {
+		filters = append(filters, FilterByPoolID(filter.PoolID))
+	}
+	if filter.Tags != "" {
+		filters = append(filters, FilterByTags(filter.Tags))
+	}
+
+	return BuildFilter(filters...)
+}
+
+// Quick builder functions for common queries
+
+// QueryRunningVMs creates a query for running VMs with basic fields.
+func QueryRunningVMs() *payloads.VMQueryOptions {
+	query := NewVMQuery()
+	WithFields(query, payloads.VMFieldNameLabel, payloads.VMFieldPowerState, payloads.VMFieldUUID)
+	WithFilter(query, FilterByPowerState(payloads.PowerStateRunning))
+	return query
+}
+
+// QueryVMsByPool creates a query for VMs in a specific pool.
+func QueryVMsByPool(poolID string) *payloads.VMQueryOptions {
+	query := NewVMQuery()
+	WithFilter(query, FilterByPoolID(poolID))
+	return query
+}
+
+// QueryVMsWithLimit creates a query with a result limit.
+func QueryVMsWithLimit(limit int) *payloads.VMQueryOptions {
+	query := NewVMQuery()
+	WithLimit(query, limit)
+	return query
+}

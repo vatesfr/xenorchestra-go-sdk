@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -50,46 +51,76 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, erro
 	return &result, nil
 }
 
-func (s *Service) List(ctx context.Context, options map[string]any) ([]*payloads.VM, error) {
+func (s *Service) List(ctx context.Context, query *payloads.VMQueryOptions) ([]*payloads.VM, error) {
 	path := core.NewPathBuilder().Resource("vms").Build()
 
-	// The API returns VM URL paths, not VM objects directly
-	var vmPaths []string
-	err := client.TypedGet(ctx, s.client, path, options, &vmPaths)
+	// Convert query options to map for the API call
+	var options map[string]any
+	if query != nil {
+		options = query.ToMap()
+	} else {
+		options = map[string]any{}
+	}
+
+	// The XenOrchestra API behavior:
+	// - WITH fields parameter: Returns VM objects directly
+	// - WITHOUT fields parameter: Returns VM paths (even with filter/limit)
+	var rawResponse json.RawMessage
+	err := client.TypedGet(ctx, s.client, path, options, &rawResponse)
 	if err != nil {
-		s.log.Error("failed to list VM paths", zap.Error(err))
+		s.log.Error("failed to get VMs", zap.Error(err))
 		return nil, err
 	}
 
-	s.log.Debug("Retrieved VM paths", zap.Int("count", len(vmPaths)))
+	// Check if we have fields parameter - this determines response format
+	hasFields := query != nil && len(query.Fields) > 0
 
-	// Fetch each VM by ID
-	var vms []*payloads.VM
-	for _, vmPath := range vmPaths {
-		// Extract the VM ID from the path (/rest/v0/vms/uuid)
-		idStr := strings.TrimPrefix(vmPath, "/rest/v0/vms/")
-		vmID, err := uuid.FromString(idStr)
-		if err != nil {
-			s.log.Warn("Invalid VM path format, skipping",
-				zap.String("vmPath", vmPath),
-				zap.Error(err))
-			continue
+	if hasFields {
+		// With fields: API returns VM objects directly
+		var vmObjects []*payloads.VM
+		if err := json.Unmarshal(rawResponse, &vmObjects); err != nil {
+			s.log.Error("failed to unmarshal VM objects", zap.Error(err))
+			return nil, fmt.Errorf("failed to parse VM objects: %w", err)
+		}
+		s.log.Debug("Retrieved VM objects directly", zap.Int("count", len(vmObjects)))
+		return vmObjects, nil
+	} else {
+		// Without fields: API returns VM paths, need to fetch each VM
+		var vmPaths []string
+		if err := json.Unmarshal(rawResponse, &vmPaths); err != nil {
+			s.log.Error("failed to unmarshal VM paths", zap.Error(err))
+			return nil, fmt.Errorf("failed to parse VM paths: %w", err)
+		}
+		s.log.Debug("Retrieved VM paths", zap.Int("count", len(vmPaths)))
+
+		// Fetch each VM by ID
+		var vms []*payloads.VM
+		for _, vmPath := range vmPaths {
+			// Extract the VM ID from the path (/rest/v0/vms/uuid)
+			idStr := strings.TrimPrefix(vmPath, "/rest/v0/vms/")
+			vmID, err := uuid.FromString(idStr)
+			if err != nil {
+				s.log.Warn("Invalid VM path format, skipping",
+					zap.String("vmPath", vmPath),
+					zap.Error(err))
+				continue
+			}
+
+			vm, err := s.GetByID(ctx, vmID)
+			if err != nil {
+				s.log.Warn("Failed to get VM details, skipping",
+					zap.String("vmPath", vmPath),
+					zap.String("vmID", vmID.String()),
+					zap.Error(err))
+				continue
+			}
+
+			vms = append(vms, vm)
 		}
 
-		vm, err := s.GetByID(ctx, vmID)
-		if err != nil {
-			s.log.Warn("Failed to get VM details, skipping",
-				zap.String("vmPath", vmPath),
-				zap.String("vmID", vmID.String()),
-				zap.Error(err))
-			continue
-		}
-
-		vms = append(vms, vm)
+		s.log.Debug("Retrieved full VM objects", zap.Int("count", len(vms)))
+		return vms, nil
 	}
-
-	s.log.Debug("Retrieved full VM objects", zap.Int("count", len(vms)))
-	return vms, nil
 }
 
 func (s *Service) Create(ctx context.Context, vm *payloads.VM) (payloads.TaskID, error) {

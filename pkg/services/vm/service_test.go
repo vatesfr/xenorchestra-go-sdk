@@ -38,15 +38,61 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM) {
 
 		switch {
 		case r.URL.Path == "/rest/v0/vms" && r.Method == http.MethodGet:
+			query := r.URL.Query()
+			fields := query.Get("fields")
+			filter := query.Get("filter")
+
 			id1 := uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000001"))
 			id2 := uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000002"))
-			err := json.NewEncoder(w).Encode([]string{
-				fmt.Sprintf("/rest/v0/vms/%s", id1),
-				fmt.Sprintf("/rest/v0/vms/%s", id2),
-			})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+
+			if fields != "" {
+				// With fields parameter: return VM objects directly
+				vms := []*payloads.VM{
+					{
+						ID:         id1,
+						UUID:       id1.String(),
+						NameLabel:  "VM 1",
+						PowerState: payloads.PowerStateRunning,
+					},
+					{
+						ID:         id2,
+						UUID:       id2.String(),
+						NameLabel:  "VM 2",
+						PowerState: payloads.PowerStateHalted,
+					},
+				}
+
+				// Apply filter if present
+				if filter != "" {
+					filtered := []*payloads.VM{}
+					for _, vm := range vms {
+						if strings.Contains(filter, "power_state:Running") && vm.PowerState == payloads.PowerStateRunning {
+							filtered = append(filtered, vm)
+						} else if strings.Contains(filter, "power_state:Halted") && vm.PowerState == payloads.PowerStateHalted {
+							filtered = append(filtered, vm)
+						} else if !strings.Contains(filter, "power_state:") {
+							filtered = append(filtered, vm)
+						}
+					}
+					vms = filtered
+				}
+
+				err := json.NewEncoder(w).Encode(vms)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			} else {
+				// Without fields parameter: return VM paths
+				paths := []string{
+					fmt.Sprintf("/rest/v0/vms/%s", id1),
+					fmt.Sprintf("/rest/v0/vms/%s", id2),
+				}
+				err := json.NewEncoder(w).Encode(paths)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 
 		case r.URL.Path == "/rest/v0/vms" && r.Method == http.MethodPost:
@@ -58,14 +104,17 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM) {
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && len(pathParts) == 5 && r.Method == http.MethodGet:
 			vmName := "VM 1"
+			powerState := payloads.PowerStateRunning
 			if vmID.String() == "00000000-0000-0000-0000-000000000002" {
 				vmName = "VM 2"
+				powerState = payloads.PowerStateHalted
 			}
 
 			err := json.NewEncoder(w).Encode(payloads.VM{
 				ID:         vmID,
+				UUID:       vmID.String(),
 				NameLabel:  vmName,
-				PowerState: payloads.PowerStateRunning,
+				PowerState: powerState,
 			})
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -179,13 +228,69 @@ func TestList(t *testing.T) {
 	server, service := setupTestServer(t)
 	defer server.Close()
 
-	options := map[string]any{"limit": 10}
-	vms, err := service.List(context.Background(), options)
+	t.Run("List without query options (paths approach)", func(t *testing.T) {
+		vms, err := service.List(context.Background(), nil)
 
-	assert.NoError(t, err)
-	assert.Len(t, vms, 2)
-	assert.Equal(t, "VM 1", vms[0].NameLabel)
-	assert.Equal(t, "VM 2", vms[1].NameLabel)
+		assert.NoError(t, err)
+		assert.Len(t, vms, 2)
+		assert.Equal(t, "VM 1", vms[0].NameLabel)
+		assert.Equal(t, "VM 2", vms[1].NameLabel)
+		assert.Equal(t, payloads.PowerStateRunning, vms[0].PowerState)
+		assert.Equal(t, payloads.PowerStateHalted, vms[1].PowerState)
+	})
+
+	t.Run("List with limit only (paths approach)", func(t *testing.T) {
+		query := &payloads.VMQueryOptions{
+			Limit: 10,
+		}
+		vms, err := service.List(context.Background(), query)
+
+		assert.NoError(t, err)
+		assert.Len(t, vms, 2)
+		assert.Equal(t, "VM 1", vms[0].NameLabel)
+		assert.Equal(t, "VM 2", vms[1].NameLabel)
+	})
+
+	t.Run("List with fields (objects approach)", func(t *testing.T) {
+		query := &payloads.VMQueryOptions{
+			Fields: []string{payloads.VMFieldNameLabel, payloads.VMFieldPowerState, payloads.VMFieldUUID},
+		}
+		vms, err := service.List(context.Background(), query)
+
+		assert.NoError(t, err)
+		assert.Len(t, vms, 2)
+		assert.Equal(t, "VM 1", vms[0].NameLabel)
+		assert.Equal(t, "VM 2", vms[1].NameLabel)
+		assert.Equal(t, payloads.PowerStateRunning, vms[0].PowerState)
+		assert.Equal(t, payloads.PowerStateHalted, vms[1].PowerState)
+	})
+
+	t.Run("List with fields and filter (objects approach)", func(t *testing.T) {
+		query := &payloads.VMQueryOptions{
+			Fields: []string{payloads.VMFieldNameLabel, payloads.VMFieldPowerState},
+			Filter: "power_state:Running",
+		}
+		vms, err := service.List(context.Background(), query)
+
+		assert.NoError(t, err)
+		assert.Len(t, vms, 1)
+		assert.Equal(t, "VM 1", vms[0].NameLabel)
+		assert.Equal(t, payloads.PowerStateRunning, vms[0].PowerState)
+	})
+
+	t.Run("List with utility function", func(t *testing.T) {
+		query := &payloads.VMQueryOptions{
+			Fields: []string{payloads.VMFieldNameLabel, payloads.VMFieldPowerState},
+			Filter: "power_state:Running",
+		}
+
+		vms, err := service.List(context.Background(), query)
+
+		assert.NoError(t, err)
+		assert.Len(t, vms, 1)
+		assert.Equal(t, "VM 1", vms[0].NameLabel)
+		assert.Equal(t, payloads.PowerStateRunning, vms[0].PowerState)
+	})
 }
 
 func TestCreate(t *testing.T) {
