@@ -161,6 +161,33 @@ func (job *BackupJob) ToJSONRPCPayload() map[string]any {
 	if len(job.Settings.LongTermRetention) > 0 {
 		defaultSettings["longTermRetention"] = job.Settings.LongTermRetention
 	}
+	if job.Settings.CompressionEnabled != nil {
+		defaultSettings["compressionEnabled"] = *job.Settings.CompressionEnabled
+	}
+	if job.Settings.RemoteRetention != nil {
+		defaultSettings["remoteRetention"] = *job.Settings.RemoteRetention
+	}
+	if job.Settings.CopyRetention != nil {
+		defaultSettings["copyRetention"] = *job.Settings.CopyRetention
+	}
+	if job.Settings.CbtDestroySnapshotData != nil {
+		defaultSettings["cbtDestroySnapshotData"] = *job.Settings.CbtDestroySnapshotData
+	}
+	if job.Settings.Concurrency != nil {
+		defaultSettings["concurrency"] = *job.Settings.Concurrency
+	}
+	if job.Settings.NbdConcurrency != nil {
+		defaultSettings["nbdConcurrency"] = *job.Settings.NbdConcurrency
+	}
+	if job.Settings.PreferNbd != nil {
+		defaultSettings["preferNbd"] = *job.Settings.PreferNbd
+	}
+	if job.Settings.RetentionPoolMetadata != nil {
+		defaultSettings["retentionPoolMetadata"] = *job.Settings.RetentionPoolMetadata
+	}
+	if job.Settings.RetentionXOMetadata != nil {
+		defaultSettings["retentionXoMetadata"] = *job.Settings.RetentionXOMetadata
+	}
 
 	settingsMap[""] = defaultSettings
 
@@ -313,6 +340,7 @@ func (j *BackupJob) RemoteSelection() any {
 type LongTermRetentionDurationKey string
 
 const (
+	Daily   LongTermRetentionDurationKey = "daily"   // Daily retention cycle
 	Weekly  LongTermRetentionDurationKey = "weekly"  // Weekly retention cycle
 	Monthly LongTermRetentionDurationKey = "monthly" // Monthly retention cycle
 	Yearly  LongTermRetentionDurationKey = "yearly"  // Yearly retention cycle
