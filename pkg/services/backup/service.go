@@ -100,60 +100,10 @@ func (s *Service) GetJob(
 		IDString(id).
 		Build()
 
-	// First, get basic job info from REST API
 	err := client.TypedGet(ctx, s.client, path, core.EmptyParams, &result)
 	if err != nil {
-		s.log.Error("Failed to get backup job from REST API", zap.String("id", id), zap.Error(err))
+		s.log.Error("Failed to get backup job", zap.String("id", id), zap.Error(err))
 		return nil, fmt.Errorf("backup job not found with id: %s", id)
-	}
-
-	// Then, get complete settings from JSONRPC API to supplement missing fields
-	params := map[string]any{
-		"id": id,
-	}
-
-	var apiMethod string
-	switch query {
-	case payloads.RestAPIJobQueryMetadata:
-		apiMethod = "metadataBackup.getJob"
-	case payloads.RestAPIJobQueryMirror:
-		apiMethod = "mirrorBackup.getJob"
-	default:
-		apiMethod = "backupNg.getJob"
-	}
-
-	var jsonrpcResult map[string]any
-	if err := s.jsonrpcSvc.Call(apiMethod, params, &jsonrpcResult); err != nil {
-		s.log.Warn("Failed to get complete settings from JSONRPC, using REST data only",
-			zap.String("id", id), zap.Error(err))
-	} else {
-		if jsonrpcSettings, exists := jsonrpcResult["settings"]; exists {
-			if settingsMap, ok := jsonrpcSettings.(map[string]any); ok {
-				result.Settings = settingsMap
-
-				// Extract schedule ID from settings keys
-				// Schedule keys have exportRetention, remote keys have deleteFirst only
-				for key := range settingsMap {
-					if key != "" { // Skip the default "" key
-						if keySettings, ok := settingsMap[key].(map[string]any); ok {
-							// If this key has exportRetention, it's a schedule ID
-							if _, hasExportRetention := keySettings["exportRetention"]; hasExportRetention {
-								if scheduleUUID, err := uuid.FromString(key); err == nil {
-									result.Schedule = scheduleUUID
-									break
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		if compression, exists := jsonrpcResult["compression"]; exists {
-			if compressionStr, ok := compression.(string); ok {
-				result.Compression = &compressionStr
-			}
-		}
 	}
 
 	result.Type = payloads.BackupJobModeBackup

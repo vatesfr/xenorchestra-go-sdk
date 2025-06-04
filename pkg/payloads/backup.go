@@ -78,6 +78,21 @@ type BackupJobResponse struct {
 	Compression  *string        `json:"compression,omitempty"`  // Compression algorithm being used
 }
 
+func (jobResponse *BackupJobResponse) ScheduleID() uuid.UUID {
+	for key, value := range jobResponse.Settings {
+		if key == "" {
+			continue
+		}
+
+		if settingsMap, ok := value.(map[string]any); ok {
+			if _, hasExportRetention := settingsMap["exportRetention"]; hasExportRetention {
+				return uuid.FromStringOrNil(key)
+			}
+		}
+	}
+	return uuid.Nil
+}
+
 func (job *BackupJob) ToJSONRPCPayload() map[string]any {
 	apiMap := make(map[string]any)
 
