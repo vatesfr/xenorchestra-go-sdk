@@ -44,7 +44,10 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.StorageR
 	return &result, nil
 }
 
-func (s *Service) List(ctx context.Context, filter *payloads.StorageRepositoryFilter) ([]*payloads.StorageRepository, error) {
+func (s *Service) List(
+	ctx context.Context,
+	filter *payloads.StorageRepositoryFilter,
+) ([]*payloads.StorageRepository, error) {
 	var urlPaths []string
 	path := core.NewPathBuilder().
 		Resource("srs").
