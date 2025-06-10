@@ -24,8 +24,6 @@ type VM interface {
 	// I also want to keep the method chaining approach.
 	// This is about VM but not about the actions.
 	Snapshot() Snapshot
-
-	Restore() Restore
 }
 
 type VMActions interface {

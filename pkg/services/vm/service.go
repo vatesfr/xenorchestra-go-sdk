@@ -19,8 +19,6 @@ type Service struct {
 	// Needed by VM for the task related but not part of the VM interface
 	taskService library.Task
 
-	// Part of the VM interface with their own interfaces
-	restoreService  library.Restore
 	snapshotService library.Snapshot
 
 	client *client.Client
@@ -30,14 +28,12 @@ type Service struct {
 func New(
 	client *client.Client,
 	task library.Task,
-	restore library.Restore,
 	snapshot library.Snapshot,
 	log *logger.Logger,
 ) library.VM {
 	return &Service{
 		client:          client,
 		taskService:     task,
-		restoreService:  restore,
 		snapshotService: snapshot,
 		log:             log,
 	}
@@ -422,8 +418,4 @@ func (s *Service) Resume(ctx context.Context, id uuid.UUID) error {
 
 func (s *Service) Snapshot() library.Snapshot {
 	return s.snapshotService
-}
-
-func (s *Service) Restore() library.Restore {
-	return s.restoreService
 }
