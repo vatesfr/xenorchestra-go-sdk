@@ -226,15 +226,21 @@ func (c *Client) CreateDisk(vm Vm, d Disk) (string, error) {
 	return id, err
 }
 
+/*
+DeleteDisk detaches the specified disk from the given virtual machine if it is attached,
+and then deletes the disk's VDI. Returns an error if any operation fails.
+*/
 func (c *Client) DeleteDisk(vm Vm, d Disk) error {
 	var success bool
-	disconnectParams := map[string]interface{}{
-		"id": d.Id,
-	}
-	err := c.Call("vbd.disconnect", disconnectParams, &success)
+	if d.Attached {
+		disconnectParams := map[string]interface{}{
+			"id": d.Id,
+		}
+		err := c.Call("vbd.disconnect", disconnectParams, &success)
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	return c.DeleteVDI(d.VDIId)
