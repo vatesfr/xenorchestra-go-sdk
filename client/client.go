@@ -107,6 +107,7 @@ type XOClient interface {
 	GetVDI(vdiReq VDI) (VDI, error)
 	CreateVDI(vdiReq CreateVDIReq) (VDI, error)
 	UpdateVDI(d Disk) error
+	ResizeVDI(d Disk) error
 	DeleteVDI(id string) error
 
 	CreateAcl(acl Acl) (*Acl, error)

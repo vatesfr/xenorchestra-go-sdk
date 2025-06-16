@@ -299,6 +299,15 @@ func (c *Client) UpdateVDI(d Disk) error {
 	return c.Call("vdi.set", params, &success)
 }
 
+func (c *Client) ResizeVDI(d Disk) error {
+	var success bool
+	params := map[string]interface{}{
+		"id":   d.VDIId,
+		"size": d.Size,
+	}
+	return c.Call("vdi.set", params, &success)
+}
+
 func (c *Client) EjectCd(id string) error {
 	var success bool
 	params := map[string]interface{}{
