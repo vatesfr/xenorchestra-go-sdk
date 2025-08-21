@@ -41,9 +41,11 @@ type CPUs struct {
 }
 
 type MemoryObject struct {
+	// Value at index 0 is the min limit, Value at index 1 is the max limit
 	Dynamic []int `json:"dynamic"`
-	Static  []int `json:"static"`
-	Size    int   `json:"size"`
+	// Value at index 0 is the min limit, Value at index 1 is the max limit
+	Static []int `json:"static"`
+	Size   int   `json:"size"`
 }
 
 type Boot struct {
@@ -278,7 +280,6 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		"cpuCap":           nil,
 		"cpuWeight":        nil,
 		"CPUs":             vmReq.CPUs.Number,
-		"memoryMax":        vmReq.Memory.Static[1],
 		"existingDisks":    existingDisks,
 		// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
 		// "secureBoot":       vmReq.SecureBoot,
@@ -288,6 +289,17 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		"tags":              vmReq.Tags,
 		"auto_poweron":      vmReq.AutoPoweron,
 		"high_availability": vmReq.HA,
+	}
+
+	// Set memory parameters if provided in vmReq.Memory
+	if len(vmReq.Memory.Dynamic) >= 1 {
+		params["memoryMin"] = vmReq.Memory.Dynamic[0]
+	}
+	if len(vmReq.Memory.Dynamic) >= 2 {
+		params["memoryMax"] = vmReq.Memory.Dynamic[1]
+	}
+	if len(vmReq.Memory.Static) >= 2 {
+		params["memoryStaticMax"] = vmReq.Memory.Static[1]
 	}
 
 	if !params["clone"].(bool) && vmReq.CloneType == CloneTypeFastClone {
@@ -415,7 +427,6 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 		"auto_poweron":      vmReq.AutoPoweron,
 		"high_availability": vmReq.HA, // valid options are best-effort, restart, ''
 		"CPUs":              vmReq.CPUs.Number,
-		"memoryMax":         vmReq.Memory.Static[1],
 		"expNestedHvm":      vmReq.ExpNestedHvm,
 		"startDelay":        vmReq.StartDelay,
 		// TODO: These need more investigation before they are implemented
@@ -432,6 +443,17 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 
 		// cpusMask, cpuWeight and cpuCap can be changed at runtime to an integer value or null
 		// coresPerSocket is null or a number of cores per socket. Putting an invalid value doesn't seem to cause an error :(
+	}
+
+	// Set memory parameters if provided in vmReq.Memory
+	if len(vmReq.Memory.Dynamic) >= 1 {
+		params["memoryMin"] = vmReq.Memory.Dynamic[0]
+	}
+	if len(vmReq.Memory.Dynamic) >= 2 {
+		params["memoryMax"] = vmReq.Memory.Dynamic[1]
+	}
+	if len(vmReq.Memory.Static) >= 2 {
+		params["memoryStaticMax"] = vmReq.Memory.Static[1]
 	}
 
 	affinityHost := vmReq.AffinityHost
