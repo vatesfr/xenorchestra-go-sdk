@@ -34,7 +34,7 @@ func (t Template) Compare(obj interface{}) bool {
 		return true
 	}
 
-	labelsMatch := t.NameLabel == other.NameLabel
+	var labelsMatch = t.NameLabel == other.NameLabel
 
 	if t.PoolId == "" && labelsMatch {
 		return true

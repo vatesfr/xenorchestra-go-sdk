@@ -18,14 +18,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
       - name: Install go
         uses: actions/setup-go@v5
         with:
           # The versions of golangci-lint and setup-go here cross-depend and need to update together.
-          go-version: '1.24'
+          go-version: '1.24.0'
           # Either this action or golangci-lint needs to disable the cache
           cache: false
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@v0.5.1
+      - name: Generate mocks
+        run: go generate ./...
       - run: go mod tidy
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.1.1
