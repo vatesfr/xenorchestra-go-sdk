@@ -621,7 +621,7 @@ func waitForPowerStateReached(c *Client, vmId, desiredPowerState string, timeout
 	case HaltedPowerState:
 		pending = []string{RunningPowerState}
 	default:
-		return fmt.Errorf("Invalid VM power state requested: %s\n", desiredPowerState)
+		return fmt.Errorf("invalid VM power state requested: %s", desiredPowerState)
 	}
 	refreshFn := func() (result interface{}, state string, err error) {
 		vm, err := c.GetVm(Vm{Id: vmId})

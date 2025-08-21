@@ -33,7 +33,7 @@ var (
 // errors message declared to be used in the different v2 packages. (OPTIONAL)
 const (
 	// #nosec G101 -- Not actual credentials, just environment variable names
-	errMissingAuthInfo = `Authentication information not provided. Please set XOA_TOKEN or both XOA_USER and XOA_PASSWORD`
+	errMissingAuthInfo = `authentication information not provided. Please set XOA_TOKEN or both XOA_USER and XOA_PASSWORD`
 	errMissingUrl      = `XOA_URL is not set, please set it`
 )
 

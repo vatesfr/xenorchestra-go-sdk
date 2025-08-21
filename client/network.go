@@ -31,10 +31,7 @@ func (net Network) Compare(obj interface{}) bool {
 		return true
 	}
 
-	labelsMatch := false
-	if net.NameLabel != "" && net.NameLabel == otherNet.NameLabel {
-		labelsMatch = true
-	}
+	labelsMatch := net.NameLabel != "" && net.NameLabel == otherNet.NameLabel
 
 	if net.PoolId == "" && labelsMatch {
 		return true
