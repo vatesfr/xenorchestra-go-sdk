@@ -151,7 +151,11 @@ func ExtractTaskID(taskURL string) string {
 	return strings.TrimPrefix(taskURL, "/rest/v0/tasks/")
 }
 
-func (s *Service) HandleTaskResponse(ctx context.Context, response string, waitForCompletion bool) (*payloads.Task, bool, error) {
+func (s *Service) HandleTaskResponse(
+	ctx context.Context,
+	response string,
+	waitForCompletion bool,
+) (*payloads.Task, bool, error) {
 	if !IsTaskURL(response) {
 		return nil, false, nil
 	}
