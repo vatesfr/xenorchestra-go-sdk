@@ -154,7 +154,7 @@ func setupTestServer() (*httptest.Server, library.VM) {
 	}
 
 	// TODO: run mock gen for the task service and add to .gitignore
-	return server, New(restClient, nil, nil, nil, log)
+	return server, New(restClient, nil, nil, log)
 }
 
 func TestGetByID(t *testing.T) {
