@@ -291,11 +291,11 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		"high_availability": vmReq.HA,
 	}
 
-	if len(vmReq.Memory.Static) >= 2 {
+	if len(vmReq.Memory.Static) == 2 && vmReq.Memory.Static[1] != 0 {
 		params["memoryStaticMax"] = vmReq.Memory.Static[1]
 	}
 
-	if len(vmReq.Memory.Dynamic) >= 2 {
+	if len(vmReq.Memory.Dynamic) == 2 && vmReq.Memory.Dynamic[1] != 0 {
 		params["memoryMax"] = vmReq.Memory.Dynamic[1]
 	}
 
@@ -384,7 +384,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		return nil, err
 	}
 
-	if len(vmReq.Memory.Dynamic) >= 1 {
+	if len(vmReq.Memory.Dynamic) == 2 && vmReq.Memory.Dynamic[0] != 0 {
 		otherParams["memoryMin"] = max(vmReq.Memory.Dynamic[0], vm.Memory.Static[0])
 	}
 
@@ -454,13 +454,13 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 	}
 
 	// Set memory parameters if provided in vmReq.Memory
-	if len(vmReq.Memory.Dynamic) >= 1 {
+	if len(vmReq.Memory.Dynamic) == 2 && vmReq.Memory.Dynamic[0] != 0 {
 		params["memoryMin"] = vmReq.Memory.Dynamic[0]
 	}
-	if len(vmReq.Memory.Dynamic) >= 2 {
+	if len(vmReq.Memory.Dynamic) == 2 && vmReq.Memory.Dynamic[1] != 0 {
 		params["memoryMax"] = vmReq.Memory.Dynamic[1]
 	}
-	if len(vmReq.Memory.Static) >= 2 {
+	if len(vmReq.Memory.Static) == 2 && vmReq.Memory.Static[1] != 0 {
 		params["memoryStaticMax"] = vmReq.Memory.Static[1]
 	}
 
