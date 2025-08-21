@@ -291,13 +291,6 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		"high_availability": vmReq.HA,
 	}
 
-	// Set memory parameters if provided in vmReq.Memory
-	if len(vmReq.Memory.Dynamic) >= 1 {
-		params["memoryMin"] = vmReq.Memory.Dynamic[0]
-	}
-	if len(vmReq.Memory.Dynamic) >= 2 {
-		params["memoryMax"] = vmReq.Memory.Dynamic[1]
-	}
 	if len(vmReq.Memory.Static) >= 2 {
 		params["memoryStaticMax"] = vmReq.Memory.Static[1]
 	}
@@ -376,12 +369,26 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		return nil, err
 	}
 
-	xsParams := map[string]interface{}{
+	otherParams := map[string]interface{}{
 		"id":           vmId,
 		"xenStoreData": vmReq.XenstoreData,
 	}
+
+	// Set dynamic memory after VM creation
+	vm, err := c.GetVm(Vm{Id: vmId})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(vmReq.Memory.Dynamic) >= 1 {
+		otherParams["memoryMin"] = max(vmReq.Memory.Dynamic[0], vm.Memory.Static[0])
+	}
+	if len(vmReq.Memory.Dynamic) >= 2 {
+		otherParams["memoryMax"] = vmReq.Memory.Dynamic[1]
+	}
+
 	var success bool
-	err = c.Call("vm.set", xsParams, &success)
+	err = c.Call("vm.set", otherParams, &success)
 
 	if err != nil {
 		return nil, err
