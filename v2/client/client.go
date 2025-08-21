@@ -59,9 +59,10 @@ func New(config *config.Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to parse url: %w", err)
 	}
 
-	if baseURL.Scheme == WebSocketScheme {
+	switch baseURL.Scheme {
+	case WebSocketScheme:
 		baseURL.Scheme = "http"
-	} else if baseURL.Scheme == SecureWebSocketScheme {
+	case SecureWebSocketScheme:
 		baseURL.Scheme = "https"
 	}
 
