@@ -11,4 +11,6 @@ type Library interface {
 	// 2. Use v2 features while maintaining backward compatibility
 	// 3. Gradually migrate from v1 to v2 without managing multiple clients
 	V1Client() v1.XOClient
+	Task() Task
+	StorageRepository() StorageRepository
 }

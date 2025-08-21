@@ -46,3 +46,5 @@ mock/
 # integration test ignored stuff.
 integration_tests.log
 logs
+
+vscode/

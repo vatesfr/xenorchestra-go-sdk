@@ -153,7 +153,8 @@ func setupTestServer() (*httptest.Server, library.VM) {
 		panic(err)
 	}
 
-	return server, New(restClient, log)
+	// TODO: run mock gen for the task service and add to .gitignore
+	return server, New(restClient, nil, nil, nil, log)
 }
 
 func TestGetByID(t *testing.T) {
