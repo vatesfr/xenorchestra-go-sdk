@@ -5,9 +5,9 @@ on:
     inputs: {}
   pull_request:
     branches:
-    - main
-    - v*
-    - feature*
+      - main
+      - v*
+      - feature*
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -17,17 +17,15 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v5
-    - name: Install go
-      uses: actions/setup-go@v5
-      with:
-        # The versions of golangci-lint and setup-go here cross-depend and need to update together.
-        go-version: '1.24'
-        # Either this action or golangci-lint needs to disable the cache
-        cache: false
-    - run: go mod tidy
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: v1.64.7
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+      - name: Install go
+        uses: actions/setup-go@v5
+        with:
+          # The versions of golangci-lint and setup-go here cross-depend and need to update together.
+          go-version: '1.24'
+          # Either this action or golangci-lint needs to disable the cache
+          cache: false
+      - run: go mod tidy
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
