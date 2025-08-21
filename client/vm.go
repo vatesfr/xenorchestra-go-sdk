@@ -295,6 +295,10 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		params["memoryStaticMax"] = vmReq.Memory.Static[1]
 	}
 
+	if len(vmReq.Memory.Dynamic) >= 2 {
+		params["memoryMax"] = vmReq.Memory.Dynamic[1]
+	}
+
 	if !params["clone"].(bool) && vmReq.CloneType == CloneTypeFastClone {
 		fmt.Printf("[WARN] A fast clone was requested but falling back to full due to lack of disk template support\n")
 	}
@@ -382,9 +386,6 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 
 	if len(vmReq.Memory.Dynamic) >= 1 {
 		otherParams["memoryMin"] = max(vmReq.Memory.Dynamic[0], vm.Memory.Static[0])
-	}
-	if len(vmReq.Memory.Dynamic) >= 2 {
-		otherParams["memoryMax"] = vmReq.Memory.Dynamic[1]
 	}
 
 	var success bool
