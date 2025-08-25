@@ -16,12 +16,12 @@ var ctx = context.Background()
 const restPath = "/rest/v0"
 
 func TestNew(t *testing.T) {
-	_, err := New(&config.Config{Url: "://invalid-url"})
+	_, err := New(&config.Config{Url: "://invalid-url", Token: "abc"})
 	if err == nil {
 		t.Error("Expected error for invalid URL, got nil")
 	}
 
-	_, err = New(&config.Config{Url: "http://example.com"})
+	_, err = New(&config.Config{Url: "http://example.com", Token: "abc"})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
