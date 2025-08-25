@@ -27,7 +27,7 @@ jobs:
           # Either this action or golangci-lint needs to disable the cache
           cache: false
       - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@v0.5.1
+        run: go install github.com/golang/mock/mockgen@v1.6.0
       - name: Generate mocks
         run: go generate ./...
       - run: go mod tidy
