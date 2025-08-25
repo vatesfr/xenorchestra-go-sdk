@@ -108,3 +108,35 @@ func New() (*Config, error) {
 		RetryMaxTime:       retryMaxTime,
 	}, nil
 }
+
+// NewWithValues returns a new Config with the values provided.
+//
+// The purpose of this function is to allow the user to use the SDK without
+// having to set the environment variables, for example in the terraform
+// provider where the variables are part of the config files rather than
+// the environment variables.
+//
+// The following fields are required:
+// - Url
+// - Token or Username and Password
+func NewWithValues(config *Config) (*Config, error) {
+
+	if config.Url == "" {
+		return nil, errors.New(errMissingUrl)
+	}
+
+	if config.Token == "" && (config.Username == "" || config.Password == "") {
+		return nil, errors.New(errMissingAuthInfo)
+	}
+
+	return &Config{
+		Url:                config.Url,
+		Username:           config.Username,
+		Password:           config.Password,
+		Token:              config.Token,
+		InsecureSkipVerify: config.InsecureSkipVerify,
+		RetryMode:          config.RetryMode,
+		RetryMaxTime:       config.RetryMaxTime,
+		Development:        config.Development,
+	}, nil
+}

@@ -1,10 +1,11 @@
 module github.com/vatesfr/xenorchestra-go-sdk
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/gofrs/uuid v4.4.0+incompatible
+	github.com/golang/mock v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sourcegraph/jsonrpc2 v0.2.1
@@ -13,8 +14,8 @@ require (
 )
 
 require (
-	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/text v0.25.0 // indirect
 )
 
 require (

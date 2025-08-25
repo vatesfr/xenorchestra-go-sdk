@@ -11,15 +11,17 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	mock "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
-func setupTestServer() (*httptest.Server, library.VM) {
+func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockTask) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -153,11 +155,15 @@ func setupTestServer() (*httptest.Server, library.VM) {
 		panic(err)
 	}
 
-	return server, New(restClient, log)
+	// Create mock controller and task mock
+	ctrl := gomock.NewController(t)
+	mockTask := mock.NewMockTask(ctrl)
+
+	return server, New(restClient, mockTask, log), mockTask
 }
 
 func TestGetByID(t *testing.T) {
-	server, service := setupTestServer()
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	id := uuid.Must(uuid.NewV4())
@@ -170,7 +176,7 @@ func TestGetByID(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	server, service := setupTestServer()
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	vms, err := service.List(context.Background())
@@ -181,10 +187,12 @@ func TestList(t *testing.T) {
 	assert.Equal(t, "VM 2", vms[1].NameLabel)
 }
 
-/*
 func TestCreate(t *testing.T) {
-	server, service := setupTestServer()
+	server, service, mockTask := setupTestServer(t)
 	defer server.Close()
+
+	// Set up mock expectations for task handling
+	mockTask.EXPECT().HandleTaskResponse(gomock.Any(), gomock.Any(), true).Return(nil, false, nil).AnyTimes()
 
 	newVM := &payloads.VM{
 		NameLabel:       "New VM",
@@ -195,6 +203,7 @@ func TestCreate(t *testing.T) {
 		Memory: payloads.Memory{
 			Static: []int64{1073741824, 4294967296},
 		},
+		PoolID: uuid.FromStringOrNil("201b228b-2f91-4138-969c-49cae8780448"),
 	}
 
 	vm, err := service.Create(context.Background(), newVM)
@@ -204,10 +213,9 @@ func TestCreate(t *testing.T) {
 	assert.Equal(t, "New VM", vm.NameLabel)
 	assert.Equal(t, payloads.PowerStateHalted, vm.PowerState)
 }
-*/
 
 func TestUpdate(t *testing.T) {
-	server, service := setupTestServer()
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	id := uuid.Must(uuid.NewV4())
@@ -226,7 +234,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	server, service := setupTestServer()
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	id := uuid.Must(uuid.NewV4())
@@ -236,7 +244,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestPowerOperations(t *testing.T) {
-	server, service := setupTestServer()
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	id := uuid.Must(uuid.NewV4())
