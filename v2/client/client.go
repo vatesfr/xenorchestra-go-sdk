@@ -196,14 +196,14 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 		return fmt.Errorf("API error: %s - %s", resp.Status, string(bodyBytes))
 	}
 
+	// Parse response as JSON first; if it fails and the expected result is a string, fall back to raw string.
 	if result != nil && len(bodyBytes) > 0 {
-		// Catch result that are raw string without JSON unmarshaling.
-		if strPtr, ok := result.(*string); ok {
-			*strPtr = string(bodyBytes)
-			return nil
-		}
-
 		if err := json.Unmarshal(bodyBytes, result); err != nil {
+			// If JSON unmarshaling fails but the caller expects a string, return the raw body.
+			if strPtr, ok := result.(*string); ok {
+				*strPtr = string(bodyBytes)
+				return nil
+			}
 			return core.ErrFailedToUnmarshalResponse.WithArgs(err, string(bodyBytes))
 		}
 	}

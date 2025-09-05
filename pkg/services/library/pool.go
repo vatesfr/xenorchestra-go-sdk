@@ -16,8 +16,8 @@ type Pool interface {
 }
 
 type PoolAction interface {
-	CreateVM(ctx context.Context, poolID string, params payloads.CreateVMParams) (string, error)
+	CreateVM(ctx context.Context, poolID uuid.UUID, params payloads.CreateVMParams) (uuid.UUID, error)
 	EmergencyShutdown(ctx context.Context) (string, error)
-	RollingReboot(ctx context.Context) (string, error)
-	RollingUpdate(ctx context.Context) (string, error)
+	RollingReboot(ctx context.Context, poolID uuid.UUID) error
+	RollingUpdate(ctx context.Context, poolID uuid.UUID) error
 }

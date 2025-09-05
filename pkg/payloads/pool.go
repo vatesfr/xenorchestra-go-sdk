@@ -32,9 +32,16 @@ type Pool struct {
 	XAPIRef                   string            `json:"_xapiRef"`
 }
 
+type InstallMethod string
+
+const (
+	InstallMethodCdrom   InstallMethod = "cdrom"
+	InstallMethodNetwork InstallMethod = "network"
+)
+
 type InstallParams struct {
-	Method     string `json:"method,omitempty"`
-	Repository string `json:"repository,omitempty"`
+	Method     InstallMethod `json:"method,omitempty"`
+	Repository string        `json:"repository,omitempty"`
 }
 
 type VDIParams struct {
@@ -52,22 +59,26 @@ type VIFParams struct {
 	IPV4Allowed []string `json:"ipv4_allowed,omitempty"`
 	IPV6Allowed []string `json:"ipv6_allowed,omitempty"`
 	MAC         *string  `json:"mac,omitempty"`
+	MTU         *int     `json:"mtu,omitempty"`
 	Network     *string  `json:"network,omitempty"`
 }
 
 type CreateVMParams struct {
 	Affinity              *string        `json:"affinity,omitempty"`
-	AutoPoweron           *bool          `json:"auto_poweron,omitempty"`
-	Boot                  bool           `json:"boot,omitempty"`
-	Clone                 bool           `json:"clone,omitempty"`
+	AutoPoweron           *bool          `json:"autoPoweron,omitempty"`
+	Boot                  *bool          `json:"boot,omitempty"`
+	Clone                 *bool          `json:"clone,omitempty"`
 	CloudConfig           *string        `json:"cloud_config,omitempty"`
-	DestroyCloudConfigVDI bool           `json:"destroy_cloud_config_vdi,omitempty"`
+	DestroyCloudConfigVDI *bool          `json:"destroy_cloud_config_vdi,omitempty"`
 	Install               *InstallParams `json:"install,omitempty"`
 	Memory                *int           `json:"memory,omitempty"`
-	NameDescription       *string        `json:"name_description,omitempty"`
+	NameDescription       string         `json:"name_description,omitempty"`
 	NameLabel             string         `json:"name_label"`
 	NetworkConfig         *string        `json:"network_config,omitempty"`
-	Template              string         `json:"template"`
+	Template              uuid.UUID      `json:"template"`
 	VDIs                  []VDIParams    `json:"vdis,omitempty"`
 	VIFs                  []VIFParams    `json:"vifs,omitempty"`
+	GPUGroup              *string        `json:"gpuGroup,omitempty"`
+	VGPUType              *string        `json:"vgpuType,omitempty"`
+	CopyHostBiosStrings   *bool          `json:"copyHostBiosStrings,omitempty"`
 }

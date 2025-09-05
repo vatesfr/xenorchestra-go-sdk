@@ -43,8 +43,8 @@ func New(config *config.Config) (library.Library, error) {
 
 	return &XOClient{
 		vmService:   vm.New(client, taskService, log),
-		taskService: task.New(client, log),
-		poolService: pool.New(client, log),
+		taskService: taskService,
+		poolService: pool.New(client, taskService, log),
 	}, nil
 }
 

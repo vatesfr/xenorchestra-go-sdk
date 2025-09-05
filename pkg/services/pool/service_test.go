@@ -11,10 +11,12 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	mock "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
@@ -31,7 +33,11 @@ func setupTestServer(t *testing.T, handler http.HandlerFunc) (library.Pool, *htt
 		AuthToken:  "test-token",
 	}
 
-	poolService := New(restClient, log)
+	// Create mock controller and task mock
+	ctrl := gomock.NewController(t)
+	mockTask := mock.NewMockTask(ctrl)
+
+	poolService := New(restClient, mockTask, log)
 	return poolService, server
 }
 
@@ -86,10 +92,10 @@ func TestGetAllPools(t *testing.T) {
 }
 
 func TestCreateVM(t *testing.T) {
-	poolID := uuid.Must(uuid.NewV4()).String()
+	poolID := uuid.Must(uuid.NewV4())
 	params := payloads.CreateVMParams{
 		NameLabel: "New-VM-Test",
-		Template:  "Template-uuid",
+		Template:  uuid.Must(uuid.NewV4()),
 	}
 	expectedVMID := uuid.Must(uuid.NewV4()).String()
 
