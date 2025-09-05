@@ -11,10 +11,10 @@ import (
 type Status string
 
 const (
-	Success Status = "success"
-	Failure Status = "failure"
-	Running Status = "running"
-	Pending Status = "pending"
+	Success     Status = "success"
+	Failure     Status = "failure"
+	Interrupted Status = "interrupted"
+	Pending     Status = "pending"
 )
 
 type APITime time.Time
@@ -51,85 +51,45 @@ func (t APITime) String() string {
 	return time.Time(t).String()
 }
 
-type Params struct {
-	ID string `json:"id"`
+type DataMessage struct {
+	Message string         `json:"message"`
+	Data    map[string]any `json:"data"`
 }
 
 type Properties struct {
-	Name     string `json:"name"`
-	Method   string `json:"method,omitempty"`
-	Params   Params `json:"params,omitempty"`
-	ObjectID string `json:"objectId"`
-	UserID   string `json:"userId"`
-	Type     string `json:"type,omitempty"`
+	UserID   string         `json:"userId,omitempty"`
+	Type     string         `json:"type,omitempty"`
+	Params   map[string]any `json:"params,omitempty"`
+	ObjectID string         `json:"objectId,omitempty"`
+	Name     string         `json:"name"`
+	Method   string         `json:"method,omitempty"`
 }
 
 type Result struct {
-	Code   string `json:"code"`
-	Params []any  `json:"params"`
+	Code   any            `json:"code"` // Can be either a number or a string
+	Data   map[string]any `json:"data,omitempty"`
+	Params []any          `json:"params"`
 	Call   struct {
 		Method   string `json:"method"`
 		Duration int64  `json:"duration"`
 		Params   []any  `json:"params"`
 	} `json:"call"`
-}
-
-type TaskResult struct {
-	ID       uuid.UUID `json:"id,omitempty"`
-	Result   Result    `json:"result,omitempty"`
-	StringID string
-}
-
-func (r *TaskResult) UnmarshalJSON(data []byte) error {
-	var idStr string
-	if err := json.Unmarshal(data, &idStr); err == nil {
-		id, err := uuid.FromString(idStr)
-		if err == nil {
-			r.ID = id
-		}
-		r.StringID = idStr
-		return nil
-	}
-
-	var structResult struct {
-		ID     uuid.UUID `json:"id,omitempty"`
-		Result Result    `json:"result,omitempty"`
-	}
-
-	if err := json.Unmarshal(data, &structResult); err != nil {
-		return fmt.Errorf("value is neither a valid result string nor a structured result: %v", err)
-	}
-
-	r.ID = structResult.ID
-	r.Result = structResult.Result
-	return nil
-}
-
-func (r TaskResult) MarshalJSON() ([]byte, error) {
-	if r.StringID != "" && r.ID == uuid.Nil {
-		return json.Marshal(r.StringID)
-	}
-
-	structResult := struct {
-		ID     uuid.UUID `json:"id,omitempty"`
-		Result Result    `json:"result,omitempty"`
-	}{
-		ID:     r.ID,
-		Result: r.Result,
-	}
-
-	return json.Marshal(structResult)
+	Message string    `json:"message,omitempty"`
+	Name    string    `json:"name,omitempty"`
+	Stack   string    `json:"stack,omitempty"`
+	ID      uuid.UUID `json:"id,omitempty"` // Used to store output ID of a success task
 }
 
 type Task struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name,omitempty"`
-	Status     Status     `json:"status"`
-	Properties Properties `json:"properties"`
-	Started    APITime    `json:"start"`
-	UpdatedAt  APITime    `json:"updatedAt"`
-	EndedAt    APITime    `json:"end,omitempty"`
-	Result     TaskResult `json:"result,omitempty"`
-	Message    string     `json:"message,omitempty"`
-	Stack      string     `json:"stack,omitempty"`
+	AbortionRequestedAt APITime     `json:"abortionRequestedAt,omitempty"`
+	EndedAt             APITime     `json:"end,omitempty"`
+	ID                  string      `json:"id"`
+	Info                DataMessage `json:"info,omitempty"`
+	Properties          Properties  `json:"properties"`
+	Result              Result      `json:"result,omitempty"`
+	Started             APITime     `json:"start"`
+	Status              Status      `json:"status"`
+	UpdatedAt           APITime     `json:"updatedAt,omitempty"`
+	Tasks               []Task      `json:"tasks,omitempty"`
+	Warning             DataMessage `json:"warning,omitempty"`
 }
