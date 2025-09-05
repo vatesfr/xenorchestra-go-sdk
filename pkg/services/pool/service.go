@@ -101,81 +101,52 @@ func (s *Service) CreateVM(ctx context.Context, poolID uuid.UUID, params payload
 	return uuid.Nil, fmt.Errorf("unexpected response from API call: %s", response)
 }
 
-func (s *Service) performPoolAction(ctx context.Context, action string) (string, error) {
-	path := core.NewPathBuilder().Resource("pools").Build()
-	params := map[string]any{"action": action}
-	var result string
-	if err := client.TypedPost(ctx, s.client, path, params, &result); err != nil {
-		s.log.Error("Failed to perform pool action", zap.String("action", action), zap.Error(err))
-		return "", fmt.Errorf("failed to perform pool action '%s': %w", action, err)
+func (s *Service) performPoolAction(ctx context.Context, poolID uuid.UUID, action string) error {
+	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action(action).Build()
+
+	params := map[string]any{}
+	var response string
+
+	err := client.TypedPost(ctx, s.client, path, params, &response)
+	if err != nil {
+		s.log.Error("failed to "+action+" the pool",
+			zap.String("poolID", poolID.String()),
+			zap.Error(err))
+		return fmt.Errorf("failed to %s the pool %s: %w", action, poolID, err)
 	}
-	return result, nil
+
+	// Use the task service to handle the response
+	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
+	if err != nil {
+		s.log.Error("Task handling failed", zap.Error(err))
+		return fmt.Errorf("pool %s failed: %w", action, err)
+	}
+
+	if isTask && taskResult.Status == payloads.Success {
+		return nil
+	} else {
+		s.log.Error("Task failed",
+			zap.String("status", string(taskResult.Status)),
+			zap.String("message", taskResult.Result.Message),
+			zap.String("stack", taskResult.Result.Stack))
+		return fmt.Errorf("pool %s failed: %s", action, taskResult.Result.Message)
+	}
 }
 
-func (s *Service) EmergencyShutdown(ctx context.Context) (string, error) {
-	return s.performPoolAction(ctx, "emergency_shutdown")
+// EmergencyShutdown performs an emergency shutdown on the specified pool.
+// The call is synchronous: it will wait for the task to be completed.
+func (s *Service) EmergencyShutdown(ctx context.Context, poolID uuid.UUID) error {
+	return s.performPoolAction(ctx, poolID, "emergency_shutdown")
 }
 
+// RollingReboot triggers a rolling reboot on the specified pool.
+// The call is synchronous: it will wait for the task to be completed.
 func (s *Service) RollingReboot(ctx context.Context, poolID uuid.UUID) error {
-	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action("rolling_reboot").Build()
-
-	params := map[string]any{}
-	var response string
-
-	err := client.TypedPost(ctx, s.client, path, params, &response)
-	if err != nil {
-		s.log.Error("failed to rolling reboot the pool",
-			zap.String("poolID", poolID.String()),
-			zap.Error(err))
-		return fmt.Errorf("failed to rolling reboot the pool %s: %w", poolID, err)
-	}
-
-	// Use the task service to handle the response
-	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
-	if err != nil {
-		s.log.Error("Task handling failed", zap.Error(err))
-		return fmt.Errorf("Pool rolling reboot failed: %w", err)
-	}
-
-	if isTask && taskResult.Status == payloads.Success {
-		return nil
-	} else {
-		s.log.Error("Task failed",
-			zap.String("status", string(taskResult.Status)),
-			zap.String("message", taskResult.Result.Message),
-			zap.String("stack", taskResult.Result.Stack))
-		return fmt.Errorf("Pool rolling reboot failed: %s", taskResult.Result.Message)
-	}
+	return s.performPoolAction(ctx, poolID, "rolling_reboot")
 }
 
+// RollingUpdate triggers a rolling update on the specified pool.
+// The call is synchronous: it will wait for the task to be completed.
 func (s *Service) RollingUpdate(ctx context.Context, poolID uuid.UUID) error {
-	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action("rolling_update").Build()
-
-	params := map[string]any{}
-	var response string
-
-	err := client.TypedPost(ctx, s.client, path, params, &response)
-	if err != nil {
-		s.log.Error("failed to rolling update the pool",
-			zap.String("poolID", poolID.String()),
-			zap.Error(err))
-		return fmt.Errorf("failed to rolling update the pool %s: %w", poolID, err)
-	}
-
-	// Use the task service to handle the response
-	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
-	if err != nil {
-		s.log.Error("Task handling failed", zap.Error(err))
-		return fmt.Errorf("Pool rolling update failed: %w", err)
-	}
-
-	if isTask && taskResult.Status == payloads.Success {
-		return nil
-	} else {
-		s.log.Error("Task failed",
-			zap.String("status", string(taskResult.Status)),
-			zap.String("message", taskResult.Result.Message),
-			zap.String("stack", taskResult.Result.Stack))
-		return fmt.Errorf("Pool rolling update failed: %s", taskResult.Result.Message)
-	}
+	return s.performPoolAction(ctx, poolID, "rolling_update")
 }
