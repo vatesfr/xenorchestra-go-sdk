@@ -60,25 +60,30 @@ func (s *Service) GetAll(ctx context.Context, limit int) ([]*payloads.Pool, erro
 }
 
 func (s *Service) CreateVM(ctx context.Context, poolID uuid.UUID, params payloads.CreateVMParams) (uuid.UUID, error) {
-	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action("create_vm").Build()
+	return s.createResource(ctx, poolID, "vm", params)
+}
+
+func (s *Service) createResource(ctx context.Context, poolID uuid.UUID, resourceType string, params any) (uuid.UUID, error) {
+	action := fmt.Sprintf("create_%s", resourceType)
+	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action(action).Build()
 
 	var response string
 	err := client.TypedPost(ctx, s.client, path, params, &response)
 	if err != nil {
-		s.log.Error("failed to create VM on pool",
+		s.log.Error(fmt.Sprintf("failed to create %s on pool", resourceType),
 			zap.String("poolID", poolID.String()),
 			zap.Any("params", params),
 			zap.Error(err))
-		return uuid.Nil, fmt.Errorf("failed to create VM on pool %s: %w", poolID, err)
+		return uuid.Nil, fmt.Errorf("failed to create %s on pool %s: %w", resourceType, poolID, err)
 	}
 
-	s.log.Debug("Received response from create_vm", zap.String("response", response))
+	s.log.Debug(fmt.Sprintf("Received response from %s", action), zap.String("response", response))
 
 	// Use the task service to handle the response
 	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
 	if err != nil {
 		s.log.Error("Task handling failed", zap.Error(err))
-		return uuid.Nil, fmt.Errorf("VM creation task failed: %w", err)
+		return uuid.Nil, fmt.Errorf("%s creation task failed: %w", resourceType, err)
 	}
 	if isTask {
 		if taskResult.Status != payloads.Success {
@@ -86,17 +91,17 @@ func (s *Service) CreateVM(ctx context.Context, poolID uuid.UUID, params payload
 				zap.String("status", string(taskResult.Status)),
 				zap.String("message", taskResult.Result.Message),
 				zap.String("stack", taskResult.Result.Stack))
-			return uuid.Nil, fmt.Errorf("VM creation failed: %s", taskResult.Result.Message)
+			return uuid.Nil, fmt.Errorf("%s creation failed: %s", resourceType, taskResult.Result.Message)
 		}
 
 		// If task successful
-		vmID := taskResult.Result.ID
-		if vmID == uuid.Nil {
-			s.log.Debug("Task result has no VM ID", zap.Any("taskResult.Result", taskResult.Result))
-			return uuid.Nil, fmt.Errorf("failed to retrieve VM ID from task result: %s", taskResult.Result.Message)
+		resourceID := taskResult.Result.ID
+		if resourceID == uuid.Nil {
+			s.log.Debug(fmt.Sprintf("Task result has no %s ID", resourceType), zap.Any("taskResult.Result", taskResult.Result))
+			return uuid.Nil, fmt.Errorf("failed to retrieve %s ID from task result: %s", resourceType, taskResult.Result.Message)
 		}
 
-		return vmID, nil
+		return resourceID, nil
 	}
 	return uuid.Nil, fmt.Errorf("unexpected response from API call: %s", response)
 }
@@ -149,4 +154,22 @@ func (s *Service) RollingReboot(ctx context.Context, poolID uuid.UUID) error {
 // The call is synchronous: it will wait for the task to be completed.
 func (s *Service) RollingUpdate(ctx context.Context, poolID uuid.UUID) error {
 	return s.performPoolAction(ctx, poolID, "rolling_update")
+}
+
+// CreateNetwork
+func (s *Service) CreateNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
+
+	// Check parameters
+	if params.Name == "" {
+		s.log.Error("CreateNetwork failed: name cannot be empty",
+			zap.String("Name", params.Name))
+		return uuid.Nil, fmt.Errorf("network name cannot be empty")
+	}
+	if params.Vlan > 4094 {
+		s.log.Error("CreateNetwork failed: vlan must be between 0 and 4094",
+			zap.Uint("vlan", params.Vlan))
+		return uuid.Nil, fmt.Errorf("vlan must be between 0 and 4094")
+	}
+
+	return s.createResource(ctx, poolID, "network", params)
 }
