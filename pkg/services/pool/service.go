@@ -63,7 +63,9 @@ func (s *Service) CreateVM(ctx context.Context, poolID uuid.UUID, params payload
 	return s.createResource(ctx, poolID, "vm", params)
 }
 
-func (s *Service) createResource(ctx context.Context, poolID uuid.UUID, resourceType string, params any) (uuid.UUID, error) {
+func (s *Service) createResource(
+	ctx context.Context, poolID uuid.UUID, resourceType string, params any) (uuid.UUID, error) {
+	// Build the path
 	action := fmt.Sprintf("create_%s", resourceType)
 	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action(action).Build()
 
@@ -157,7 +159,8 @@ func (s *Service) RollingUpdate(ctx context.Context, poolID uuid.UUID) error {
 }
 
 // CreateNetwork
-func (s *Service) CreateNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
+func (s *Service) CreateNetwork(
+	ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
 
 	// Check parameters
 	if params.Name == "" {

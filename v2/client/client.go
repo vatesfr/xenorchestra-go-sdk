@@ -257,7 +257,7 @@ func (c *Client) post(ctx context.Context, endpoint string, params map[string]an
 //	err := TypedPost(ctx, client, "generate-link", MyParamsType{ID: "123"}, &urlResult)
 func TypedPost[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
 	var paramsMap map[string]any
-	if !reflect.ValueOf(params).IsZero() {
+	if v := reflect.ValueOf(params); v.IsValid() && !v.IsZero() {
 		data, err := json.Marshal(params)
 		if err != nil {
 			return core.ErrFailedToMarshalParams.WithArgs(err, string(data))

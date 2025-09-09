@@ -49,7 +49,6 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 			case "success-task-123":
 				task = payloads.Task{
 					ID:     "success-task-123",
-					Name:   "Test Success Task",
 					Status: payloads.Success,
 					Properties: payloads.Properties{
 						Name: "vm.create",
@@ -57,21 +56,22 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 					Started:   payloads.APITime(time.Now().Add(-5 * time.Minute)),
 					UpdatedAt: payloads.APITime(time.Now().Add(-1 * time.Minute)),
 					EndedAt:   payloads.APITime(time.Now().Add(-1 * time.Minute)),
-					Result: payloads.TaskResult{
-						ID:       uuid.Must(uuid.FromString("361f2903-2c09-486e-9eff-91debeeee304")),
-						StringID: "361f2903-2c09-486e-9eff-91debeeee304",
+					Result: payloads.Result{
+						ID: uuid.Must(uuid.FromString("361f2903-2c09-486e-9eff-91debeeee304")),
 					},
 				}
 			case "failure-task-456":
 				task = payloads.Task{
-					ID:      "failure-task-456",
-					Status:  payloads.Failure,
-					Message: "VM not found",
+					ID:     "failure-task-456",
+					Status: payloads.Failure,
+					Result: payloads.Result{
+						Message: "VM not found",
+					},
 				}
 			case "running-task-789":
 				task = payloads.Task{
 					ID:     "running-task-789",
-					Status: payloads.Running,
+					Status: payloads.Pending,
 				}
 			default:
 				w.WriteHeader(http.StatusNotFound)
@@ -131,7 +131,6 @@ func TestGet(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, "success-task-123", task.ID)
-		assert.Equal(t, "Test Success Task", task.Name)
 		assert.Equal(t, payloads.Success, task.Status)
 		assert.Equal(t, "vm.create", task.Properties.Name)
 		assert.Equal(t, uuid.Must(uuid.FromString("361f2903-2c09-486e-9eff-91debeeee304")), task.Result.ID)
@@ -142,7 +141,6 @@ func TestGet(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, "success-task-123", task.ID)
-		assert.Equal(t, "Test Success Task", task.Name)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
@@ -200,7 +198,7 @@ func TestWait(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "failure-task-456", task.ID)
 		assert.Equal(t, payloads.Failure, task.Status)
-		assert.Equal(t, "VM not found", task.Message)
+		assert.Equal(t, "VM not found", task.Result.Message)
 	})
 
 	t.Run("wait with context cancellation", func(t *testing.T) {
