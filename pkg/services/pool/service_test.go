@@ -165,62 +165,6 @@ func TestGetAllPools(t *testing.T) {
 	})
 }
 
-// func TestPoolActions(t *testing.T) {
-// 	testCases := []struct {
-// 		name        string
-// 		action      string
-// 		serviceCall func(ctx context.Context, s library.Pool) error
-// 	}{
-// 		{
-// 			name:   "EmergencyShutdown",
-// 			action: "emergency_shutdown",
-// 			serviceCall: func(ctx context.Context, s library.Pool) error {
-// 				return s.EmergencyShutdown(ctx, uuid.Must(uuid.NewV6()))
-// 			},
-// 		},
-// 		{
-// 			name:   "RollingReboot",
-// 			action: "rolling_reboot",
-// 			serviceCall: func(ctx context.Context, s library.Pool) error {
-// 				return s.RollingReboot(ctx, uuid.Must(uuid.NewV6()))
-// 			},
-// 		},
-// 		{
-// 			name:   "RollingUpdate",
-// 			action: "rolling_update",
-// 			serviceCall: func(ctx context.Context, s library.Pool) error {
-// 				return s.RollingUpdate(ctx, uuid.Must(uuid.NewV6()))
-// 			},
-// 		},
-// 	}
-
-// 	for _, tc := range testCases {
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			expectedTaskID := "task-" + tc.action
-
-// 			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 				assert.Equal(t, http.MethodPost, r.Method)
-// 				assert.True(t, strings.HasSuffix(r.URL.Path, "/pools"))
-
-// 				var requestBody map[string]interface{}
-// 				err := json.NewDecoder(r.Body).Decode(&requestBody)
-// 				assert.NoError(t, err)
-// 				assert.Equal(t, tc.action, requestBody["action"])
-
-// 				w.Header().Set("Content-Type", "application/json")
-// 				_, err = w.Write([]byte(expectedTaskID))
-// 				assert.NoError(t, err)
-// 			})
-
-// 			service, server := setupTestServer(t, handler)
-// 			defer server.Close()
-
-// 			err := tc.serviceCall(context.Background(), service)
-// 			assert.NoError(t, err)
-// 		})
-// 	}
-// }
-
 func TestCreateResource(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		poolID := uuid.Must(uuid.NewV4())
@@ -244,9 +188,9 @@ func TestCreateResource(t *testing.T) {
 			_, _ = w.Write([]byte("task-response"))
 		})
 
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
-		s := serviceIface.(*Service)
+		s := poolService.(*Service)
 		s.taskService = mockTask
 
 		params := payloads.CreateVMParams{
@@ -263,9 +207,9 @@ func TestCreateResource(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "err", http.StatusInternalServerError)
 		})
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
-		s := serviceIface.(*Service)
+		s := poolService.(*Service)
 
 		gotID, err := s.createResource(context.Background(), poolID, "vm", nil)
 		assert.Error(t, err)
@@ -283,9 +227,9 @@ func TestCreateResource(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("task-response"))
 		})
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
-		s := serviceIface.(*Service)
+		s := poolService.(*Service)
 		s.taskService = mockTask
 
 		gotID, err := s.createResource(context.Background(), poolID, "vm", nil)
@@ -305,9 +249,9 @@ func TestCreateResource(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("not-a-task"))
 		})
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
-		s := serviceIface.(*Service)
+		s := poolService.(*Service)
 		s.taskService = mockTask
 
 		gotID, err := s.createResource(context.Background(), poolID, "vm", nil)
@@ -329,9 +273,9 @@ func TestCreateResource(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("task-response"))
 		})
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
-		s := serviceIface.(*Service)
+		s := poolService.(*Service)
 		s.taskService = mockTask
 
 		gotID, err := s.createResource(context.Background(), poolID, "vm", nil)
@@ -345,10 +289,10 @@ func TestCreateNetworkParams(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Fatal("should not call API when validation fails")
 		})
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
 
-		s := serviceIface
+		s := poolService
 		// Call CreateNetwork with empty name
 		gotID, err := s.CreateNetwork(context.Background(), uuid.Must(uuid.NewV4()), payloads.CreateNetworkParams{
 			Name: "",
@@ -362,10 +306,10 @@ func TestCreateNetworkParams(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Fatal("should not call API when validation fails")
 		})
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
 
-		s := serviceIface
+		s := poolService
 		gotID, err := s.CreateNetwork(context.Background(), uuid.Must(uuid.NewV4()), payloads.CreateNetworkParams{
 			Name: "net",
 			Vlan: 5000,
@@ -398,10 +342,10 @@ func TestCreateNetworkParams(t *testing.T) {
 			_, _ = w.Write([]byte("task-response"))
 		})
 
-		serviceIface, server := setupTestServer(t, handler)
+		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
 		// Use createResource directly so we can pass pointer params and ensure body encoding
-		s := serviceIface.(*Service)
+		s := poolService.(*Service)
 		s.taskService = mockTask
 
 		params := payloads.CreateNetworkParams{
@@ -412,5 +356,87 @@ func TestCreateNetworkParams(t *testing.T) {
 		gotID, err := s.CreateNetwork(context.Background(), poolID, params)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedID, gotID)
+	})
+}
+
+func TestPerformPoolAction(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		poolID := uuid.Must(uuid.NewV4())
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockTask := mock.NewMockTask(ctrl)
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(&payloads.Task{
+			Status: payloads.Success,
+		}, true, nil)
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPost, r.Method)
+			_, _ = w.Write([]byte("task-response"))
+		})
+
+		poolService, server := setupTestServer(t, handler)
+		defer server.Close()
+		s := poolService.(*Service)
+		s.taskService = mockTask
+
+		err := s.performPoolAction(context.Background(), poolID, "emergency_shutdown")
+		assert.NoError(t, err)
+	})
+
+	t.Run("http error", func(t *testing.T) {
+		poolID := uuid.Must(uuid.NewV4())
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "fail", http.StatusInternalServerError)
+		})
+		poolService, server := setupTestServer(t, handler)
+		defer server.Close()
+		s := poolService.(*Service)
+
+		err := s.performPoolAction(context.Background(), poolID, "rolling_reboot")
+		assert.Error(t, err)
+	})
+
+	t.Run("task handler error", func(t *testing.T) {
+		poolID := uuid.Must(uuid.NewV4())
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockTask := mock.NewMockTask(ctrl)
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(nil, true, fmt.Errorf("boom"))
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("task-response"))
+		})
+		poolService, server := setupTestServer(t, handler)
+		defer server.Close()
+		s := poolService.(*Service)
+		s.taskService = mockTask
+
+		err := s.performPoolAction(context.Background(), poolID, "rolling_update")
+		assert.Error(t, err)
+	})
+
+	t.Run("task failed status", func(t *testing.T) {
+		poolID := uuid.Must(uuid.NewV4())
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockTask := mock.NewMockTask(ctrl)
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(&payloads.Task{
+			Status: payloads.Failure,
+			Result: payloads.Result{Message: "failed action"},
+		}, true, nil)
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("task-response"))
+		})
+		poolService, server := setupTestServer(t, handler)
+		defer server.Close()
+		s := poolService.(*Service)
+		s.taskService = mockTask
+
+		err := s.performPoolAction(context.Background(), poolID, "emergency_shutdown")
+		assert.Error(t, err)
 	})
 }
