@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -300,7 +300,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	}
 
 	if !params["clone"].(bool) && vmReq.CloneType == CloneTypeFastClone {
-		fmt.Printf("[WARN] A fast clone was requested but falling back to full due to lack of disk template support\n")
+		slog.Warn("A fast clone was requested but falling back to full due to lack of disk template support")
 	}
 
 	destroyCloudConfigVdiAfterBoot := vmReq.DestroyCloudConfigVdiAfterBoot
@@ -365,7 +365,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	if cloudNetworkConfig != "" {
 		params["networkConfig"] = cloudNetworkConfig
 	}
-	log.Printf("[DEBUG] VM params for vm.create %#v", params)
+	slog.Debug("VM params for vm.create", "param", params)
 	var vmId string
 	err = c.Call("vm.create", params, &vmId)
 
@@ -513,7 +513,7 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 	}
 	params["blockedOperations"] = blockedOperations
 
-	log.Printf("[DEBUG] VM params for vm.set: %#v", params)
+	slog.Debug("VM params for vm.set", "params", params)
 
 	var success bool
 	err := c.Call("vm.set", params, &success)
@@ -578,7 +578,7 @@ func (c *Client) GetVm(vmReq Vm) (*Vm, error) {
 		return nil, fmt.Errorf("expected to find a single VM from request %+v, instead found %d", vmReq, len(vms))
 	}
 
-	log.Printf("[DEBUG] Found vm: %+v", vms[0])
+	slog.Debug("Found vm", "vm", vms[0])
 	return &vms[0], nil
 }
 
@@ -588,7 +588,7 @@ func (c *Client) GetVms(vm Vm) ([]Vm, error) {
 		return []Vm{}, err
 	}
 	vms := obj.([]Vm)
-	log.Printf("[DEBUG] Found vms: %+v", vms)
+	slog.Debug("Found vms", "VMs", vms)
 	return vms, nil
 }
 
@@ -760,7 +760,7 @@ func (c *Client) waitForModifyVm(id string, desiredPowerState string, waitForIps
 func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v\n", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
@@ -781,7 +781,7 @@ func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 		})
 
 		if err != nil {
-			fmt.Println("Failed to get network to create a Vm for the tests")
+			slog.Error("Failed to get network to create a Vm for the tests")
 			os.Exit(-1)
 		}
 
@@ -825,7 +825,7 @@ func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 	}
 
 	if err != nil {
-		fmt.Printf("failed to find vm for the client tests with error: %v\n", err)
+		slog.Error("failed to find vm for the client tests", "error", err)
 		os.Exit(-1)
 	}
 
@@ -833,7 +833,7 @@ func FindOrCreateVmForTests(vm *Vm, poolId, srId, templateName, tag string) {
 }
 
 func checkBlockDestroyOperation(vm *Vm) bool {
-	fmt.Printf("Found VM with blocked_operations=%v", vm.BlockedOperations)
+	slog.Info("Found VM with blocked_operations", "blocked_operations", vm.BlockedOperations)
 
 	for k := range vm.BlockedOperations {
 
@@ -847,7 +847,7 @@ func checkBlockDestroyOperation(vm *Vm) bool {
 
 func RemoveVmsWithNamePrefix(prefix string) func(string) error {
 	return func(_ string) error {
-		fmt.Println("[DEBUG] Running vm sweeper")
+		slog.Debug("Running vm sweeper")
 		c, err := NewClient(GetConfigFromEnv())
 		if err != nil {
 			return fmt.Errorf("error getting client: %s", err)
@@ -874,13 +874,13 @@ func RemoveVmsWithNamePrefix(prefix string) func(string) error {
 					err := client.Call("vm.set", params, &success)
 
 					if err != nil {
-						log.Printf("error removing destroy block on vm `%s` during sweep: %s", vm.NameLabel, err)
+						slog.Error("error removing destroy block on vm during sweep", "vm", vm.NameLabel, "error", err)
 					}
 				}
-				fmt.Printf("[DEBUG] Deleting vm `%s`\n", vm.NameLabel)
+				slog.Debug("Deleting vm", "vm", vm.NameLabel)
 				err := c.DeleteVm(vm.Id)
 				if err != nil {
-					log.Printf("error destroying vm `%s` during sweep: %s", vm.NameLabel, err)
+					slog.Error("error destroying vm during sweep", "vm", vm.NameLabel, "error", err)
 				}
 			}
 		}
@@ -901,16 +901,16 @@ func warnOnInvalidCloudConfig(cloudConfig string) {
 	if strings.HasPrefix(cloudConfig, "Content-Type") {
 		if !strings.Contains(cloudConfig, "multipart/") {
 
-			log.Printf("[WARNING] Detected MIME type that may not be supported by cloudinit")
-			log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation" +
-				"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
+			slog.Warn("Detected MIME type that may not be supported by cloudinit")
+			slog.Warn("Validate that your configuration is well formed according to the documentation" +
+				"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).")
 		}
 		return
 	}
 	if !strings.HasPrefix(cloudConfig, "#cloud-config") {
-		log.Printf("[WARNING] cloud config does not start with required text `#cloud-config`.")
-		log.Printf("[WARNING] Validate that your configuration is well formed according to the documentation" +
-			"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).\n")
+		slog.Warn("cloud config does not start with required text `#cloud-config`.")
+		slog.Warn("Validate that your configuration is well formed according to the documentation" +
+			"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).")
 	}
 
 }

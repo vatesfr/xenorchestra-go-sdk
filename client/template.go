@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -72,13 +73,13 @@ func FindTemplateForTests(template *Template, poolId, templateEnvVar string) {
 	var found bool
 	templateName, found := os.LookupEnv(templateEnvVar)
 	if !found {
-		fmt.Printf("The %s environment variable must be set for the tests\n", templateEnvVar)
+		slog.Error("The environment variable must be set for the tests", "name", templateEnvVar)
 		os.Exit(-1)
 	}
 
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
@@ -88,13 +89,13 @@ func FindTemplateForTests(template *Template, poolId, templateEnvVar string) {
 	})
 
 	if err != nil {
-		fmt.Printf("failed to find templates with error: %v\n", err)
+		slog.Error("failed to find templates", "error", err)
 		os.Exit(-1)
 	}
 
 	l := len(templates)
 	if l != 1 {
-		fmt.Printf("found %d templates when expected to find 1. templates found: %v\n", l, templates)
+		slog.Error(fmt.Sprintf("found %d templates when expected to find 1. templates found: %v\n", l, templates))
 		os.Exit(-1)
 	}
 	*template = templates[0]

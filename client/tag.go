@@ -3,7 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 )
 
 func (c *Client) AddTag(id, tag string) error {
@@ -53,7 +53,7 @@ func (c *Client) GetObjectsWithTags(tags []string) ([]Object, error) {
 		return nil, err
 	}
 
-	log.Printf("[DEBUG] Found objects with tags `%s`: %v\n", tags, objsRes)
+	slog.Debug("Found objects with tags", "tags", tags, "objects", objsRes)
 
 	t := []Object{}
 	for _, resObject := range objsRes.Objects {
@@ -87,11 +87,11 @@ func RemoveTagFromAllObjects(tag string) func(string) error {
 		}
 
 		for _, object := range objects {
-			log.Printf("[DEBUG] Remove tag `%s` on object `%s`\n", tag, object)
+			slog.Debug("Remove tag on object", "tag", tag, "object", object)
 			err = c.RemoveTag(object.Id, tag)
 
 			if err != nil {
-				log.Printf("error remove tag `%s` during sweep: %v", tag, err)
+				slog.Error("error remove tag during sweep", "tag", tag, "error", err)
 			}
 		}
 		return nil

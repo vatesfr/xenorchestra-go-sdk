@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -56,25 +57,25 @@ func FindPoolForTests(pool *Pool) {
 	poolName, found := os.LookupEnv("XOA_POOL")
 
 	if !found {
-		fmt.Println("The XOA_POOL environment variable must be set")
+		slog.Error("The XOA_POOL environment variable must be set")
 		os.Exit(-1)
 	}
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
 	pools, err := c.GetPoolByName(poolName)
 
 	if err != nil {
-		fmt.Printf("failed to find a pool with name: %v with error: %v\n", poolName, err)
+		slog.Error("failed to find a pool", "pool", poolName, "error", err)
 		os.Exit(-1)
 	}
 
 	if len(pools) != 1 {
-		fmt.Printf("Found %d pools with name_label %s."+
-			"Please use a label that is unique so tests are reproducible.\n", len(pools), poolName)
+		slog.Error(fmt.Sprintf("Found %d pools with name_label %s."+
+			"Please use a label that is unique so tests are reproducible.\n", len(pools), poolName))
 		os.Exit(-1)
 	}
 
