@@ -3,7 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 )
@@ -60,10 +60,10 @@ func (c *Client) GetAllUsers() ([]User, error) {
 		"dummy": "dummy",
 	}
 	users := []User{}
-	log.Printf("[DEBUG] Calling user.getAll\n")
+	slog.Debug("Calling user.getAll")
 	err := c.Call("user.getAll", params, &users)
 
-	log.Printf("[DEBUG] Found the following users: %v\n", users)
+	slog.Debug("Found the following users", "users", users)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (c *Client) GetCurrentUser() (*User, error) {
 	user := User{}
 	err := c.Call("session.getUser", params, &user)
 
-	log.Printf("[DEBUG] Found the following user: %v with error: %v\n", user, err)
+	slog.Debug("Found the following user", "user", user, "error", err)
 	if err != nil {
 		return nil, err
 	}
@@ -138,11 +138,11 @@ func RemoveUsersWithPrefix(usernamePrefix string) func(string) error {
 
 			if strings.HasPrefix(user.Email, usernamePrefix) {
 
-				log.Printf("[DEBUG] Removing user `%s`\n", user.Email)
+				slog.Debug("Removing user", "email", user.Email)
 				err = c.DeleteUser(user)
 
 				if err != nil {
-					log.Printf("failed to remove user `%s` during sweep: %v\n", user.Email, err)
+					slog.Error("failed to remove user during sweep", "user", user.Email, "error", err)
 				}
 			}
 		}
@@ -154,7 +154,7 @@ func CreateUser(user *User) {
 	c, err := NewClient(GetConfigFromEnv())
 
 	if err != nil {
-		fmt.Printf("failed to created client with error: %v", err)
+		slog.Error("failed to created client", "error", err)
 		os.Exit(-1)
 	}
 
@@ -164,7 +164,7 @@ func CreateUser(user *User) {
 	})
 
 	if err != nil {
-		fmt.Printf("failed to create user for acceptance tests with error: %v", err)
+		slog.Error("failed to create user for acceptance tests", "error", err)
 		os.Exit(-1)
 	}
 

@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -77,25 +78,25 @@ func FindPIFForTests(pif *PIF) {
 	pifId, found := os.LookupEnv("XOA_PIF")
 
 	if !found {
-		fmt.Println("The XOA_PIF environment variable must be set to run the network resource tests")
+		slog.Error("The XOA_PIF environment variable must be set to run the network resource tests")
 		return
 	}
 
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
 	pifs, err := c.GetPIF(PIF{Id: pifId})
 
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to get pif with error: %v", err)
+		slog.Error("Failed to get pif", "error", err)
 		os.Exit(1)
 	}
 
 	if len(pifs) != 1 {
-		fmt.Printf("[ERROR] expected to find a single pif. Found %d PIFs instead: %v", len(pifs), pifs)
+		slog.Error(fmt.Sprintf("expected to find a single pif. Found %d PIFs instead: %v", len(pifs), pifs))
 		os.Exit(1)
 	}
 

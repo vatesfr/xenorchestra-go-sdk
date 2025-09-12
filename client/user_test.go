@@ -1,7 +1,7 @@
 package client
 
 import (
-	"fmt"
+	"log/slog"
 	"testing"
 )
 
@@ -55,5 +55,5 @@ func TestGetCurrentUser(t *testing.T) {
 		t.Fatalf("failed to retrieve the current user with error: %v", err)
 	}
 
-	fmt.Printf("Found user: %v", user)
+	slog.Info("Found user", "user", user)
 }

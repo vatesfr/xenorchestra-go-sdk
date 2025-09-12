@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -122,7 +122,7 @@ func (c *Client) CreateNetwork(netReq CreateNetworkRequest) (*Network, error) {
 	delete(params, "automatic")
 	delete(params, "defaultIsLocked")
 
-	log.Printf("[DEBUG] params for network.create: %#v", params)
+	slog.Debug("params for network.create", "params", params)
 	err = c.Call("network.create", params, &id)
 
 	if err != nil {
@@ -155,7 +155,7 @@ func (c *Client) CreateBondedNetwork(netReq CreateBondedNetworkRequest) (*Networ
 	delete(params, "automatic")
 	delete(params, "defaultIsLocked")
 
-	log.Printf("[DEBUG] params for network.createBonded: %#v", params)
+	slog.Debug("params for network.createBonded", "params", params)
 
 	var result map[string]interface{}
 	err = c.Call("network.createBonded", params, &result)
@@ -272,11 +272,11 @@ func RemoveNetworksWithNamePrefix(prefix string) func(string) error {
 
 		for _, net := range nets {
 			if strings.HasPrefix(net.NameLabel, prefix) {
-				log.Printf("[DEBUG] Deleting network: %v\n", net)
+				slog.Debug("Deleting network", "network", net)
 				err = c.DeleteNetwork(net.Id)
 
 				if err != nil {
-					log.Printf("error destroying network `%s` during sweep: %v", net.NameLabel, err)
+					slog.Error("error destroying network during sweep", "network", net.NameLabel, "error", err)
 				}
 			}
 		}
@@ -288,13 +288,13 @@ func FindNetworkForTests(poolId string, network *Network) {
 	netName, found := os.LookupEnv("XOA_NETWORK")
 
 	if !found {
-		fmt.Println("The XOA_NETWORK environment variable must be set")
+		slog.Error("The XOA_NETWORK environment variable must be set")
 		os.Exit(-1)
 	}
 
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
@@ -304,7 +304,7 @@ func FindNetworkForTests(poolId string, network *Network) {
 	})
 
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to get network with error: %v", err)
+		slog.Error("[ERROR] Failed to get network with error", "error", err)
 		os.Exit(1)
 	}
 

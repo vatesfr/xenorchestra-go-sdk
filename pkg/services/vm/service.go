@@ -70,7 +70,7 @@ func (s *Service) List(ctx context.Context) ([]*payloads.VM, error) {
 		maxVMs = len(vmURLs)
 	}
 
-	fmt.Printf("Found %d VM references, fetching details for first %d\n", len(vmURLs), maxVMs)
+	s.log.Info(fmt.Sprintf("Found %d VM references, fetching details for first %d\n", len(vmURLs), maxVMs))
 
 	result := make([]*payloads.VM, 0, maxVMs)
 

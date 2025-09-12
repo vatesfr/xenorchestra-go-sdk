@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -139,7 +140,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockTask
 			_ = json.NewEncoder(w).Encode(vm)
 
 		default:
-			fmt.Printf("Unhandled path: %s\n", r.URL.Path)
+			slog.Warn("Unhandled path", "path", r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))

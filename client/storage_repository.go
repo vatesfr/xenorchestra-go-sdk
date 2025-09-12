@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -93,15 +94,15 @@ func (c *Client) GetStorageRepository(sr StorageRepository) ([]StorageRepository
 func FindStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag string) {
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
 	defaultSr, err := c.GetStorageRepositoryById(pool.DefaultSR)
 
 	if err != nil {
-		fmt.Printf("failed to find the default storage repository with id: %s with error: %v\n",
-			pool.DefaultSR, err)
+		slog.Error("failed to find the default storage repository",
+			"SR id", pool.DefaultSR, "error", err)
 		os.Exit(-1)
 	}
 
@@ -110,7 +111,7 @@ func FindStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag string)
 	err = c.AddTag(defaultSr.Id, tag)
 
 	if err != nil {
-		fmt.Printf("failed to set tag on default storage repository with id: %s with error: %v\n", pool.DefaultSR, err)
+		slog.Error("failed to set tag on default storage repository", "SR id", pool.DefaultSR, "error", err)
 		os.Exit(-1)
 	}
 }
@@ -118,13 +119,13 @@ func FindStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag string)
 func FindIsoStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag, isoSrEnvVar string) {
 	isoSrName, found := os.LookupEnv(isoSrEnvVar)
 	if !found {
-		fmt.Printf("The %s environment variable must be set for the tests\n", isoSrEnvVar)
+		slog.Error("The environment variable must be set for the tests", "name", isoSrEnvVar)
 		os.Exit(-1)
 	}
 
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
@@ -136,12 +137,13 @@ func FindIsoStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag, iso
 	isoSrs, err := c.GetStorageRepository(isoSrReq)
 
 	if err != nil {
-		fmt.Printf("failed to find an iso storage repository with error: %v\n", err)
+		slog.Error("failed to find an iso storage repository", "error", err)
 		os.Exit(-1)
 	}
 
 	if len(isoSrs) != 1 {
-		fmt.Printf("expected iso srs req `%v` to only return single sr, instead found %d", isoSrReq, len(isoSrs))
+		slog.Error(fmt.Sprintf("expected iso srs req `%v` to only return single sr, instead found %d",
+			isoSrReq, len(isoSrs)))
 		os.Exit(-1)
 	}
 
@@ -151,7 +153,7 @@ func FindIsoStorageRepositoryForTests(pool Pool, sr *StorageRepository, tag, iso
 	err = c.AddTag(isoSr.Id, tag)
 
 	if err != nil {
-		fmt.Printf("failed to set tag on iso storage repository with id: %s with error: %v\n", isoSr.Id, err)
+		slog.Error("failed to set tag on iso storage repository", "SR id", isoSr.Id, "error", err)
 		os.Exit(-1)
 	}
 }

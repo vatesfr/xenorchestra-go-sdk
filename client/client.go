@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -205,7 +206,7 @@ func GetConfigFromEnv() Config {
 	if v := os.Getenv("XOA_RETRY_MODE"); v != "" {
 		retry, ok := retryModeMap[v]
 		if !ok {
-			fmt.Println("[ERROR] failed to set retry mode, disabling retries")
+			slog.Error("failed to set retry mode, disabling retries")
 		} else {
 			retryMode = retry
 		}
@@ -215,7 +216,7 @@ func GetConfigFromEnv() Config {
 		if err == nil {
 			retryMaxTime = duration
 		} else {
-			fmt.Println("[ERROR] failed to set retry mode, disabling retries")
+			slog.Error("failed to set retry mode, disabling retries")
 		}
 	}
 	return Config{
@@ -236,6 +237,16 @@ func NewClient(config Config) (XOClient, error) {
 	username := config.Username
 	password := config.Password
 	token := config.Token
+
+	// Create logger
+	handlerOpt := &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}
+	if devMode, _ := strconv.ParseBool(os.Getenv("XOA_DEVELOPMENT")); devMode {
+		handlerOpt.Level = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, handlerOpt))
+	slog.SetDefault(logger)
 
 	if token == "" && (username == "" || password == "") {
 		return nil,
@@ -345,7 +356,7 @@ func (c *Client) Call(method string, params, result interface{}) error {
 		}
 		// Sanitize parameters to remove sensitive information
 		sanitizedParams := sanitizeParams(params)
-		log.Printf("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n",
+		slog.Debug("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n",
 			method, sanitizedParams, callRes, err)
 
 		if err != nil {
@@ -458,7 +469,7 @@ func (c *Client) FindFromGetAllObjects(obj XoObject) (interface{}, error) {
 		return objs, NotFound{Query: obj}
 	}
 
-	log.Printf("[DEBUG] Found the following objects for type '%v' from xo.getAllObjects: %+v\n", t, objs)
+	slog.Debug(fmt.Sprintf("Found the following objects for type '%v' from xo.getAllObjects: %+v\n", t, objs))
 
 	return objs.Interface(), nil
 }

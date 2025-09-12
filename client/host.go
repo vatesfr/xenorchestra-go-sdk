@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 )
@@ -65,14 +66,14 @@ func (c *Client) GetHostById(id string) (host Host, err error) {
 func FindHostForTests(hostId string, host *Host) {
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
 	queriedHost, err := c.GetHostById(hostId)
 
 	if err != nil {
-		fmt.Printf("failed to find a host with id: %v with error: %v\n", hostId, err)
+		slog.Error("failed to find a host with id: %v with error: %v\n", hostId, err)
 		os.Exit(-1)
 	}
 

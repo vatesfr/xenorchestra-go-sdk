@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -37,6 +39,20 @@ func TestMain(m *testing.M) {
 	// Global setup
 	integrationCtx, integrationCancel = context.WithCancel(context.Background())
 
+	devMode, _ := strconv.ParseBool(os.Getenv("XOA_DEVELOPMENT"))
+
+	// Create logger
+	handlerOpt := &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}
+	// Use development mode for tests
+	if devMode {
+		handlerOpt.Level = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, handlerOpt))
+	slog.SetDefault(logger)
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+
 	// XO client configuration via environment variables
 	// - XOA_URL: XO API URL (required)
 	// - XOA_USER and XOA_PASSWORD: Credentials (required if no token)
@@ -48,7 +64,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Force development mode for tests
-	cfg.Development = true
+	cfg.Development = devMode
 
 	// Initialize XO client
 	testClient, err = v2.New(cfg)
@@ -75,7 +91,7 @@ func TestMain(m *testing.M) {
 	// Add time to the test prefix to avoid collisions when running tests in parallel
 	integrationTestPrefix = fmt.Sprintf("%s%d-", integrationTestPrefix, time.Now().Unix())
 
-	log.Printf("Using test prefix: %s", integrationTestPrefix)
+	slog.Info(fmt.Sprintf("Using test prefix: %s", integrationTestPrefix))
 
 	// Run test suite
 	code := m.Run()
@@ -140,10 +156,10 @@ func cleanupVMsWithPrefix(prefix string) error {
 		if vm.NameLabel != "" && vm.ID != uuid.Nil {
 			// Check that VM name starts with the test prefix
 			if len(vm.NameLabel) >= len(prefix) && (vm.NameLabel)[:len(prefix)] == prefix {
-				log.Printf("Found remaining test VM %s, Deleting test... (%s)", vm.NameLabel, vm.ID)
+				slog.Info("Found remaining test VM, Deleting test...", "NameLabel", vm.NameLabel, "ID", vm.ID)
 				err := testClient.VM().Delete(integrationCtx, vm.ID)
 				if err != nil {
-					log.Printf("failed to delete VM %s: %v", vm.NameLabel, err)
+					slog.Error("failed to delete VM", "NameLabel", vm.NameLabel, "error", err)
 					return fmt.Errorf("failed to delete VM %s: %v", vm.NameLabel, err)
 				}
 			}

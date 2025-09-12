@@ -43,7 +43,7 @@ test-v1:
 .PHONY: test-v2
 test-v2: 
 	@echo "$(BLUE)Running v2 client tests...$(NC)"
-	$(GO) test -race ./v2/... ./pkg/... ./internal/...
+	$(GO) test -race $(shell go list ./v2/... | grep -v -E "/integration$$") ./pkg/... ./internal/...
 
 .PHONY: test-integration
 test-integration: 

@@ -3,7 +3,7 @@ package client
 import (
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -361,7 +361,7 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	req.Header.Set("Content-Type", contentType)
 	req.ContentLength = fi.Size()
 
-	fmt.Printf("[DEBUG] Sending rest api request to %s\n", reqURL.String())
+	slog.Debug("Sending rest api request", "reqURL", reqURL.String())
 	res, err := c.httpClient.Do(req)
 
 	if err != nil {
@@ -376,7 +376,7 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	}
 
 	bodyStr := string(body)
-	fmt.Printf("[DEBUG] Received response from rest api: %s\n", bodyStr)
+	slog.Debug("Received response from rest api", "response", bodyStr)
 
 	if res.StatusCode != 200 {
 		return VDI{}, fmt.Errorf("failed to create VDI, received response from server: %v", bodyStr)
@@ -402,11 +402,11 @@ func RemoveVDIsWithPrefix(prefix string) func(string) error {
 
 		for _, vdi := range vdis {
 			if strings.HasPrefix(vdi.NameLabel, prefix) {
-				log.Printf("[DEBUG] Deleting vdi: %v\n", vdi)
+				slog.Debug("Deleting vdi", "vdi", vdi)
 				err = c.DeleteVDI(vdi.VDIId)
 
 				if err != nil {
-					log.Printf("error destroying vdi `%s` during sweep: %v", vdi.NameLabel, err)
+					slog.Error("error destroying vdi during sweep", "vdi", vdi.NameLabel, "error", err)
 				}
 			}
 		}
@@ -417,13 +417,13 @@ func RemoveVDIsWithPrefix(prefix string) func(string) error {
 func FindVDIForTests(pool Pool, isoVdi *VDI, isoNameEnvVar string) {
 	isoName, found := os.LookupEnv(isoNameEnvVar)
 	if !found {
-		fmt.Printf("The %s environment variable must be set for the tests\n", isoNameEnvVar)
+		slog.Error("The environment variable must be set for the tests", "name", isoNameEnvVar)
 		os.Exit(-1)
 	}
 
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
-		fmt.Printf("failed to create client with error: %v", err)
+		slog.Error("failed to create client", "error", err)
 		os.Exit(-1)
 	}
 
@@ -434,7 +434,7 @@ func FindVDIForTests(pool Pool, isoVdi *VDI, isoNameEnvVar string) {
 	vdi, err := c.GetVDI(vdiReq)
 
 	if err != nil {
-		fmt.Printf("failed to find an iso vdi with error: %v\n", err)
+		slog.Error("failed to find an iso vdi", "error", err)
 		os.Exit(-1)
 	}
 
