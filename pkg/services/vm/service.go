@@ -163,20 +163,22 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 		if taskResult.Status != payloads.Success {
 			s.log.Error("Task failed",
 				zap.String("status", string(taskResult.Status)),
-				zap.String("message", taskResult.Message))
-			return nil, fmt.Errorf("VM creation failed: %s", taskResult.Message)
+				zap.String("message", taskResult.Result.Message))
+			return nil, fmt.Errorf("VM creation failed: %s", taskResult.Result.Message)
 		}
 
 		// If task successful, get the created VM
 		// Check both regular ID and StringID in the result
+		// FIXME: StringID should not be used after API migration
+		// TODO: Test the endpoint has been migrated to new API
 		vmID := taskResult.Result.ID
-		if vmID == uuid.Nil && taskResult.Result.StringID != "" {
-			// Try to parse StringID as UUID
-			parsedID, err := uuid.FromString(taskResult.Result.StringID)
-			if err == nil {
-				vmID = parsedID
-			}
-		}
+		// if vmID == uuid.Nil && taskResult.Result.StringID != "" {
+		// 	// Try to parse StringID as UUID
+		// 	parsedID, err := uuid.FromString(taskResult.Result.StringID)
+		// 	if err == nil {
+		// 		vmID = parsedID
+		// 	}
+		// }
 
 		if vmID != uuid.Nil {
 			s.log.Debug("Task result has VM ID, fetching VM", zap.String("vmID", vmID.String()))
@@ -224,19 +226,23 @@ func (s *Service) Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
-	var result struct {
-		Success bool `json:"success"`
-	}
+	// TODO:FIXME: Update the method when delete endpoint is migrated to new REST API
+	// PR: https://github.com/vatesfr/xen-orchestra/pull/8938is
+	// var result struct {
+	// 	Success bool `json:"success"`
+	// }
+	var result string
 	path := core.NewPathBuilder().Resource("vms").ID(id).Build()
 	err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result)
-	if err != nil {
-		s.log.Error("failed to delete VM", zap.String("vmID", id.String()), zap.Error(err))
+	if err != nil || result != "OK" {
+		s.log.Error("failed to delete VM", zap.String("vmID", id.String()), zap.Error(err), zap.String("result", result))
 		return err
 	}
 	return nil
 }
 
 func (s *Service) Start(ctx context.Context, id uuid.UUID) error {
+	//TODO:FIXME: response is a task URL
 	var result struct {
 		Success bool `json:"success"`
 	}

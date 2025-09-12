@@ -196,14 +196,14 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 		return fmt.Errorf("API error: %s - %s", resp.Status, string(bodyBytes))
 	}
 
+	// Parse response as JSON first; if it fails and the expected result is a string, fall back to raw string.
 	if result != nil && len(bodyBytes) > 0 {
-		// Catch result that are raw string without JSON unmarshaling.
-		if strPtr, ok := result.(*string); ok {
-			*strPtr = string(bodyBytes)
-			return nil
-		}
-
 		if err := json.Unmarshal(bodyBytes, result); err != nil {
+			// If JSON unmarshaling fails but the caller expects a string, return the raw body.
+			if strPtr, ok := result.(*string); ok {
+				*strPtr = string(bodyBytes)
+				return nil
+			}
 			return core.ErrFailedToUnmarshalResponse.WithArgs(err, string(bodyBytes))
 		}
 	}
@@ -257,7 +257,7 @@ func (c *Client) post(ctx context.Context, endpoint string, params map[string]an
 //	err := TypedPost(ctx, client, "generate-link", MyParamsType{ID: "123"}, &urlResult)
 func TypedPost[P any, R any](ctx context.Context, c *Client, endpoint string, params P, result *R) error {
 	var paramsMap map[string]any
-	if !reflect.ValueOf(params).IsZero() {
+	if v := reflect.ValueOf(params); v.IsValid() && !v.IsZero() {
 		data, err := json.Marshal(params)
 		if err != nil {
 			return core.ErrFailedToMarshalParams.WithArgs(err, string(data))
