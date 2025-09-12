@@ -97,6 +97,7 @@ func TestGetPool(t *testing.T) {
 func TestGetAllPools(t *testing.T) {
 	t.Run("passes limit parameter", func(t *testing.T) {
 		limit := 42
+		filter := "filter-to-check"
 		called := false
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			called = true
@@ -104,13 +105,14 @@ func TestGetAllPools(t *testing.T) {
 			// Vérifie que le paramètre limit est bien dans l'URL
 			values := r.URL.Query()
 			assert.Equal(t, fmt.Sprintf("%d", limit), values.Get("limit"))
+			assert.Equal(t, filter, values.Get("filter"))
 			w.Header().Set("Content-Type", "application/json")
 			err := json.NewEncoder(w).Encode([]payloads.Pool{})
 			assert.NoError(t, err)
 		})
 		service, server := setupTestServer(t, handler)
 		defer server.Close()
-		pools, err := service.GetAll(context.Background(), limit)
+		pools, err := service.GetAll(context.Background(), limit, filter)
 		assert.NoError(t, err)
 		assert.NotNil(t, pools)
 		assert.True(t, called)
@@ -121,7 +123,7 @@ func TestGetAllPools(t *testing.T) {
 		})
 		service, server := setupTestServer(t, handler)
 		defer server.Close()
-		pools, err := service.GetAll(context.Background(), 0)
+		pools, err := service.GetAll(context.Background(), 0, "")
 		assert.Error(t, err)
 		assert.Nil(t, pools)
 	})
@@ -134,7 +136,7 @@ func TestGetAllPools(t *testing.T) {
 		})
 		service, server := setupTestServer(t, handler)
 		defer server.Close()
-		pools, err := service.GetAll(context.Background(), 0)
+		pools, err := service.GetAll(context.Background(), 0, "")
 		assert.Error(t, err)
 		assert.Nil(t, pools)
 	})
@@ -156,7 +158,7 @@ func TestGetAllPools(t *testing.T) {
 		service, server := setupTestServer(t, handler)
 		defer server.Close()
 
-		pools, err := service.GetAll(context.Background(), 0)
+		pools, err := service.GetAll(context.Background(), 0, "")
 		assert.NoError(t, err)
 		assert.NotNil(t, pools)
 		assert.Len(t, pools, 2)
@@ -297,6 +299,7 @@ func TestCreateNetworkParams(t *testing.T) {
 		gotID, err := s.CreateNetwork(context.Background(), uuid.Must(uuid.NewV4()), payloads.CreateNetworkParams{
 			Name: "",
 			Vlan: 100,
+			Pif:  uuid.Must(uuid.NewV4()),
 		})
 		assert.Error(t, err)
 		assert.Equal(t, uuid.Nil, gotID)
@@ -313,6 +316,24 @@ func TestCreateNetworkParams(t *testing.T) {
 		gotID, err := s.CreateNetwork(context.Background(), uuid.Must(uuid.NewV4()), payloads.CreateNetworkParams{
 			Name: "net",
 			Vlan: 5000,
+			Pif:  uuid.Must(uuid.NewV4()),
+		})
+		assert.Error(t, err)
+		assert.Equal(t, uuid.Nil, gotID)
+	})
+
+	t.Run("validation: nil pifId", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("should not call API when validation fails")
+		})
+		poolService, server := setupTestServer(t, handler)
+		defer server.Close()
+
+		s := poolService
+		gotID, err := s.CreateNetwork(context.Background(), uuid.Must(uuid.NewV4()), payloads.CreateNetworkParams{
+			Name: "net",
+			Vlan: 100,
+			// PifID: uuid.Nil, // omitted to test zero value
 		})
 		assert.Error(t, err)
 		assert.Equal(t, uuid.Nil, gotID)
@@ -352,6 +373,7 @@ func TestCreateNetworkParams(t *testing.T) {
 			Name: "mynet",
 			MTU:  func() *uint { v := uint(1500); return &v }(),
 			Vlan: 100,
+			Pif:  uuid.Must(uuid.NewV4()),
 		}
 		gotID, err := s.CreateNetwork(context.Background(), poolID, params)
 		assert.NoError(t, err)

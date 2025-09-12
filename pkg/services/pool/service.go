@@ -42,7 +42,7 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.Pool, error)
 	return &result, nil
 }
 
-func (s *Service) GetAll(ctx context.Context, limit int) ([]*payloads.Pool, error) {
+func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Pool, error) {
 	path := core.NewPathBuilder().Resource("pools").Build()
 	params := make(map[string]any)
 	if limit > 0 {
@@ -51,6 +51,11 @@ func (s *Service) GetAll(ctx context.Context, limit int) ([]*payloads.Pool, erro
 	// Get all fields to retrieve complete pool objects
 	params["fields"] = "*"
 
+	if filter != "" {
+		params["filter"] = filter
+	}
+
+	// Make the request
 	var result []*payloads.Pool
 	if err := client.TypedGet(ctx, s.client, path, params, &result); err != nil {
 		s.log.Error("Failed to get all pools", zap.Error(err))
@@ -172,6 +177,11 @@ func (s *Service) CreateNetwork(
 		s.log.Error("CreateNetwork failed: vlan must be between 0 and 4094",
 			zap.Uint("vlan", params.Vlan))
 		return uuid.Nil, fmt.Errorf("vlan must be between 0 and 4094")
+	}
+	if params.Pif == uuid.Nil {
+		s.log.Error("CreateNetwork failed: pifID must be set",
+			zap.String("pifID", params.Pif.String()))
+		return uuid.Nil, fmt.Errorf("pifID must be set")
 	}
 
 	return s.createResource(ctx, poolID, "network", params)

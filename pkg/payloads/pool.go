@@ -97,7 +97,7 @@ type CreateNetworkParams struct {
 	// Network description
 	Description string `json:"description,omitempty"`
 	// UUID of the PIF (device) to select
-	PifID uuid.UUID `json:"pif"`
+	Pif uuid.UUID `json:"pif"`
 	// Network MTU - Default: 1500
 	MTU *uint `json:"mtu,omitempty"`
 	// Network VLAN - Minimum: 0, Maximum: 4094

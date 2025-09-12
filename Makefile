@@ -45,6 +45,11 @@ test-v2:
 	@echo "$(BLUE)Running v2 client tests...$(NC)"
 	$(GO) test -race ./v2/... ./pkg/... ./internal/...
 
+.PHONY: test-integration
+test-integration: 
+	@echo "$(BLUE)Running integration tests...$(NC)"
+	$(GO) test ./v2/integration/... 
+
 .PHONY: lint
 lint: 
 	@echo "$(BLUE)Running linter...$(NC)"
