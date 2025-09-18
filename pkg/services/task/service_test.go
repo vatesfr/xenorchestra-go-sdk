@@ -3,7 +3,7 @@ package task
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -30,7 +30,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 		// Use regex to extract taskID and optional action
 		matches := taskURLRegex.FindStringSubmatch(r.URL.Path)
 		if len(matches) == 0 {
-			fmt.Printf("Unhandled path: %s %s\n", r.Method, r.URL.Path)
+			slog.Warn("Unhandled path", "method", r.Method, "path", r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -103,7 +103,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 			}
 
 		default:
-			fmt.Printf("Unhandled path: %s %s\n", r.Method, r.URL.Path)
+			slog.Warn("Unhandled path", "method", r.Method, "path", r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))

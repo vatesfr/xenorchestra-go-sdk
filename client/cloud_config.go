@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 )
 
@@ -146,11 +146,11 @@ func RemoveCloudConfigsWithPrefix(cloudConfigPrefix string) func(string) error {
 
 			if strings.HasPrefix(cloudConfig.Name, cloudConfigPrefix) {
 
-				log.Printf("[DEBUG] Removing cloud config `%s`\n", cloudConfig.Name)
+				slog.Debug("Removing cloud config", "cloudConfig", cloudConfig.Name)
 				err = c.DeleteCloudConfig(cloudConfig.Id)
 
 				if err != nil {
-					log.Printf("failed to remove cloud config `%s` during sweep: %v\n", cloudConfig.Name, err)
+					slog.Error("failed to remove cloud config during sweep", "cloudConfig", cloudConfig.Name, "error", err)
 				}
 			}
 		}

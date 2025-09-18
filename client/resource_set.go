@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 )
 
@@ -90,7 +90,7 @@ func (c Client) makeResourceSetGetAllCall() ([]ResourceSet, error) {
 		"id": "dummy",
 	}
 	err := c.Call("resourceSet.getAll", params, &res.ResourceSets)
-	log.Printf("[DEBUG] Calling resourceSet.getAll received response: %+v with error: %v\n", res, err)
+	c.logger.Debug("Calling resourceSet.getAll received response", "response", res, "error", err)
 
 	if err != nil {
 		return nil, err
@@ -124,7 +124,8 @@ func (c Client) CreateResourceSet(rsReq ResourceSet) (*ResourceSet, error) {
 		"limits":   limits,
 	}
 	err := c.Call("resourceSet.create", params, &rs)
-	log.Printf("[DEBUG] Calling resourceSet.create with params: %v returned: %+v with error: %v\n", params, rs, err)
+	c.logger.Debug(fmt.Sprintf("[DEBUG] Calling resourceSet.create with params: %v returned: %+v with error: %v\n",
+		params, rs, err))
 
 	if err != nil {
 		return nil, err
@@ -154,7 +155,7 @@ func (c Client) DeleteResourceSet(rsReq ResourceSet) error {
 		"id": id,
 	}
 	err := c.Call("resourceSet.delete", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.delete call successful: %t with error: %v\n", success, err)
+	c.logger.Debug("Calling resourceSet.delete call successful", "success", success, "error", err)
 
 	return err
 }
@@ -166,7 +167,7 @@ func (c Client) RemoveResourceSetSubject(rsReq ResourceSet, subject string) erro
 	}
 	var success bool
 	err := c.Call("resourceSet.removeSubject", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.removeSubject call successful: %t with error: %v\n", success, err)
+	c.logger.Debug("Calling resourceSet.removeSubject call successful", "success", success, "error", err)
 	return err
 }
 
@@ -177,7 +178,7 @@ func (c Client) AddResourceSetSubject(rsReq ResourceSet, subject string) error {
 	}
 	var success bool
 	err := c.Call("resourceSet.addSubject", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.addSubject call successful: %t with error: %v\n", success, err)
+	c.logger.Debug("Calling resourceSet.addSubject call successful", "success", success, "error", err)
 	return err
 }
 
@@ -188,7 +189,7 @@ func (c Client) RemoveResourceSetObject(rsReq ResourceSet, object string) error 
 	}
 	var success bool
 	err := c.Call("resourceSet.removeObject", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.removeObject call successful: %t with error: %v\n", success, err)
+	c.logger.Debug("Calling resourceSet.removeObject call successful", "success", success, "error", err)
 	return err
 }
 
@@ -199,7 +200,7 @@ func (c Client) AddResourceSetObject(rsReq ResourceSet, object string) error {
 	}
 	var success bool
 	err := c.Call("resourceSet.addObject", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.addObject call successful: %t with error: %v\n", success, err)
+	c.logger.Debug("Calling resourceSet.addObject call successful", "success", success, "error", err)
 	return err
 }
 
@@ -210,7 +211,7 @@ func (c Client) RemoveResourceSetLimit(rsReq ResourceSet, limit string) error {
 	}
 	var success bool
 	err := c.Call("resourceSet.removeLimit", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.removeLimit call successful: %t with error: %v\n", success, err)
+	c.logger.Debug("Calling resourceSet.removeLimit call successful", "success", success, "error", err)
 	return err
 }
 
@@ -222,14 +223,14 @@ func (c Client) AddResourceSetLimit(rsReq ResourceSet, limit string, quantity in
 	}
 	var success bool
 	err := c.Call("resourceSet.addLimit", params, &success)
-	log.Printf("[DEBUG] Calling resourceSet.addLimit call with params: %v successful: %t with error: %v\n",
-		params, success, err)
+	c.logger.Debug(fmt.Sprintf("Calling resourceSet.addLimit call with params: %v successful: %t with error: %v\n",
+		params, success, err))
 	return err
 }
 
-func RemoveResourceSetsWithNamePrefix(rsNamePrefix string) func(string) error {
+func RemoveResourceSetsWithNamePrefixForTests(rsNamePrefix string) func(string) error {
 	return func(_ string) error {
-		fmt.Println("[DEBUG] Running sweeper")
+		slog.Debug("Running sweeper")
 		c, err := NewClient(GetConfigFromEnv())
 		if err != nil {
 			return fmt.Errorf("error getting client: %s", err)
@@ -244,7 +245,7 @@ func RemoveResourceSetsWithNamePrefix(rsNamePrefix string) func(string) error {
 				err := c.DeleteResourceSet(ResourceSet{Id: rs.Id})
 
 				if err != nil {
-					log.Printf("error destroying resource set `%s` during sweep: %s", rs.Name, err)
+					slog.Error("error destroying resource set during sweep", "resourceSet", rs.Name, "error", err)
 				}
 			}
 		}

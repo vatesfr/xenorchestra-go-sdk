@@ -12,7 +12,7 @@ package client
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -44,6 +44,15 @@ type StateChangeConf struct {
 
 	// This is to work around inconsistent APIs
 	ContinuousTargetOccurence int // Number of times the Target state has to occur continuously
+	logger                    *slog.Logger
+}
+
+// Use this method to avoid nil pointer
+func (conf *StateChangeConf) Logger() *slog.Logger {
+	if conf.logger != nil {
+		return conf.logger
+	}
+	return slog.Default()
 }
 
 // WaitForState watches an object and waits for it to achieve the state
@@ -61,7 +70,7 @@ type StateChangeConf struct {
 // Otherwise, the result is the result of the first call to the Refresh function to
 // reach the target state.
 func (conf *StateChangeConf) WaitForState() (interface{}, error) {
-	log.Printf("[DEBUG] Waiting for state to become: %s", conf.Target)
+	conf.Logger().Debug(fmt.Sprintf("Waiting for state to become: %s", conf.Target))
 
 	notfoundTick := 0
 	targetOccurence := 0
@@ -202,7 +211,7 @@ func (conf *StateChangeConf) WaitForState() (interface{}, error) {
 				}
 			}
 
-			log.Printf("[TRACE] Waiting %s before next try", wait)
+			conf.Logger().Debug(fmt.Sprintf("Waiting %s before next try", wait))
 		}
 	}()
 
@@ -227,8 +236,8 @@ func (conf *StateChangeConf) WaitForState() (interface{}, error) {
 			lastResult = r
 
 		case <-timeout:
-			log.Printf("[WARN] WaitForState timeout after %s", conf.Timeout)
-			log.Printf("[WARN] WaitForState starting %s refresh grace period", refreshGracePeriod)
+			conf.Logger().Warn("WaitForState timeout", "after", conf.Timeout)
+			conf.Logger().Warn("WaitForState starting refresh grace period", "refreshGracePeriod", refreshGracePeriod)
 
 			// cancel the goroutine and start our grace period timer
 			close(cancelCh)
@@ -255,7 +264,7 @@ func (conf *StateChangeConf) WaitForState() (interface{}, error) {
 					// TimeoutError and wait for the channel to close
 					lastResult = r
 				case <-timeout:
-					log.Println("[ERROR] WaitForState exceeded refresh grace period")
+					conf.Logger().Error("WaitForState exceeded refresh grace period")
 					break forSelect
 				}
 			}

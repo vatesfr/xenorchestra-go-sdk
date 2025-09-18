@@ -1,7 +1,7 @@
 package client
 
 import (
-	"fmt"
+	"log/slog"
 	"os"
 	"testing"
 )
@@ -20,7 +20,7 @@ func CreateNetwork(network *Network) {
 	c, err := NewClient(GetConfigFromEnv())
 
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to create network with '%v'\n", err)
+		slog.Error("Failed to create network", "error", err)
 		os.Exit(1)
 	}
 
@@ -30,7 +30,7 @@ func CreateNetwork(network *Network) {
 	})
 
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to create network with '%v'\n", err)
+		slog.Error("Failed to create network", "error", err)
 		os.Exit(1)
 	}
 	*network = *net
@@ -57,8 +57,8 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	_ = RemoveResourceSetsWithNamePrefix(integrationTestPrefix)("")
-	_ = RemoveNetworksWithNamePrefix(integrationTestPrefix)("")
+	_ = RemoveResourceSetsWithNamePrefixForTests(integrationTestPrefix)("")
+	_ = RemoveNetworksWithNamePrefixForTests(integrationTestPrefix)("")
 
 	os.Exit(code)
 }
