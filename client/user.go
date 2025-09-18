@@ -60,10 +60,10 @@ func (c *Client) GetAllUsers() ([]User, error) {
 		"dummy": "dummy",
 	}
 	users := []User{}
-	slog.Debug("Calling user.getAll")
+	c.logger.Debug("Calling user.getAll")
 	err := c.Call("user.getAll", params, &users)
 
-	slog.Debug("Found the following users", "users", users)
+	c.logger.Debug("Found the following users", "users", users)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (c *Client) GetCurrentUser() (*User, error) {
 	user := User{}
 	err := c.Call("session.getUser", params, &user)
 
-	slog.Debug("Found the following user", "user", user, "error", err)
+	c.logger.Debug("Found the following user", "user", user, "error", err)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (c *Client) DeleteUser(user User) error {
 	return nil
 }
 
-func RemoveUsersWithPrefix(usernamePrefix string) func(string) error {
+func RemoveUsersWithPrefixForTests(usernamePrefix string) func(string) error {
 	return func(_ string) error {
 		c, err := NewClient(GetConfigFromEnv())
 		if err != nil {
@@ -150,7 +150,7 @@ func RemoveUsersWithPrefix(usernamePrefix string) func(string) error {
 	}
 }
 
-func CreateUser(user *User) {
+func CreateUserForTests(user *User) {
 	c, err := NewClient(GetConfigFromEnv())
 
 	if err != nil {

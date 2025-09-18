@@ -2,7 +2,6 @@ package client
 
 import (
 	"errors"
-	"log/slog"
 )
 
 type Acl struct {
@@ -52,7 +51,7 @@ func (c *Client) GetAcls() ([]Acl, error) {
 	if err != nil {
 		return nil, err
 	}
-	slog.Debug("Found the following ACLs", "ACLs", acls)
+	c.logger.Debug("Found the following ACLs", "ACLs", acls)
 	return acls, nil
 }
 

@@ -73,7 +73,7 @@ func FindHostForTests(hostId string, host *Host) {
 	queriedHost, err := c.GetHostById(hostId)
 
 	if err != nil {
-		slog.Error("failed to find a host with id: %v with error: %v\n", hostId, err)
+		slog.Error(fmt.Sprintf("failed to find a host with id: %v with error: %v\n", hostId, err))
 		os.Exit(-1)
 	}
 

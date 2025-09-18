@@ -53,7 +53,7 @@ func (c *Client) GetObjectsWithTags(tags []string) ([]Object, error) {
 		return nil, err
 	}
 
-	slog.Debug("Found objects with tags", "tags", tags, "objects", objsRes)
+	c.logger.Debug("Found objects with tags", "tags", tags, "objects", objsRes)
 
 	t := []Object{}
 	for _, resObject := range objsRes.Objects {
@@ -73,7 +73,7 @@ func (c *Client) GetObjectsWithTags(tags []string) ([]Object, error) {
 	return t, nil
 }
 
-func RemoveTagFromAllObjects(tag string) func(string) error {
+func RemoveTagFromAllObjectsForTests(tag string) func(string) error {
 	return func(_ string) error {
 		c, err := NewClient(GetConfigFromEnv())
 		if err != nil {

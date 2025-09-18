@@ -122,7 +122,7 @@ func (c *Client) CreateNetwork(netReq CreateNetworkRequest) (*Network, error) {
 	delete(params, "automatic")
 	delete(params, "defaultIsLocked")
 
-	slog.Debug("params for network.create", "params", params)
+	c.logger.Debug("params for network.create", "params", params)
 	err = c.Call("network.create", params, &id)
 
 	if err != nil {
@@ -155,7 +155,7 @@ func (c *Client) CreateBondedNetwork(netReq CreateBondedNetworkRequest) (*Networ
 	delete(params, "automatic")
 	delete(params, "defaultIsLocked")
 
-	slog.Debug("params for network.createBonded", "params", params)
+	c.logger.Debug("params for network.createBonded", "params", params)
 
 	var result map[string]interface{}
 	err = c.Call("network.createBonded", params, &result)
@@ -196,6 +196,7 @@ func (c *Client) waitForModifyNetwork(id string, target RefreshComparison, timeo
 		Refresh: refreshFn,
 		Target:  []string{"true"},
 		Timeout: timeout,
+		logger:  c.logger,
 	}
 	network, err := stateConf.WaitForState()
 	return network.(*Network), err
@@ -257,7 +258,7 @@ func (c *Client) DeleteNetwork(id string) error {
 	return err
 }
 
-func RemoveNetworksWithNamePrefix(prefix string) func(string) error {
+func RemoveNetworksWithNamePrefixForTests(prefix string) func(string) error {
 	return func(_ string) error {
 		c, err := NewClient(GetConfigFromEnv())
 		if err != nil {

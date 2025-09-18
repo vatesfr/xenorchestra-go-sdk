@@ -271,6 +271,7 @@ func (c *Client) DeleteVDI(id string) error {
 		Refresh: refreshFn,
 		Target:  []string{notFoundState},
 		Timeout: time.Minute,
+		logger:  c.logger,
 	}
 	_, err = stateConf.WaitForState()
 	return err
@@ -361,7 +362,7 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	req.Header.Set("Content-Type", contentType)
 	req.ContentLength = fi.Size()
 
-	slog.Debug("Sending rest api request", "reqURL", reqURL.String())
+	c.logger.Debug("Sending rest api request", "reqURL", reqURL.String())
 	res, err := c.httpClient.Do(req)
 
 	if err != nil {
@@ -376,7 +377,7 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	}
 
 	bodyStr := string(body)
-	slog.Debug("Received response from rest api", "response", bodyStr)
+	c.logger.Debug("Received response from rest api", "response", bodyStr)
 
 	if res.StatusCode != 200 {
 		return VDI{}, fmt.Errorf("failed to create VDI, received response from server: %v", bodyStr)
@@ -387,7 +388,7 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	})
 }
 
-func RemoveVDIsWithPrefix(prefix string) func(string) error {
+func RemoveVDIsWithPrefixForTests(prefix string) func(string) error {
 	return func(_ string) error {
 		c, err := NewClient(GetConfigFromEnv())
 		if err != nil {

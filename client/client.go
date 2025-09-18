@@ -145,6 +145,7 @@ type Client struct {
 	rpc          jsonrpc2.JSONRPC2
 	httpClient   http.Client
 	restApiURL   *url.URL
+	logger       *slog.Logger
 }
 
 type RetryMode int
@@ -231,6 +232,10 @@ func GetConfigFromEnv() Config {
 }
 
 func NewClient(config Config) (XOClient, error) {
+	return NewClientWithLogger(config, nil)
+}
+
+func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	// Trim the URL to remove any trailing slashes
 	// To avoid the websocket client from failing
 	wsURL := strings.TrimSuffix(config.Url, "/")
@@ -239,14 +244,15 @@ func NewClient(config Config) (XOClient, error) {
 	token := config.Token
 
 	// Create logger
-	handlerOpt := &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+	if logger == nil {
+		handlerOpt := &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		}
+		if devMode, _ := strconv.ParseBool(os.Getenv("XOA_DEVELOPMENT")); devMode {
+			handlerOpt.Level = slog.LevelDebug
+		}
+		logger = slog.New(slog.NewTextHandler(os.Stderr, handlerOpt))
 	}
-	if devMode, _ := strconv.ParseBool(os.Getenv("XOA_DEVELOPMENT")); devMode {
-		handlerOpt.Level = slog.LevelDebug
-	}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, handlerOpt))
-	slog.SetDefault(logger)
 
 	if token == "" && (username == "" || password == "") {
 		return nil,
@@ -321,6 +327,7 @@ func NewClient(config Config) (XOClient, error) {
 		rpc:          c,
 		httpClient:   httpClient,
 		restApiURL:   restApiURL,
+		logger:       logger,
 	}, nil
 }
 
@@ -356,8 +363,8 @@ func (c *Client) Call(method string, params, result interface{}) error {
 		}
 		// Sanitize parameters to remove sensitive information
 		sanitizedParams := sanitizeParams(params)
-		slog.Debug("[TRACE] Made rpc call `%s` with params: %v and received %+v: result with error: %v\n",
-			method, sanitizedParams, callRes, err)
+		c.logger.Debug("[TRACE] Made rpc call with params",
+			"method", method, "params", sanitizedParams, "typeOfResult", reflect.TypeOf(callRes), "error", err)
 
 		if err != nil {
 			rpcErr, ok := err.(*jsonrpc2.Error)
@@ -469,7 +476,7 @@ func (c *Client) FindFromGetAllObjects(obj XoObject) (interface{}, error) {
 		return objs, NotFound{Query: obj}
 	}
 
-	slog.Debug(fmt.Sprintf("Found the following objects for type '%v' from xo.getAllObjects: %+v\n", t, objs))
+	c.logger.Debug(fmt.Sprintf("Found the following objects for type '%v' from xo.getAllObjects: %+v\n", t, objs))
 
 	return objs.Interface(), nil
 }

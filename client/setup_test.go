@@ -57,8 +57,8 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	_ = RemoveResourceSetsWithNamePrefix(integrationTestPrefix)("")
-	_ = RemoveNetworksWithNamePrefix(integrationTestPrefix)("")
+	_ = RemoveResourceSetsWithNamePrefixForTests(integrationTestPrefix)("")
+	_ = RemoveNetworksWithNamePrefixForTests(integrationTestPrefix)("")
 
 	os.Exit(code)
 }

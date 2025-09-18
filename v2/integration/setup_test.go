@@ -114,7 +114,7 @@ func SetupTestContext(t *testing.T) (context.Context, func()) {
 		cancel() // Cancel the test context
 		// Teardown: cleanup any leftover test VMs and networks
 		_ = cleanupVMsWithPrefix(integrationTestPrefix)
-		_ = v1.RemoveNetworksWithNamePrefix(integrationTestPrefix)
+		_ = v1.RemoveNetworksWithNamePrefixForTests(integrationTestPrefix)
 	}
 }
 

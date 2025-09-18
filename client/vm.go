@@ -300,7 +300,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	}
 
 	if !params["clone"].(bool) && vmReq.CloneType == CloneTypeFastClone {
-		slog.Warn("A fast clone was requested but falling back to full due to lack of disk template support")
+		c.logger.Warn("A fast clone was requested but falling back to full due to lack of disk template support")
 	}
 
 	destroyCloudConfigVdiAfterBoot := vmReq.DestroyCloudConfigVdiAfterBoot
@@ -351,7 +351,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 
 	cloudConfig := vmReq.CloudConfig
 	if cloudConfig != "" {
-		warnOnInvalidCloudConfig(cloudConfig)
+		c.warnOnInvalidCloudConfig(cloudConfig)
 
 		params["cloudConfig"] = cloudConfig
 	}
@@ -365,7 +365,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	if cloudNetworkConfig != "" {
 		params["networkConfig"] = cloudNetworkConfig
 	}
-	slog.Debug("VM params for vm.create", "param", params)
+	c.logger.Debug("VM params for vm.create", "param", params)
 	var vmId string
 	err = c.Call("vm.create", params, &vmId)
 
@@ -513,7 +513,7 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 	}
 	params["blockedOperations"] = blockedOperations
 
-	slog.Debug("VM params for vm.set", "params", params)
+	c.logger.Debug("VM params for vm.set", "params", params)
 
 	var success bool
 	err := c.Call("vm.set", params, &success)
@@ -578,7 +578,7 @@ func (c *Client) GetVm(vmReq Vm) (*Vm, error) {
 		return nil, fmt.Errorf("expected to find a single VM from request %+v, instead found %d", vmReq, len(vms))
 	}
 
-	slog.Debug("Found vm", "vm", vms[0])
+	c.logger.Debug("Found vm", "vm", vms[0])
 	return &vms[0], nil
 }
 
@@ -588,7 +588,7 @@ func (c *Client) GetVms(vm Vm) ([]Vm, error) {
 		return []Vm{}, err
 	}
 	vms := obj.([]Vm)
-	slog.Debug("Found vms", "VMs", vms)
+	c.logger.Debug("Found vms", "VMs", vms)
 	return vms, nil
 }
 
@@ -631,6 +631,7 @@ func (c *Client) waitForPVDriversDetected(id string) error {
 		Refresh: refreshFn,
 		Target:  []string{"true"},
 		Timeout: 2 * time.Minute,
+		logger:  c.logger,
 	}
 	_, err := stateConf.WaitForState()
 	return err
@@ -667,6 +668,7 @@ func waitForPowerStateReached(c *Client, vmId, desiredPowerState string, timeout
 		Refresh: refreshFn,
 		Target:  []string{target},
 		Timeout: timeout,
+		logger:  c.logger,
 	}
 	_, err := stateConf.WaitForState()
 	return err
@@ -740,6 +742,7 @@ func waitForIPAssignment(c *Client, vmId string, waitForIps map[string]string, t
 		Refresh: refreshFn,
 		Target:  []string{ReadyState},
 		Timeout: timeout,
+		logger:  c.logger,
 	}
 	_, err := stateConf.WaitForState()
 	if _, ok := err.(*TimeoutError); ok {
@@ -845,7 +848,7 @@ func checkBlockDestroyOperation(vm *Vm) bool {
 	return false
 }
 
-func RemoveVmsWithNamePrefix(prefix string) func(string) error {
+func RemoveVmsWithNamePrefixForTests(prefix string) func(string) error {
 	return func(_ string) error {
 		slog.Debug("Running vm sweeper")
 		c, err := NewClient(GetConfigFromEnv())
@@ -892,7 +895,7 @@ func RemoveVmsWithNamePrefix(prefix string) func(string) error {
 // malformed config. The goal is to cover what is supported by the cloudinit terraform
 // provider (https://github.com/hashicorp/terraform-provider-cloudinit) and to rule out
 // obviously bad config
-func warnOnInvalidCloudConfig(cloudConfig string) {
+func (c *Client) warnOnInvalidCloudConfig(cloudConfig string) {
 	contentType := http.DetectContentType([]byte(cloudConfig))
 	if contentType == "application/x-gzip" {
 		return
@@ -901,15 +904,15 @@ func warnOnInvalidCloudConfig(cloudConfig string) {
 	if strings.HasPrefix(cloudConfig, "Content-Type") {
 		if !strings.Contains(cloudConfig, "multipart/") {
 
-			slog.Warn("Detected MIME type that may not be supported by cloudinit")
-			slog.Warn("Validate that your configuration is well formed according to the documentation" +
+			c.logger.Warn("Detected MIME type that may not be supported by cloudinit")
+			c.logger.Warn("Validate that your configuration is well formed according to the documentation" +
 				"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).")
 		}
 		return
 	}
 	if !strings.HasPrefix(cloudConfig, "#cloud-config") {
-		slog.Warn("cloud config does not start with required text `#cloud-config`.")
-		slog.Warn("Validate that your configuration is well formed according to the documentation" +
+		c.logger.Warn("cloud config does not start with required text `#cloud-config`.")
+		c.logger.Warn("Validate that your configuration is well formed according to the documentation" +
 			"(https://cloudinit.readthedocs.io/en/latest/topics/format.html).")
 	}
 

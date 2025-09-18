@@ -3,7 +3,6 @@ package client
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 )
 
 type VIF struct {
@@ -140,7 +139,7 @@ func (c *Client) DeleteVIF(vifReq *VIF) (err error) {
 	}
 	var result bool
 	err = c.Call("vif.delete", params, &result)
-	slog.Debug("Calling vif.delete received err", "error", err)
+	c.logger.Debug("Calling vif.delete received err", "error", err)
 
 	if err != nil {
 		return err
