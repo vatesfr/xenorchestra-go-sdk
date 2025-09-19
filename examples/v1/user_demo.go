@@ -2,17 +2,20 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/client"
 )
 
-func newClient() (client.XOClient, error) {
-	config := client.GetConfigFromEnv()
-	return client.NewClient(config)
-}
-
 func main() {
-	xoClient, err := newClient()
+	// Create custom logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	config := client.GetConfigFromEnv()
+	xoClient, err := client.NewClientWithLogger(config, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -24,7 +27,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Created user id: %v", user.Id)
+	fmt.Printf("Created user id: %v\n", user.Id)
 
 	user, err = xoClient.GetUser(client.User{Email: "golang-client-test"})
 	if err != nil {

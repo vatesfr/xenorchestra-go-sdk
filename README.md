@@ -11,6 +11,10 @@ This is a Golang module for the [XenOrchestra](https://github.com/vatesfr/xen-or
 
 The v1 client uses the JSON-RPC API and is primarily used in the [terraform-provider-xenorchestra](https://github.com/vatesfr/terraform-provider-xenorchestra) Terraform provider.
 
+Comprehensive documentation is available in the `docs/v1` directory:
+
+- [Overview](docs/v1/01-overview.md) - Introduction, features, and basic usage
+
 ### v2 Documentation
 
 The v2 client uses the REST API and provides a more modern, type-safe interface. Comprehensive documentation is available in the `docs/v2` directory:
@@ -48,6 +52,9 @@ make test
 # Run specific client tests
 make test-v1
 make test-v2
+
+# Run integration tests for v2
+make test-integration
 
 # Run linter
 make lint
