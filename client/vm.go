@@ -255,18 +255,21 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	existingDisks := map[string]interface{}{}
 	vdis := []interface{}{}
 	disks := vmReq.Disks
+	templateDiskCount := tmpl[0].getDiskCount()
 
-	firstDisk := createVdiMap(disks[0])
-	// Treat the first disk differently. This covers the
-	// case where we are using a template with an already
-	// installed OS or a diskless template.
-	if useExistingDisks {
-		existingDisks["0"] = firstDisk
-	} else {
-		vdis = append(vdis, firstDisk)
+	// Recover existing disks from the template. This covers the
+	// case where we are using a template with already
+	// installed OS and multiple disks.
+	for i := 0; i < templateDiskCount && i < len(disks); i++ {
+		existingDisks[strconv.Itoa(i)] = createVdiMap(disks[i])
 	}
 
-	for i := 1; i < len(disks); i++ {
+	// Process new disks to create. This covers the case
+	// where we are adding more disks to a template with
+	// already multiple disks, as well as the case where
+	// we are using a diskless template and creating all
+	// disks from scratch.
+	for i := templateDiskCount; i < len(disks); i++ {
 		vdis = append(vdis, createVdiMap(disks[i]))
 	}
 

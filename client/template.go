@@ -26,6 +26,8 @@ type Template struct {
 	NameLabel    string       `json:"name_label"`
 	PoolId       string       `json:"$poolId"`
 	TemplateInfo TemplateInfo `json:"template_info"`
+	// Array of VDI ids
+	VBDs []string `json:"$VBDs"`
 }
 
 func (t Template) Compare(obj interface{}) bool {
@@ -46,7 +48,7 @@ func (t Template) Compare(obj interface{}) bool {
 }
 
 func (t Template) isDiskTemplate() bool {
-	if len(t.TemplateInfo.Disks) == 0 && t.NameLabel != "Other install media" {
+	if len(t.VBDs) != 0 && t.NameLabel != "Other install media" {
 		return true
 	}
 
@@ -99,4 +101,8 @@ func FindTemplateForTests(template *Template, poolId, templateEnvVar string) {
 		os.Exit(-1)
 	}
 	*template = templates[0]
+}
+
+func (t *Template) getDiskCount() int {
+	return len(t.VBDs)
 }
