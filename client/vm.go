@@ -252,21 +252,50 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		return nil, errors.New("cannot create a VM from a diskless template without an ISO")
 	}
 
-	existingDisks := map[string]interface{}{}
 	vdis := []interface{}{}
 	disks := vmReq.Disks
+	templateDiskCount := tmpl[0].getDiskCount()
 
-	firstDisk := createVdiMap(disks[0])
-	// Treat the first disk differently. This covers the
-	// case where we are using a template with an already
-	// installed OS or a diskless template.
-	if useExistingDisks {
-		existingDisks["0"] = firstDisk
-	} else {
-		vdis = append(vdis, firstDisk)
+	// Recover existing disks from the template. This covers the
+	// case where we are using a template with already
+	// installed OS and multiple disks.
+	for i := 0; i < templateDiskCount; i++ {
+		vbd, err := c.GetVBD(VBD{
+			Id: tmpl[0].VBDs[i],
+		})
+		if err != nil {
+			return nil, fmt.Errorf("cannot create VM from template '%s': %w", tmpl[0].Id, err)
+		}
+		if i < len(disks) {
+			// Reuse existing disks from the template
+			existingVbd := createVdiMap(disks[i])
+			existingVbd["userdevice"] = vbd.Position
+			vdis = append(vdis, existingVbd)
+
+		} else {
+			// Remove existing disks from the template that are not in the new VM.
+			// Fetch related VDI to provide SR and size information.
+			vdi, err := c.GetVDI(VDI{
+				VDIId: vbd.VDI,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("cannot create VM from template '%s': %w", tmpl[0].Id, err)
+			}
+			vbdToRemove := createVdiMap(Disk{
+				VDI: vdi,
+			})
+			vbdToRemove["userdevice"] = vbd.Position
+			vbdToRemove["destroy"] = true
+			vdis = append(vdis, vbdToRemove)
+		}
 	}
 
-	for i := 1; i < len(disks); i++ {
+	// Process new disks to create. This covers the case
+	// where we are adding more disks to a template with
+	// already multiple disks, as well as the case where
+	// we are using a diskless template and creating all
+	// disks from scratch.
+	for i := templateDiskCount; i < len(disks); i++ {
 		vdis = append(vdis, createVdiMap(disks[i]))
 	}
 
@@ -280,7 +309,6 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		"cpuCap":           nil,
 		"cpuWeight":        nil,
 		"CPUs":             vmReq.CPUs.Number,
-		"existingDisks":    existingDisks,
 		// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
 		// "secureBoot":       vmReq.SecureBoot,
 		"expNestedHvm":      vmReq.ExpNestedHvm,

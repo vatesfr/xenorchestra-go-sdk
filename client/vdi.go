@@ -68,7 +68,7 @@ type VBD struct {
 	VmId      string `json:"VM"`
 	VDI       string `json:"VDI"`
 	IsCdDrive bool   `json:"is_cd_drive"`
-	Position  string
+	Position  string `json:"position,omitempty"`
 	Bootable  bool
 	PoolId    string `json:"$poolId"`
 }
@@ -83,7 +83,32 @@ func (v VBD) Compare(obj interface{}) bool {
 		return true
 	}
 
+	if other.Id != "" && other.Id == v.Id {
+		return true
+	}
+
 	return false
+}
+
+func (c *Client) GetVBD(vbdReq VBD) (VBD, error) {
+	obj, err := c.FindFromGetAllObjects(vbdReq)
+
+	if err != nil {
+		return VBD{}, err
+	}
+
+	vbds, ok := obj.([]VBD)
+
+	if !ok {
+		return VBD{}, fmt.Errorf("failed to coerce %+v into VBD", obj)
+	}
+
+	numVbds := len(vbds)
+	if numVbds != 1 {
+		return VBD{}, fmt.Errorf("expected to return 1 VBD, instead received %d for request %v", numVbds, vbdReq)
+	}
+
+	return vbds[0], nil
 }
 
 func (c *Client) getDisksFromVBDs(vbd VBD) ([]Disk, error) {
