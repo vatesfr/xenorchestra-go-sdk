@@ -59,6 +59,9 @@ func New(config *config.Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to parse url: %w", err)
 	}
 
+	// I am not sure about this however, it was part
+	// of the v1 with JSONRPC and make it easier to
+	// switch to the new v2 REST API instead.
 	switch baseURL.Scheme {
 	case WebSocketScheme:
 		baseURL.Scheme = "http"
@@ -88,6 +91,8 @@ func New(config *config.Config) (*Client, error) {
 
 	if config.Token != "" {
 		client.AuthToken = Token(config.Token)
+		// No need to create a new token
+		return client, nil
 	} else if config.Username != "" && config.Password != "" {
 		token, err := client.authenticate(config.Username, config.Password)
 		if err != nil {
@@ -198,6 +203,11 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 
 	// Parse response as JSON first; if it fails and the expected result is a string, fall back to raw string.
 	if result != nil && len(bodyBytes) > 0 {
+		if strPtr, ok := result.(*string); ok {
+			*strPtr = string(bodyBytes)
+			return nil
+		}
+
 		if err := json.Unmarshal(bodyBytes, result); err != nil {
 			// If JSON unmarshaling fails but the caller expects a string, return the raw body.
 			if strPtr, ok := result.(*string); ok {
