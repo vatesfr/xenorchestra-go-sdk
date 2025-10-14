@@ -33,19 +33,52 @@ type VDI struct {
 	Parent          string   `json:"parent,omitempty"`
 	PoolId          string   `json:"$poolId"`
 	Tags            []string `json:"tags,omitempty"`
+	CbtEnabled      *bool    `json:"cbt_enabled,omitempty"`
 }
 
 func (v VDI) Compare(obj interface{}) bool {
-	other := obj.(VDI)
-
-	if v.VDIId != "" && other.VDIId == v.VDIId {
-		return true
+	other, ok := obj.(VDI)
+	if !ok {
+		return false
 	}
 
-	labelsMatch := v.NameLabel == other.NameLabel
+	// If both have VDI IDs, compare by ID (primary identifier)
+	if v.VDIId != "" && other.VDIId != "" {
+		return v.VDIId == other.VDIId
+	}
 
-	if v.PoolId == other.PoolId && labelsMatch {
-		return true
+	if v.NameLabel != "" && v.NameLabel != other.NameLabel {
+		return false
+	}
+
+	// Compare all fields for complete equality
+	if v.SrId != "" && v.SrId != other.SrId {
+		return false
+	}
+
+	if v.NameDescription != "" && v.NameDescription != other.NameDescription {
+		return false
+	}
+
+	if v.Size != 0 && v.Size != other.Size {
+		return false
+	}
+
+	if v.Parent != "" && v.Parent != other.Parent {
+		return false
+	}
+
+	if v.PoolId != "" && v.PoolId != other.PoolId {
+		return false
+	}
+
+	if v.CbtEnabled != nil && other.CbtEnabled != nil && *v.CbtEnabled != *other.CbtEnabled {
+		return false
+	}
+
+	// Compare Tags slices
+	if len(v.Tags) != len(other.Tags) {
+		return false
 	}
 
 	if len(v.Tags) > 0 {
@@ -56,7 +89,7 @@ func (v VDI) Compare(obj interface{}) bool {
 		}
 	}
 
-	return false
+	return true
 }
 
 // TODO: Change this file to storage or disks?
@@ -324,6 +357,7 @@ func (c *Client) UpdateVDI(d Disk) error {
 		"id":               d.VDIId,
 		"name_description": d.NameDescription,
 		"name_label":       d.NameLabel,
+		"cbt":              d.CbtEnabled,
 	}
 	return c.Call("vdi.set", params, &success)
 }
