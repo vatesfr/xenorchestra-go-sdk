@@ -3,7 +3,6 @@ package vm
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -39,11 +38,17 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockTask
 
 		switch {
 		case r.URL.Path == "/rest/v0/vms" && r.Method == http.MethodGet:
-			id1 := uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000001"))
-			id2 := uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000002"))
-			err := json.NewEncoder(w).Encode([]string{
-				fmt.Sprintf("/rest/v0/vms/%s", id1),
-				fmt.Sprintf("/rest/v0/vms/%s", id2),
+			err := json.NewEncoder(w).Encode([]payloads.VM{
+				{
+					ID:         uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000001")),
+					NameLabel:  "VM 1",
+					PowerState: payloads.PowerStateRunning,
+				},
+				{
+					ID:         uuid.Must(uuid.FromString("00000000-0000-0000-0000-000000000002")),
+					NameLabel:  "VM 2",
+					PowerState: payloads.PowerStateHalted,
+				},
 			})
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -180,7 +185,7 @@ func TestList(t *testing.T) {
 	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
-	vms, err := service.List(context.Background())
+	vms, err := service.List(context.Background(), 0, "")
 
 	assert.NoError(t, err)
 	assert.Len(t, vms, 2)
