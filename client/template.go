@@ -7,6 +7,11 @@ import (
 	"os"
 )
 
+type TemplateBoot struct {
+	Firmware string `json:"firmware"`
+	Order    string `json:"order"`
+}
+
 type TemplateDisk struct {
 	Bootable bool   `json:"bootable"`
 	Device   string `json:"device"`
@@ -23,6 +28,7 @@ type TemplateInfo struct {
 type Template struct {
 	Id           string       `json:"id"`
 	Uuid         string       `json:"uuid"`
+	Boot         TemplateBoot `json:"boot"`
 	NameLabel    string       `json:"name_label"`
 	PoolId       string       `json:"$poolId"`
 	TemplateInfo TemplateInfo `json:"template_info"`
