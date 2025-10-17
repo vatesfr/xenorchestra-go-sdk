@@ -181,11 +181,11 @@ func TestGetByID(t *testing.T) {
 	assert.Equal(t, payloads.PowerStateRunning, vm.PowerState)
 }
 
-func TestList(t *testing.T) {
+func TestGetAll(t *testing.T) {
 	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
-	vms, err := service.List(context.Background(), 0, "")
+	vms, err := service.GetAll(context.Background(), 0, "")
 
 	assert.NoError(t, err)
 	assert.Len(t, vms, 2)

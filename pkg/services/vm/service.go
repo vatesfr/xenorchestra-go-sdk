@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
@@ -50,7 +51,64 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, erro
 	return &result, nil
 }
 
-func (s *Service) List(ctx context.Context, limit int, filter string) ([]*payloads.VM, error) {
+// Deprecated: Use GetAll instead
+func (s *Service) List(ctx context.Context) ([]*payloads.VM, error) {
+	var vmURLs []string
+	err := client.TypedGet(ctx, s.client, "vms", core.EmptyParams, &vmURLs)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(vmURLs) == 0 {
+		return []*payloads.VM{}, nil
+	}
+
+	// TODO: add a config to set the max number of VMs to fetch
+	// We can also use the fields name_label, name_description,
+	// power_state to filter the VMs we want to fetch...
+	maxVMs := 10
+	if len(vmURLs) < maxVMs {
+		maxVMs = len(vmURLs)
+	}
+
+	s.log.Info(fmt.Sprintf("Found %d VM references, fetching details for first %d\n", len(vmURLs), maxVMs))
+
+	result := make([]*payloads.VM, 0, maxVMs)
+
+	for i := 0; i < maxVMs; i++ {
+		urlPath := vmURLs[i]
+
+		parts := strings.Split(urlPath, "/")
+		if len(parts) < 5 {
+			continue
+		}
+
+		vmID := parts[len(parts)-1]
+
+		id, err := uuid.FromString(vmID)
+		if err != nil {
+			s.log.Error("invalid UUID in VM URL", zap.String("vmID", vmID))
+			continue
+		}
+
+		vm, err := s.GetByID(ctx, id)
+		if err != nil {
+			s.log.Error("failed to fetch VM", zap.String("vmID", id.String()), zap.Error(err))
+			continue
+		}
+
+		result = append(result, vm)
+	}
+
+	if len(result) == 0 {
+		s.log.Error("no valid VMs found")
+		return nil, fmt.Errorf("no valid VMs found")
+	}
+
+	return result, nil
+}
+
+func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VM, error) {
 	path := core.NewPathBuilder().Resource("vms").Build()
 	params := make(map[string]any)
 	if limit > 0 {
@@ -155,7 +213,7 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 
 	// If we don't have a task URL or couldn't extract a VM ID from the task,
 	// try to find VM by name
-	vms, err := s.List(ctx, 0, fmt.Sprintf("name_label:%s", vm.NameLabel))
+	vms, err := s.GetAll(ctx, 0, fmt.Sprintf("name_label:%s", vm.NameLabel))
 	if err != nil {
 		s.log.Error("failed to list VMs", zap.Error(err))
 		return nil, fmt.Errorf("could not determine created VM ID: %w", err)

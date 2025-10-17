@@ -61,7 +61,7 @@ func TestVMListWithLimit(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Test with limit parameter
-			vms, err := testClient.VM().List(t.Context(), tc.n, "")
+			vms, err := testClient.VM().GetAll(t.Context(), tc.n, "")
 			assert.NoError(t, err)
 			assert.NotNil(t, vms)
 			assert.LessOrEqual(t, len(vms), tc.n)
@@ -70,7 +70,7 @@ func TestVMListWithLimit(t *testing.T) {
 }
 
 func TestVMListWithNoLimit(t *testing.T) {
-	vms, err := testClient.VM().List(t.Context(), 0, "")
+	vms, err := testClient.VM().GetAll(t.Context(), 0, "")
 	assert.NoError(t, err)
 	assert.NotNil(t, vms)
 	// Adjust expectation - we now create only 5 VMs, but there might be other VMs in the system
@@ -78,7 +78,7 @@ func TestVMListWithNoLimit(t *testing.T) {
 }
 
 func TestVMListWithFilter(t *testing.T) {
-	vms, err := testClient.VM().List(t.Context(), 0, "name_label:"+integrationTestPrefix+"test-vms-A-")
+	vms, err := testClient.VM().GetAll(t.Context(), 0, "name_label:"+integrationTestPrefix+"test-vms-A-")
 	assert.NoError(t, err)
 	assert.NotNil(t, vms)
 	assert.Len(t, vms, 2, "expected 2 VMs with the specified name label")
