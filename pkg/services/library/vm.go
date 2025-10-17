@@ -11,7 +11,14 @@ import (
 
 type VM interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error)
+	// Deprecated: Use GetAll instead (List limits results to 10 VMs)
 	List(ctx context.Context) ([]*payloads.VM, error)
+	// GetAll retrieves VMs with configurable limit and filtering.
+	// Parameters:
+	//   - limit: maximum number of VMs to return (0 for no limit)
+	//   - filter: filter string for VM selection (empty for no filter)
+	// Returns all matching VMs or an error if the operation fails.
+	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VM, error)
 	Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
 	Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
 	Delete(ctx context.Context, id uuid.UUID) error

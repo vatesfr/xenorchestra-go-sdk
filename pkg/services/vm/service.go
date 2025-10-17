@@ -51,6 +51,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, erro
 	return &result, nil
 }
 
+// Deprecated: Use GetAll instead
 func (s *Service) List(ctx context.Context) ([]*payloads.VM, error) {
 	var vmURLs []string
 	err := client.TypedGet(ctx, s.client, "vms", core.EmptyParams, &vmURLs)
@@ -104,6 +105,27 @@ func (s *Service) List(ctx context.Context) ([]*payloads.VM, error) {
 		return nil, fmt.Errorf("no valid VMs found")
 	}
 
+	return result, nil
+}
+
+func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VM, error) {
+	path := core.NewPathBuilder().Resource("vms").Build()
+	params := make(map[string]any)
+	if limit > 0 {
+		params["limit"] = limit
+	}
+	// Get all fields to retrieve complete pool objects
+	params["fields"] = "*"
+
+	if filter != "" {
+		params["filter"] = filter
+	}
+
+	result := make([]*payloads.VM, 0, limit)
+	if err := client.TypedGet(ctx, s.client, path, params, &result); err != nil {
+		s.log.Error("Failed to get all pools", zap.Error(err))
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -191,7 +213,7 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 
 	// If we don't have a task URL or couldn't extract a VM ID from the task,
 	// try to find VM by name
-	vms, err := s.List(ctx)
+	vms, err := s.GetAll(ctx, 0, fmt.Sprintf("name_label:%s", vm.NameLabel))
 	if err != nil {
 		s.log.Error("failed to list VMs", zap.Error(err))
 		return nil, fmt.Errorf("could not determine created VM ID: %w", err)

@@ -48,7 +48,7 @@ test-v2:
 .PHONY: test-integration
 test-integration: 
 	@echo "$(BLUE)Running integration tests...$(NC)"
-	$(GO) test ./v2/integration/... 
+	$(GO) test -timeout 120s  ./v2/integration/... 
 
 .PHONY: lint
 lint: 
