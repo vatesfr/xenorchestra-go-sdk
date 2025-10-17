@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -21,10 +22,8 @@ func createVMsForTest(t *testing.T, ctx context.Context, count int, name string)
 		}
 
 		vmID, err := testClient.Pool().CreateVM(ctx, testPool.ID, params)
-		if err != nil {
-			t.Fatalf("error while creating VM in pool %s: %v", testPool.ID, err)
-		}
-		assert.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
+		require.NoErrorf(t, err, "error while creating VM %s in pool %s: %v", vmName, testPool.ID, err)
+		require.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
 		vmIDs = append(vmIDs, vmID.String())
 	}
 
@@ -62,8 +61,8 @@ func TestVMListWithLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Test with limit parameter
 			vms, err := testClient.VM().GetAll(t.Context(), tc.n, "")
-			assert.NoError(t, err)
-			assert.NotNil(t, vms)
+			require.NoError(t, err)
+			require.NotNil(t, vms)
 			assert.LessOrEqual(t, len(vms), tc.n)
 		})
 	}
@@ -71,15 +70,15 @@ func TestVMListWithLimit(t *testing.T) {
 
 func TestVMListWithNoLimit(t *testing.T) {
 	vms, err := testClient.VM().GetAll(t.Context(), 0, "")
-	assert.NoError(t, err)
-	assert.NotNil(t, vms)
+	require.NoError(t, err)
+	require.NotNil(t, vms)
 	// Adjust expectation - we now create only 5 VMs, but there might be other VMs in the system
 	assert.Greater(t, len(vms), 5, "expected more than 5 VMs in total")
 }
 
 func TestVMListWithFilter(t *testing.T) {
 	vms, err := testClient.VM().GetAll(t.Context(), 0, "name_label:"+integrationTestPrefix+"test-vms-A-")
-	assert.NoError(t, err)
-	assert.NotNil(t, vms)
+	require.NoError(t, err)
+	require.NotNil(t, vms)
 	assert.Len(t, vms, 2, "expected 2 VMs with the specified name label")
 }
