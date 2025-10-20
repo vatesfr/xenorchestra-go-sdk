@@ -1,10 +1,11 @@
 package jsonrpc
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
@@ -12,103 +13,97 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"go.uber.org/zap"
 
+	"github.com/gorilla/websocket"
+	"github.com/sourcegraph/jsonrpc2"
+	ws "github.com/sourcegraph/jsonrpc2/websocket"
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	fakeXoToken = "fake-token-123"
+)
+
+// testJSONRPCHandler implements a JSON-RPC handler for testing
+type testJSONRPCHandler struct{}
+
+func (h *testJSONRPCHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+	switch req.Method {
+	case "session.signIn":
+		// Fake authentication success
+		response := map[string]any{
+			"user": map[string]any{
+				"id":    "test-user",
+				"email": "test@example.com",
+			},
+		}
+		_ = conn.Reply(ctx, req.ID, response)
+
+	case "success.method":
+		_ = conn.Reply(ctx, req.ID, "success-result")
+
+	case "error.method":
+		_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+			Code:    500,
+			Message: "Internal server error",
+		})
+
+	case "boolean.true":
+		_ = conn.Reply(ctx, req.ID, true)
+
+	case "boolean.false":
+		_ = conn.Reply(ctx, req.ID, false)
+
+	case "complex.result":
+		response := map[string]any{
+			"id":   "12345",
+			"name": "Test Resource",
+			"data": []any{1, 2, 3},
+		}
+		_ = conn.Reply(ctx, req.ID, response)
+
+	default:
+		_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
+			Code:    404,
+			Message: fmt.Sprintf("Method not found: %s", req.Method),
+		})
+	}
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
 func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
+	// Create an HTTP server that upgrades to WebSocket
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		var request struct {
-			Method string          `json:"method"`
-			Params json.RawMessage `json:"params"`
-			ID     int             `json:"id"`
-		}
-
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		switch request.Method {
-		case "success.method":
-			response := map[string]any{
-				"result": "success-result",
-				"id":     request.ID,
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
+		if strings.HasSuffix(r.URL.Path, "/api/") {
+			// Upgrade the HTTP connection to WebSocket
+			conn, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-		case "error.method":
-			response := map[string]any{
-				"error": map[string]any{
-					"code":    500,
-					"message": "Internal server error",
-				},
-				"id": request.ID,
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+			// Create a WebSocket object stream and a JSON-RPC connection
+			objStream := ws.NewObjectStream(conn)
+			handler := &testJSONRPCHandler{}
+			jsonrpcConn := jsonrpc2.NewConn(context.Background(), objStream, handler)
 
-		case "boolean.true":
-			response := map[string]any{
-				"result": true,
-				"id":     request.ID,
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-		case "boolean.false":
-			response := map[string]any{
-				"result": false,
-				"id":     request.ID,
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-		case "complex.result":
-			response := map[string]any{
-				"result": map[string]any{
-					"id":   "12345",
-					"name": "Test Resource",
-					"data": []any{1, 2, 3},
-				},
-				"id": request.ID,
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-		default:
-			response := map[string]any{
-				"error": map[string]any{
-					"code":    404,
-					"message": fmt.Sprintf("Method not found: %s", request.Method),
-				},
-				"id": request.ID,
-			}
-			if err := json.NewEncoder(w).Encode(response); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+			// Wait for the connection to close
+			<-jsonrpcConn.DisconnectNotify()
+		} else {
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
 
-	client, err := v1.NewClient(v1.Config{Url: server.URL})
+	wsURL := strings.Replace(server.URL, "http", "ws", 1)
+
+	client, err := v1.NewClient(v1.Config{
+		Url:   wsURL,
+		Token: fakeXoToken,
+	})
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create client: %v", err))
 	}

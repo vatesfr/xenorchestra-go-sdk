@@ -53,7 +53,7 @@ func (s *Service) ValidateResult(result bool, operation string, logContext ...za
 			append([]zap.Field{
 				zap.String("operation", operation),
 			}, logContext...)...)
-		return fmt.Errorf("%s operation returned unsuccessful status", operation)
+		return fmt.Errorf("%s returned unsuccessful status", operation)
 	}
 	return nil
 }
