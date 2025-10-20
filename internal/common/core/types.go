@@ -7,19 +7,3 @@ package core
 var EmptyParams struct{}
 
 var EmptyResult struct{}
-
-// JsonRpcPayload is a struct that represents a JSON-RPC payload.
-// It is used to convert a Go struct or map to a JSON-RPC compatible map.
-type JsonRpcPayload struct {
-	ID      string `json:"id"`
-	Jsonrpc string `json:"jsonrpc"`
-	Method  string `json:"method"`
-	Params  any    `json:"params"`
-}
-
-// JsonRpcError is a struct that represents a JSON-RPC error.
-// It is used to convert a Go struct or map to a JSON-RPC compatible map.
-type JsonRpcError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}

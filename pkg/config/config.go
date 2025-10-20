@@ -29,14 +29,6 @@ var (
 	}
 )
 
-func ToRetryMode(mode string) core.RetryMode {
-	retry, ok := retryModeMap[mode]
-	if !ok {
-		return core.None
-	}
-	return retry
-}
-
 // NOTE: Same as the shared types or constants, we could have in the internal package,
 // errors message declared to be used in the different v2 packages. (OPTIONAL)
 const (

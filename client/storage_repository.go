@@ -35,7 +35,7 @@ func (s StorageRepository) Compare(obj interface{}) bool {
 		}
 	}
 
-	var labelsMatch = s.NameLabel == otherSr.NameLabel
+	labelsMatch := s.NameLabel == otherSr.NameLabel
 
 	if s.PoolId == "" && labelsMatch {
 		return true
