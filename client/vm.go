@@ -255,20 +255,25 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	vdis := []interface{}{}
 	disks := vmReq.Disks
 	templateDiskCount := tmpl[0].getDiskCount()
+	tmplVDbs, err := c.GetTemplateVBDs(tmpl[0])
+	if err != nil {
+		return nil, fmt.Errorf("cannot create VM from template: '%s': %w", tmpl[0].Id, err)
+	}
 
 	// Recover existing disks from the template. This covers the
 	// case where we are using a template with already
 	// installed OS and multiple disks.
-	for i := 0; i < templateDiskCount; i++ {
-		vbd, err := c.GetVBD(VBD{
-			Id: tmpl[0].VBDs[i],
-		})
-		if err != nil {
-			return nil, fmt.Errorf("cannot create VM from template '%s': %w", tmpl[0].Id, err)
+	for i, vbd := range tmplVDbs {
+		// Use existing VBD, ensure that we preserve the disk positions
+		// Keep in mind that position=3 is for the CD drive, so we need to skip that
+		if vbd.IsCdDrive {
+			slog.Debug("existing template VBD is a CD drive, skip it...")
+			templateDiskCount--
+			continue
 		}
-		if i < len(disks) {
+		if pos, _ := strconv.Atoi(i); pos < len(disks) {
 			// Reuse existing disks from the template
-			existingVbd := createVdiMap(disks[i])
+			existingVbd := createVdiMap(disks[pos])
 			existingVbd["userdevice"] = vbd.Position
 			vdis = append(vdis, existingVbd)
 
