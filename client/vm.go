@@ -255,7 +255,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	vdis := []interface{}{}
 	disks := vmReq.Disks
 	templateDiskCount := tmpl[0].getDiskCount()
-	tmplVDbs, err := c.GetTemplateVBDs(tmpl[0])
+	tmplVBDs, err := c.GetTemplateVBDs(tmpl[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot create VM from template: '%s': %w", tmpl[0].Id, err)
 	}
@@ -263,7 +263,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	// Recover existing disks from the template. This covers the
 	// case where we are using a template with already
 	// installed OS and multiple disks.
-	for i, vbd := range tmplVDbs {
+	for _, vbd := range tmplVBDs {
 		// Use existing VBD, ensure that we preserve the disk positions
 		// Keep in mind that position=3 is for the CD drive, so we need to skip that
 		if vbd.IsCdDrive {
@@ -271,9 +271,16 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 			templateDiskCount--
 			continue
 		}
-		if pos, _ := strconv.Atoi(i); pos < len(disks) {
+		// Position provided by XO api is always an index in a string starting at 0,
+		// but check in case the API changes
+		intPos, err := strconv.Atoi(vbd.Position)
+		if err != nil {
+			slog.Error("template VBD key is not a numeric disk position, skipping", "key", vbd.Position)
+			continue
+		}
+		if intPos < len(disks) {
 			// Reuse existing disks from the template
-			existingVbd := createVdiMap(disks[pos])
+			existingVbd := createVdiMap(disks[intPos])
 			existingVbd["userdevice"] = vbd.Position
 			vdis = append(vdis, existingVbd)
 
