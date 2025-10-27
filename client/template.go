@@ -112,3 +112,23 @@ func FindTemplateForTests(template *Template, poolId, templateEnvVar string) {
 func (t *Template) getDiskCount() int {
 	return len(t.VBDs)
 }
+
+// GetTemplateVBDs retrieves all VBDs for a given template and returns them as a map
+// where the key is the VBD's position.
+func (c *Client) GetTemplateVBDs(template Template) (map[string]VBD, error) {
+	var response map[string]VBD
+	err := c.GetAllObjectsOfType(VBD{}, &response)
+	if err != nil {
+		slog.Error("failed to get template VBDs", "error", err)
+		return nil, err
+	}
+
+	vbds := make(map[string]VBD, len(template.VBDs))
+	for _, vbd := range response {
+		if vbd.VmId != template.Id {
+			continue
+		}
+		vbds[vbd.Position] = vbd
+	}
+	return vbds, nil
+}
