@@ -62,14 +62,14 @@ func (v VDI) Compare(obj interface{}) bool {
 // TODO: Change this file to storage or disks?
 type VBD struct {
 	Id        string `json:"id"`
-	Attached  bool
-	Device    string
+	Attached  bool   `json:"attached"`
+	Device    string `json:"device"`
 	ReadOnly  bool   `json:"read_only"`
 	VmId      string `json:"VM"`
 	VDI       string `json:"VDI"`
 	IsCdDrive bool   `json:"is_cd_drive"`
 	Position  string `json:"position,omitempty"`
-	Bootable  bool
+	Bootable  bool   `json:"bootable"`
 	PoolId    string `json:"$poolId"`
 }
 
