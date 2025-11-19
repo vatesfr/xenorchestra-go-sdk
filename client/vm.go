@@ -278,9 +278,17 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 			slog.Error("template VBD key is not a numeric disk position, skipping", "key", vbd.Position)
 			continue
 		}
-		if intPos < len(disks) {
+
+		// We skip position 3 as per above, so to compare the content of `disks`
+		// correctly we must adjust for the skipped value.
+		relativePos := intPos
+		if relativePos > 3 {
+			relativePos -= 1
+		}
+
+		if relativePos < len(disks) {
 			// Reuse existing disks from the template
-			existingVbd := createVdiMap(disks[intPos])
+			existingVbd := createVdiMap(disks[relativePos])
 			existingVbd["userdevice"] = vbd.Position
 			vdis = append(vdis, existingVbd)
 
