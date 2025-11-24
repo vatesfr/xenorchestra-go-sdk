@@ -64,6 +64,21 @@ func (mr *MockTaskMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockTask)(nil).Get), arg0, arg1)
 }
 
+// GetAll mocks base method.
+func (m *MockTask) GetAll(arg0 context.Context, arg1 int, arg2 string) ([]*payloads.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAll", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*payloads.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockTaskMockRecorder) GetAll(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockTask)(nil).GetAll), arg0, arg1, arg2)
+}
+
 // HandleTaskResponse mocks base method.
 func (m *MockTask) HandleTaskResponse(arg0 context.Context, arg1 string, arg2 bool) (*payloads.Task, bool, error) {
 	m.ctrl.T.Helper()

@@ -10,6 +10,7 @@ import (
 
 type Task interface {
 	Get(ctx context.Context, path string) (*payloads.Task, error)
+	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Task, error)
 
 	TaskAction
 }

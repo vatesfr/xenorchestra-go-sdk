@@ -3,11 +3,13 @@ package task
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +21,25 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
+
+func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (library.Task, *httptest.Server) {
+	server := httptest.NewServer(handler)
+	log, _ := logger.New(false)
+
+	baseURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+
+	restClient := &client.Client{
+		HttpClient: server.Client(),
+		BaseURL:    baseURL,
+		AuthToken:  "test-token",
+	}
+
+	// Create mock controller and task mock
+
+	mockService := New(restClient, log)
+	return mockService, server
+}
 
 func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 	// Compile regex pattern once for efficiency
@@ -153,6 +174,78 @@ func TestGet(t *testing.T) {
 		_, err := service.Get(context.Background(), "non-existent-task")
 
 		assert.Error(t, err)
+	})
+}
+
+func TestGetAllTasks(t *testing.T) {
+	t.Run("passes limit parameter", func(t *testing.T) {
+		limit := 42
+		filter := "filter-to-check"
+		called := false
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			called = true
+			assert.Equal(t, http.MethodGet, r.Method)
+			values := r.URL.Query()
+			assert.Equal(t, fmt.Sprintf("%d", limit), values.Get("limit"))
+			assert.Equal(t, filter, values.Get("filter"))
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode([]payloads.Task{})
+			assert.NoError(t, err)
+		})
+		service, server := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+		tasks, err := service.GetAll(context.Background(), limit, filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, tasks)
+		assert.True(t, called)
+	})
+	t.Run("returns error on http error", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "not found", http.StatusNotFound)
+		})
+		service, server := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+		tasks, err := service.GetAll(context.Background(), 0, "")
+		assert.Error(t, err)
+		assert.Nil(t, tasks)
+	})
+
+	t.Run("returns error on invalid json", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, err := w.Write([]byte("not a json"))
+			assert.NoError(t, err)
+		})
+		service, server := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+		tasks, err := service.GetAll(context.Background(), 0, "")
+		assert.Error(t, err)
+		assert.Nil(t, tasks)
+	})
+
+	t.Run("successfully retrieves all tasks", func(t *testing.T) {
+		expectedTasks := []payloads.Task{
+			{ID: "0mhke8vi7", Status: "failure"},
+			{ID: "0mhknlx4j", Status: "success"},
+		}
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodGet, r.Method)
+			assert.True(t, strings.HasSuffix(r.URL.Path, "/tasks"))
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(expectedTasks)
+			assert.NoError(t, err)
+		})
+
+		service, server := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+
+		tasks, err := service.GetAll(context.Background(), 0, "")
+		assert.NoError(t, err)
+		assert.NotNil(t, tasks)
+		assert.Len(t, tasks, 2)
+		assert.Equal(t, expectedTasks[0].Status, tasks[0].Status)
+		assert.Equal(t, expectedTasks[1].Status, tasks[1].Status)
 	})
 }
 
