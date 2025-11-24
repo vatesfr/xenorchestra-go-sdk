@@ -57,6 +57,29 @@ func (s *Service) Get(ctx context.Context, path string) (*payloads.Task, error) 
 	return &result, nil
 }
 
+func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Task, error) {
+	path := core.NewPathBuilder().Resource("tasks").Build()
+	params := make(map[string]any)
+	if limit > 0 {
+		params["limit"] = limit
+	}
+	// Get all fields to retrieve complete task objects
+	params["fields"] = "*"
+
+	if filter != "" {
+		params["filter"] = filter
+	}
+
+	var results []*payloads.Task
+	err := client.TypedGet(ctx, s.client, path, params, &results)
+	if err != nil {
+		s.log.Error("Failed to get all tasks", zap.Error(err))
+		return nil, err
+	}
+
+	return results, nil
+}
+
 func (s *Service) Abort(ctx context.Context, id string) error {
 	path := core.NewPathBuilder().Resource("tasks").IDString(id).Action("abort").Build()
 
