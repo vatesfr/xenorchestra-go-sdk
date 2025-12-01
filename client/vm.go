@@ -109,35 +109,34 @@ func (rs *FlatResourceSet) MarshalJSON() ([]byte, error) {
 }
 
 type Vm struct {
-	Addresses          map[string]string `json:"addresses,omitempty"`
-	BlockedOperations  map[string]string `json:"blockedOperations,omitempty"`
-	Boot               Boot              `json:"boot,omitempty"`
-	Type               string            `json:"type,omitempty"`
-	Id                 string            `json:"id,omitempty"`
-	AffinityHost       *string           `json:"affinityHost,omitempty"`
-	NameDescription    string            `json:"name_description"`
-	NameLabel          string            `json:"name_label"`
-	CPUs               CPUs              `json:"CPUs"`
-	ExpNestedHvm       bool              `json:"expNestedHvm,omitempty"`
-	Memory             MemoryObject      `json:"memory"`
-	PowerState         string            `json:"power_state"`
-	VIFs               []string          `json:"VIFs"`
-	VBDs               []string          `json:"$VBDs"`
-	VirtualizationMode string            `json:"virtualizationMode"`
-	PoolId             string            `json:"$poolId"`
-	Template           string            `json:"template"`
-	AutoPoweron        bool              `json:"auto_poweron"`
-	HA                 string            `json:"high_availability"`
-	CloudConfig        string            `json:"cloudConfig"`
-	ResourceSet        *FlatResourceSet  `json:"resourceSet"`
-	// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
-	// SecureBoot         bool              `json:"secureBoot,omitempty"`
-	Tags         []string               `json:"tags"`
-	Videoram     Videoram               `json:"videoram,omitempty"`
-	Vga          string                 `json:"vga,omitempty"`
-	StartDelay   int                    `json:"startDelay,omitempty"`
-	Host         string                 `json:"$container"`
-	XenstoreData map[string]interface{} `json:"xenStoreData,omitempty"`
+	Addresses          map[string]string      `json:"addresses,omitempty"`
+	BlockedOperations  map[string]string      `json:"blockedOperations,omitempty"`
+	Boot               Boot                   `json:"boot,omitempty"`
+	Type               string                 `json:"type,omitempty"`
+	Id                 string                 `json:"id,omitempty"`
+	AffinityHost       *string                `json:"affinityHost,omitempty"`
+	NameDescription    string                 `json:"name_description"`
+	NameLabel          string                 `json:"name_label"`
+	CPUs               CPUs                   `json:"CPUs"`
+	ExpNestedHvm       bool                   `json:"expNestedHvm,omitempty"`
+	Memory             MemoryObject           `json:"memory"`
+	PowerState         string                 `json:"power_state"`
+	VIFs               []string               `json:"VIFs"`
+	VBDs               []string               `json:"$VBDs"`
+	VirtualizationMode string                 `json:"virtualizationMode"`
+	PoolId             string                 `json:"$poolId"`
+	Template           string                 `json:"template"`
+	AutoPoweron        bool                   `json:"auto_poweron"`
+	HA                 string                 `json:"high_availability"`
+	CloudConfig        string                 `json:"cloudConfig"`
+	ResourceSet        *FlatResourceSet       `json:"resourceSet"`
+	SecureBoot         bool                   `json:"secureBoot,omitempty"`
+	Tags               []string               `json:"tags"`
+	Videoram           Videoram               `json:"videoram,omitempty"`
+	Vga                string                 `json:"vga,omitempty"`
+	StartDelay         int                    `json:"startDelay,omitempty"`
+	Host               string                 `json:"$container"`
+	XenstoreData       map[string]interface{} `json:"xenStoreData,omitempty"`
 
 	// These fields are used for passing in disk inputs when
 	// creating Vms, however, this is not a real field as far
@@ -320,17 +319,16 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	}
 
 	params := map[string]interface{}{
-		"bootAfterCreate":  false,
-		"clone":            useExistingDisks && vmReq.CloneType == CloneTypeFastClone,
-		"name_label":       vmReq.NameLabel,
-		"name_description": vmReq.NameDescription,
-		"template":         vmReq.Template,
-		"coreOs":           false,
-		"cpuCap":           nil,
-		"cpuWeight":        nil,
-		"CPUs":             vmReq.CPUs.Number,
-		// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
-		// "secureBoot":       vmReq.SecureBoot,
+		"bootAfterCreate":   false,
+		"clone":             useExistingDisks && vmReq.CloneType == CloneTypeFastClone,
+		"name_label":        vmReq.NameLabel,
+		"name_description":  vmReq.NameDescription,
+		"template":          vmReq.Template,
+		"coreOs":            false,
+		"cpuCap":            nil,
+		"cpuWeight":         nil,
+		"CPUs":              vmReq.CPUs.Number,
+		"secureBoot":        vmReq.SecureBoot,
 		"expNestedHvm":      vmReq.ExpNestedHvm,
 		"VDIs":              vdis,
 		"VIFs":              vmReq.VIFsMap,
@@ -485,6 +483,7 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 		"CPUs":              vmReq.CPUs.Number,
 		"expNestedHvm":      vmReq.ExpNestedHvm,
 		"startDelay":        vmReq.StartDelay,
+		"secureBoot":        vmReq.SecureBoot,
 		// TODO: These need more investigation before they are implemented
 		// pv_args
 
@@ -538,12 +537,6 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 	if vga != "" {
 		params["vga"] = vga
 	}
-
-	// TODO: (#145) Uncomment this once issues with secure_boot have been figured out
-	// secureBoot := vmReq.SecureBoot
-	// if secureBoot {
-	// 	params["secureBoot"] = true
-	// }
 
 	firmware := vmReq.Boot.Firmware
 	if firmware != "" {
