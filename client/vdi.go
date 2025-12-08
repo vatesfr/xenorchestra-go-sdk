@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -374,7 +375,7 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 		Host:     c.restApiURL.Host,
 		Scheme:   c.restApiURL.Scheme,
 		Path:     fmt.Sprintf("/rest/v0/srs/%s/vdis", url.PathEscape(vdiReq.SRId)),
-		RawQuery: fmt.Sprintf("raw&name_label=%s", url.QueryEscape(vdiReq.NameLabel)),
+		RawQuery: fmt.Sprintf("raw=true&name_label=%s", url.QueryEscape(vdiReq.NameLabel)),
 	}
 
 	contentType := "application/octet-stream"
@@ -402,14 +403,21 @@ func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	}
 
 	bodyStr := string(body)
-	c.logger.Debug("Received response from rest api", "response", bodyStr)
+	c.logger.Debug("Received response from rest api", "response", bodyStr, "statusCode", res.StatusCode)
 
-	if res.StatusCode != 200 {
+	if res.StatusCode != 201 {
 		return VDI{}, fmt.Errorf("failed to create VDI, received response from server: %v", bodyStr)
 	}
 
+	var vdiResponse struct {
+		Id string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &vdiResponse); err != nil {
+		return VDI{}, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
 	return c.GetVDI(VDI{
-		VDIId: bodyStr,
+		VDIId: vdiResponse.Id,
 	})
 }
 
