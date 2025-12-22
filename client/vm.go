@@ -118,6 +118,7 @@ type Vm struct {
 	NameDescription    string                 `json:"name_description"`
 	NameLabel          string                 `json:"name_label"`
 	CPUs               CPUs                   `json:"CPUs"`
+	CoresPerSocket     *int                   `json:"coresPerSocket,omitempty"`
 	ExpNestedHvm       bool                   `json:"expNestedHvm,omitempty"`
 	Memory             MemoryObject           `json:"memory"`
 	PowerState         string                 `json:"power_state"`
@@ -411,6 +412,10 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	if cloudNetworkConfig != "" {
 		params["networkConfig"] = cloudNetworkConfig
 	}
+
+	if vmReq.CoresPerSocket != nil {
+		params["coresPerSocket"] = *vmReq.CoresPerSocket
+	}
 	c.logger.Debug("VM params for vm.create", "param", params)
 	var vmId string
 	err = c.Call("vm.create", params, &vmId)
@@ -553,6 +558,10 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 		}
 	}
 	params["blockedOperations"] = blockedOperations
+
+	if vmReq.CoresPerSocket != nil {
+		params["coresPerSocket"] = *vmReq.CoresPerSocket
+	}
 
 	c.logger.Debug("VM params for vm.set", "params", params)
 
