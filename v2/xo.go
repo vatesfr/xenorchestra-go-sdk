@@ -46,8 +46,20 @@ func New(config *config.Config) (library.Library, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	v1URL := config.Url
+	if v1URL != "" {
+		if v1URL[:4] == "http" {
+			if v1URL[:5] == "https" {
+				v1URL = "wss" + v1URL[5:]
+			} else {
+				v1URL = "ws" + v1URL[4:]
+			}
+		}
+	}
+
 	v1Config := v1.Config{
-		Url:                config.Url,
+		Url:                v1URL,
 		Username:           config.Username,
 		Password:           config.Password,
 		Token:              config.Token,
