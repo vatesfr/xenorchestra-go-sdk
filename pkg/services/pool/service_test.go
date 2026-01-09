@@ -175,10 +175,10 @@ func TestCreateResource(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockTask := mock.NewMockTask(ctrl)
-		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(&payloads.Task{
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-response"}, true).Return(&payloads.Task{
 			Status: payloads.Success,
 			Result: payloads.Result{ID: expectedID},
-		}, true, nil)
+		}, nil)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, http.MethodPost, r.Method)
