@@ -80,13 +80,12 @@ func (mr *MockTaskMockRecorder) GetAll(arg0, arg1, arg2 interface{}) *gomock.Cal
 }
 
 // HandleTaskResponse mocks base method.
-func (m *MockTask) HandleTaskResponse(arg0 context.Context, arg1 string, arg2 bool) (*payloads.Task, bool, error) {
+func (m *MockTask) HandleTaskResponse(arg0 context.Context, arg1 payloads.TaskIDResponse, arg2 bool) (*payloads.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandleTaskResponse", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*payloads.Task)
-	ret1, _ := ret[1].(bool)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HandleTaskResponse indicates an expected call of HandleTaskResponse.
@@ -148,13 +147,12 @@ func (mr *MockTaskActionMockRecorder) Abort(arg0, arg1 interface{}) *gomock.Call
 }
 
 // HandleTaskResponse mocks base method.
-func (m *MockTaskAction) HandleTaskResponse(arg0 context.Context, arg1 string, arg2 bool) (*payloads.Task, bool, error) {
+func (m *MockTaskAction) HandleTaskResponse(arg0 context.Context, arg1 payloads.TaskIDResponse, arg2 bool) (*payloads.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandleTaskResponse", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*payloads.Task)
-	ret1, _ := ret[1].(bool)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HandleTaskResponse indicates an expected call of HandleTaskResponse.

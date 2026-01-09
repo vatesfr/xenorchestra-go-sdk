@@ -74,7 +74,7 @@ func (s *Service) createResource(
 	action := fmt.Sprintf("create_%s", resourceType)
 	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action(action).Build()
 
-	var response string
+	var response payloads.TaskIDResponse
 	err := client.TypedPost(ctx, s.client, path, params, &response)
 	if err != nil {
 		s.log.Error(fmt.Sprintf("failed to create %s on pool", resourceType),
@@ -84,15 +84,15 @@ func (s *Service) createResource(
 		return uuid.Nil, fmt.Errorf("failed to create %s on pool %s: %w", resourceType, poolID, err)
 	}
 
-	s.log.Debug(fmt.Sprintf("Received response from %s", action), zap.String("response", response))
+	s.log.Debug(fmt.Sprintf("Received response from %s", action), zap.String("response", response.TaskID))
 
 	// Use the task service to handle the response
-	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
+	taskResult, err := s.taskService.HandleTaskResponse(ctx, response, true)
 	if err != nil {
 		s.log.Error("Task handling failed", zap.Error(err))
 		return uuid.Nil, fmt.Errorf("%s creation task failed: %w", resourceType, err)
 	}
-	if isTask {
+	if taskResult != nil {
 		if taskResult.Status != payloads.Success {
 			s.log.Error("Task failed",
 				zap.String("status", string(taskResult.Status)),
@@ -117,7 +117,7 @@ func (s *Service) performPoolAction(ctx context.Context, poolID uuid.UUID, actio
 	path := core.NewPathBuilder().Resource("pools").IDString(poolID.String()).ActionsGroup().Action(action).Build()
 
 	params := map[string]any{}
-	var response string
+	var response payloads.TaskIDResponse
 
 	err := client.TypedPost(ctx, s.client, path, params, &response)
 	if err != nil {
@@ -128,13 +128,13 @@ func (s *Service) performPoolAction(ctx context.Context, poolID uuid.UUID, actio
 	}
 
 	// Use the task service to handle the response
-	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
+	taskResult, err := s.taskService.HandleTaskResponse(ctx, response, true)
 	if err != nil {
 		s.log.Error("Task handling failed", zap.Error(err))
 		return fmt.Errorf("pool %s failed: %w", action, err)
 	}
 
-	if isTask && taskResult.Status == payloads.Success {
+	if taskResult != nil && taskResult.Status == payloads.Success {
 		return nil
 	} else {
 		s.log.Error("Task failed",

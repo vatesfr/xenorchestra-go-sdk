@@ -63,16 +63,25 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockTask
 			_ = json.NewEncoder(w).Encode(vm)
 
 		case strings.HasPrefix(r.URL.Path, "/rest/v0/vms/") && len(pathParts) == 5 && r.Method == http.MethodGet:
-			vmName := "VM 1"
-			if vmID.String() == "00000000-0000-0000-0000-000000000002" {
-				vmName = "VM 2"
+			vm := payloads.VM{
+				ID:         vmID,
+				NameLabel:  "",
+				PowerState: payloads.PowerStateRunning,
+			}
+			switch vmID.String() {
+			case "00000000-0000-0000-0000-000000000001":
+				vm.NameLabel = "VM 1"
+			case "00000000-0000-0000-0000-000000000002":
+				vm.NameLabel = "VM 2"
+			case "10000000-0000-0000-0000-000000000001":
+				vm.NameLabel = "New VM"
+				vm.PowerState = payloads.PowerStateHalted
+			default:
+				w.WriteHeader(http.StatusNotFound)
+				return
 			}
 
-			err := json.NewEncoder(w).Encode(payloads.VM{
-				ID:         vmID,
-				NameLabel:  vmName,
-				PowerState: payloads.PowerStateRunning,
-			})
+			err := json.NewEncoder(w).Encode(vm)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -172,7 +181,7 @@ func TestGetByID(t *testing.T) {
 	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
-	id := uuid.Must(uuid.NewV4())
+	id := uuid.FromStringOrNil("00000000-0000-0000-0000-000000000001")
 	vm, err := service.GetByID(context.Background(), id)
 
 	assert.NoError(t, err)
@@ -198,7 +207,13 @@ func TestCreate(t *testing.T) {
 	defer server.Close()
 
 	// Set up mock expectations for task handling
-	mockTask.EXPECT().HandleTaskResponse(gomock.Any(), gomock.Any(), true).Return(nil, false, nil).AnyTimes()
+	taskResult := &payloads.Task{
+		Status: payloads.Success,
+		Result: payloads.Result{
+			ID: uuid.Must(uuid.FromString("10000000-0000-0000-0000-000000000001")),
+		},
+	}
+	mockTask.EXPECT().HandleTaskResponse(gomock.Any(), gomock.Any(), true).Return(taskResult, nil).AnyTimes()
 
 	newVM := &payloads.VM{
 		NameLabel:       "New VM",

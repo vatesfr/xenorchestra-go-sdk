@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -139,39 +138,23 @@ func (s *Service) Wait(ctx context.Context, id string) (*payloads.Task, error) {
 	}
 }
 
-func IsTaskURL(s string) bool {
-	taskURLRegex := regexp.MustCompile(`(?m)^/rest/v0/tasks/([^/]+)`)
-
-	// Check if the string matches the task URL regex.
-	return taskURLRegex.MatchString(s)
-}
-
-func ExtractTaskID(taskURL string) string {
-	return strings.TrimPrefix(taskURL, "/rest/v0/tasks/")
-}
-
-// HandleTaskResponse processes a response string to determine if it contains a task URL,
-// and either retrieves the task immediately or waits for its completion based on the
-// waitForCompletion parameter.
-//
-// Returns the task, a boolean indicating if a task was found, and any error encountered.
 func (s *Service) HandleTaskResponse(
 	ctx context.Context,
-	response string,
+	response payloads.TaskIDResponse,
 	waitForCompletion bool,
-) (*payloads.Task, bool, error) {
-	if !IsTaskURL(response) {
-		return nil, false, nil
+) (*payloads.Task, error) {
+	if response.TaskID == "" {
+		return nil, fmt.Errorf("No TaskID found in the payload: %v", response)
 	}
 
-	taskID := ExtractTaskID(response)
+	taskID := response.TaskID
 	s.log.Debug("Got task URL", zap.String("taskID", taskID))
 
 	if !waitForCompletion {
 		task, err := s.Get(ctx, taskID)
-		return task, true, err
+		return task, err
 	}
 
 	task, err := s.Wait(ctx, taskID)
-	return task, true, err
+	return task, err
 }

@@ -93,3 +93,8 @@ type Task struct {
 	Tasks               []Task      `json:"tasks,omitempty"`
 	Warning             DataMessage `json:"warning,omitempty"`
 }
+
+// TaskIDResponse represents the response of tasks that return a task ID.
+type TaskIDResponse struct {
+	TaskID string `json:"taskId"`
+}
