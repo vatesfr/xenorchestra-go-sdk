@@ -1,10 +1,19 @@
 # V1Client() Call Schema - Lazy Initialization
 
+We can provide access to the v1 client directly, allowing users to:
+	1. Access v1 functionality without initializing a separate client
+	2. Use v2 features while maintaining backward compatibility
+	3. Gradually migrate from v1 to v2 without managing multiple clients
+
 ## Overview
 
-The v2 SDK client can now be created without requiring an active Xen Orchestra connection. The v1 client is initialized lazily on first access, either via:
+The v2 SDK client can now be created without requiring an active Xen Orchestra connection. 
+The v1 client is initialized lazily on first access, either via:
 1. Calling `V1Client()` directly
 2. Making a JSON-RPC call through the internal service
+
+This allows v2 client creation without requiring an active XOA connection at initialization time.
+This also avoid to open a websocket connection if the user only uses REST API.
 
 ## Call Timing
 
