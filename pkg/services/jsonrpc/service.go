@@ -87,7 +87,7 @@ func (s *Service) ValidateResult(result bool, operation string, logContext ...za
 func (s *LazyService) Call(method string, params map[string]any, result any, logContext ...zap.Field) error {
 	// Initialize client lazily on first call
 	s.factoryOnce.Do(func() {
-		s.Service.client, s.initErr = s.factory()
+		s.client, s.initErr = s.factory()
 	})
 
 	if s.initErr != nil {
