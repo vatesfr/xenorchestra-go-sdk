@@ -19,7 +19,13 @@ type VM interface {
 	//   - filter: filter string for VM selection (empty for no filter)
 	// Returns all matching VMs or an error if the operation fails.
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VM, error)
-	Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
+	// Create creates a new VM in the specified pool.
+	// Note: VM creation is primarily handled by the Pool service; this method is provided for convenience.
+	// Parameters:
+	//   - poolID: ID of the pool where the VM will be created
+	//   - vm: parameters for the VM to be created
+	// Returns the created VM or an error if the operation fails.
+	Create(ctx context.Context, poolID uuid.UUID, vm *payloads.CreateVMParams) (*payloads.VM, error)
 	Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 

@@ -30,6 +30,21 @@ func createVMsForTest(t *testing.T, ctx context.Context, count int, name string)
 	return vmIDs
 }
 
+func TestVmCreation(t *testing.T) {
+	ctx, cleanup := SetupTestContext(t)
+	defer cleanup()
+
+	vmName := integrationTestPrefix + "creation-test-" + uuid.Must(uuid.NewV4()).String()
+	params := &payloads.CreateVMParams{
+		NameLabel: vmName,
+		Template:  uuid.FromStringOrNil(testTemplate.Id),
+	}
+
+	vmID, err := testClient.VM().Create(ctx, testPool.ID, params)
+	require.NoErrorf(t, err, "error while creating VM %s in pool %s: %v", vmName, testPool.ID, err)
+	require.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
+}
+
 func TestVMs(t *testing.T) {
 	ctx, cleanup := SetupTestContext(t)
 	defer cleanup()

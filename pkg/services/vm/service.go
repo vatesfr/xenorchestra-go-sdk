@@ -17,6 +17,7 @@ import (
 type Service struct {
 	// Needed by VM for the task related but not part of the VM interface
 	taskService library.Task
+	poolService library.Pool
 
 	client *client.Client
 	log    *logger.Logger
@@ -25,11 +26,13 @@ type Service struct {
 func New(
 	client *client.Client,
 	task library.Task,
+	pool library.Pool,
 	log *logger.Logger,
 ) library.VM {
 	return &Service{
 		client:      client,
 		taskService: task,
+		poolService: pool,
 		log:         log,
 	}
 }
@@ -128,112 +131,16 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 	return result, nil
 }
 
-func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, error) {
-	if vm.PoolID == uuid.Nil {
-		return nil, fmt.Errorf("pool ID is required for VM creation")
-	}
-
-	createParams := map[string]any{
-		"template":         vm.Template.String(),
-		"name_label":       vm.NameLabel,
-		"name_description": vm.NameDescription,
-		"boot":             false,
-	}
-
-	if len(vm.VIFs) > 0 {
-		vifs := make([]map[string]any, 0, len(vm.VIFs))
-		for _, vifID := range vm.VIFs {
-			vifs = append(vifs, map[string]any{
-				"network": vifID,
-			})
-		}
-		createParams["vifs"] = vifs
-	}
-
-	path := core.NewPathBuilder().
-		Resource("pools").
-		ID(vm.PoolID).
-		ActionsGroup().
-		Action("create_vm").
-		Build()
-
-	s.log.Debug("Creating VM with params",
-		zap.String("endpoint", path),
-		zap.Any("params", createParams))
-
-	var response payloads.TaskIDResponse
-	err := client.TypedPost(ctx, s.client, path, createParams, &response)
+// VM Creation should done from the Pool service, this method is provided for convenience
+func (s *Service) Create(ctx context.Context, poolID uuid.UUID, vm *payloads.CreateVMParams) (*payloads.VM, error) {
+	// Delegate to Pool service for VM creation (single source of truth)
+	vmID, err := s.poolService.CreateVM(ctx, poolID, *vm)
 	if err != nil {
-		s.log.Error("failed to create VM",
-			zap.String("poolID", vm.PoolID.String()),
-			zap.String("nameLabel", vm.NameLabel),
-			zap.Error(err))
-		return nil, fmt.Errorf("failed to create VM: %w", err)
+		return nil, err
 	}
 
-	s.log.Debug("Received response from create_vm", zap.String("response", response.TaskID))
-
-	// Use the task service to handle the response
-	taskResult, err := s.taskService.HandleTaskResponse(ctx, response, true)
-	if err != nil {
-		s.log.Error("Task handling failed", zap.Error(err))
-		return nil, fmt.Errorf("VM creation task failed: %w", err)
-	}
-
-	if taskResult != nil {
-		if taskResult.Status != payloads.Success {
-			s.log.Error("Task failed",
-				zap.String("status", string(taskResult.Status)),
-				zap.String("message", taskResult.Result.Message))
-			return nil, fmt.Errorf("VM creation failed: %s", taskResult.Result.Message)
-		}
-
-		// If task successful, get the created VM
-		// Check both regular ID and StringID in the result
-		// FIXME: StringID should not be used after API migration
-		// TODO: Test the endpoint has been migrated to new API
-		vmID := taskResult.Result.ID
-		// if vmID == uuid.Nil && taskResult.Result.StringID != "" {
-		// 	// Try to parse StringID as UUID
-		// 	parsedID, err := uuid.FromString(taskResult.Result.StringID)
-		// 	if err == nil {
-		// 		vmID = parsedID
-		// 	}
-		// }
-
-		if vmID != uuid.Nil {
-			s.log.Debug("Task result has VM ID, fetching VM", zap.String("vmID", vmID.String()))
-			return s.GetByID(ctx, vmID)
-		}
-
-		// If no valid VM ID in task result, try to find VM by name
-		s.log.Debug("Task result does not have VM ID, searching by name", zap.String("nameLabel", vm.NameLabel))
-	}
-
-	// If we don't have a task URL or couldn't extract a VM ID from the task,
-	// try to find VM by name
-	vms, err := s.GetAll(ctx, 0, fmt.Sprintf("name_label:%s", vm.NameLabel))
-	if err != nil {
-		s.log.Error("failed to list VMs", zap.Error(err))
-		return nil, fmt.Errorf("could not determine created VM ID: %w", err)
-	}
-
-	for _, foundVM := range vms {
-		if foundVM.NameLabel == vm.NameLabel {
-			s.log.Debug("Found VM by name", zap.String("vmID", foundVM.ID.String()))
-			return foundVM, nil
-		}
-	}
-
-	// If we don't have a task URL, the response might be the VM directly
-	// FIXME: This should not happen after API migration
-	// var resultVM payloads.VM
-	// if err := json.Unmarshal([]byte(response), &resultVM); err == nil && resultVM.ID != uuid.Nil {
-	// 	s.log.Debug("Received VM directly in response", zap.String("vmID", resultVM.ID.String()))
-	// 	return &resultVM, nil
-	// }
-
-	return nil, fmt.Errorf("VM creation task completed but VM not found")
+	// Fetch and return the created VM
+	return s.GetByID(ctx, vmID)
 }
 
 func (s *Service) Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error) {
