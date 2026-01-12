@@ -92,7 +92,14 @@ func TestVMListWithNoLimit(t *testing.T) {
 }
 
 func TestVMListWithFilter(t *testing.T) {
-	vms, err := testClient.VM().GetAll(t.Context(), 0, "name_label:"+integrationTestPrefix+"test-vms-A-")
+	ctx, cleanup := SetupTestContext(t)
+	defer cleanup()
+
+	// Create 2 VMs with a unique prefix for this test
+	_ = createVMsForTest(t, ctx, 2, "filter-A-")
+
+	// Filter by the specific prefix just created
+	vms, err := testClient.VM().GetAll(ctx, 0, "name_label:"+integrationTestPrefix+"filter-A-")
 	require.NoError(t, err)
 	require.NotNil(t, vms)
 	assert.Len(t, vms, 2, "expected 2 VMs with the specified name label")
