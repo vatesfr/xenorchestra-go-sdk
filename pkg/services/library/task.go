@@ -18,5 +18,11 @@ type Task interface {
 type TaskAction interface {
 	Abort(ctx context.Context, id string) error
 	Wait(ctx context.Context, id string) (*payloads.Task, error)
-	HandleTaskResponse(ctx context.Context, response string, waitForCompletion bool) (*payloads.Task, bool, error)
+
+	// HandleTaskResponse either retrieves the task immediately or waits for its completion
+	// based on the waitForCompletion parameter.
+	//
+	// Returns the task, and any error encountered.
+	HandleTaskResponse(ctx context.Context, response payloads.TaskIDResponse,
+		waitForCompletion bool) (*payloads.Task, error)
 }

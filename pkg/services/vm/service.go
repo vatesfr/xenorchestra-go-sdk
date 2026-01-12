@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -162,7 +161,7 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 		zap.String("endpoint", path),
 		zap.Any("params", createParams))
 
-	var response string
+	var response payloads.TaskIDResponse
 	err := client.TypedPost(ctx, s.client, path, createParams, &response)
 	if err != nil {
 		s.log.Error("failed to create VM",
@@ -172,16 +171,16 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 		return nil, fmt.Errorf("failed to create VM: %w", err)
 	}
 
-	s.log.Debug("Received response from create_vm", zap.String("response", response))
+	s.log.Debug("Received response from create_vm", zap.String("response", response.TaskID))
 
 	// Use the task service to handle the response
-	taskResult, isTask, err := s.taskService.HandleTaskResponse(ctx, response, true)
+	taskResult, err := s.taskService.HandleTaskResponse(ctx, response, true)
 	if err != nil {
 		s.log.Error("Task handling failed", zap.Error(err))
 		return nil, fmt.Errorf("VM creation task failed: %w", err)
 	}
 
-	if isTask {
+	if taskResult != nil {
 		if taskResult.Status != payloads.Success {
 			s.log.Error("Task failed",
 				zap.String("status", string(taskResult.Status)),
@@ -227,11 +226,12 @@ func (s *Service) Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, er
 	}
 
 	// If we don't have a task URL, the response might be the VM directly
-	var resultVM payloads.VM
-	if err := json.Unmarshal([]byte(response), &resultVM); err == nil && resultVM.ID != uuid.Nil {
-		s.log.Debug("Received VM directly in response", zap.String("vmID", resultVM.ID.String()))
-		return &resultVM, nil
-	}
+	// FIXME: This should not happen after API migration
+	// var resultVM payloads.VM
+	// if err := json.Unmarshal([]byte(response), &resultVM); err == nil && resultVM.ID != uuid.Nil {
+	// 	s.log.Debug("Received VM directly in response", zap.String("vmID", resultVM.ID.String()))
+	// 	return &resultVM, nil
+	// }
 
 	return nil, fmt.Errorf("VM creation task completed but VM not found")
 }

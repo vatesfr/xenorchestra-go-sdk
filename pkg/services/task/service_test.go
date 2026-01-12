@@ -15,6 +15,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
@@ -328,8 +329,8 @@ func TestWait(t *testing.T) {
 		defer cancel()
 		_, err := service.Wait(ctx, "non-existent-task")
 
-		assert.Error(t, err)
-		assert.Equal(t, context.DeadlineExceeded, err)
+		require.Error(t, err)
+		require.Equal(t, context.DeadlineExceeded, err)
 	})
 }
 
@@ -338,87 +339,39 @@ func TestHandleTaskResponse(t *testing.T) {
 	defer server.Close()
 
 	t.Run("handle task URL without waiting", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(context.Background(), "/rest/v0/tasks/success-task-123", false)
+		task, err := service.HandleTaskResponse(context.Background(),
+			payloads.TaskIDResponse{TaskID: "success-task-123"}, false)
 
-		assert.NoError(t, err)
-		assert.True(t, isTask)
+		require.NoError(t, err)
+		require.NotNil(t, task)
 		assert.Equal(t, "success-task-123", task.ID)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
 	t.Run("handle task URL with waiting", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(context.Background(), "/rest/v0/tasks/success-task-123", true)
+		task, err := service.HandleTaskResponse(context.Background(),
+			payloads.TaskIDResponse{TaskID: "success-task-123"}, true)
 
-		assert.NoError(t, err)
-		assert.True(t, isTask)
+		require.NoError(t, err)
+		require.NotNil(t, task)
 		assert.Equal(t, "success-task-123", task.ID)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
 	t.Run("handle non-task response", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(context.Background(), "some-other-response", false)
+		task, err := service.HandleTaskResponse(context.Background(),
+			payloads.TaskIDResponse{TaskID: "some-other-response"}, false)
 
-		assert.NoError(t, err)
-		assert.False(t, isTask)
-		assert.Nil(t, task)
+		require.Error(t, err)
+		require.Nil(t, task)
 	})
 
 	t.Run("handle empty response", func(t *testing.T) {
-		task, isTask, err := service.HandleTaskResponse(context.Background(), "", false)
+		task, err := service.HandleTaskResponse(context.Background(), payloads.TaskIDResponse{TaskID: ""}, false)
 
-		assert.NoError(t, err)
-		assert.False(t, isTask)
-		assert.Nil(t, task)
+		require.Error(t, err)
+		require.Nil(t, task)
 	})
-}
-
-func TestIsTaskURL(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected bool
-	}{
-		{"valid task URL", "/rest/v0/tasks/task-123", true},
-		{"valid task URL with longer ID", "/rest/v0/tasks/very-long-task-id-12345", true},
-		{"invalid URL - wrong prefix", "/api/v1/tasks/task-123", false},
-		{"invalid URL - no task ID", "/rest/v0/tasks/", false},
-		{"invalid URL - completely different", "/rest/v0/vms/vm-123", false},
-		{"empty string", "", false},
-		{"just task ID", "task-123", false},
-		{"wrong version", "/rest/v1/tasks/task-123", false},
-		{"missing leading slash", "rest/v0/tasks/task-123", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := IsTaskURL(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestExtractTaskID(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{"valid task URL", "/rest/v0/tasks/task-123", "task-123"},
-		{"valid task URL with UUID", "/rest/v0/tasks/550e8400-e29b-41d4-a716-446655440000",
-			"550e8400-e29b-41d4-a716-446655440000"},
-		{"URL without prefix", "task-123", "task-123"},
-		{"empty string", "", ""},
-		{"just prefix", "/rest/v0/tasks/", ""},
-		{"nested path", "/rest/v0/tasks/123/456", "123/456"},
-		{"special char", "/rest/v0/tasks/task-with-special-chars_123", "task-with-special-chars_123"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := ExtractTaskID(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
 }
 
 func TestCleanDuplicateV0Path(t *testing.T) {
