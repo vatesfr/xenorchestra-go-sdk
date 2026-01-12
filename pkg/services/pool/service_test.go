@@ -187,7 +187,7 @@ func TestCreateResource(t *testing.T) {
 			err := json.NewDecoder(r.Body).Decode(&vm)
 			assert.NoError(t, err)
 			assert.Equal(t, "test-vm", vm.NameLabel)
-			_, _ = w.Write([]byte("task-response"))
+			_, _ = w.Write([]byte("{\"taskId\":\"task-response\"}"))
 		})
 
 		poolService, server := setupTestServer(t, handler)
@@ -224,10 +224,11 @@ func TestCreateResource(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockTask := mock.NewMockTask(ctrl)
-		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(nil, true, fmt.Errorf("boom"))
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-response"}, true).
+			Return(nil, fmt.Errorf("boom"))
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("task-response"))
+			_, _ = w.Write([]byte("{\"taskId\":\"task-response\"}"))
 		})
 		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
@@ -246,10 +247,11 @@ func TestCreateResource(t *testing.T) {
 		defer ctrl.Finish()
 		mockTask := mock.NewMockTask(ctrl)
 		// Return isTask=false
-		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "not-a-task", true).Return(nil, false, nil)
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "not-a-task"}, true).
+			Return(nil, nil)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("not-a-task"))
+			_, _ = w.Write([]byte("{\"taskId\":\"not-a-task\"}"))
 		})
 		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
@@ -267,13 +269,14 @@ func TestCreateResource(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockTask := mock.NewMockTask(ctrl)
-		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(&payloads.Task{
-			Status: payloads.Failure,
-			Result: payloads.Result{Message: "creation failed"},
-		}, true, nil)
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-response"}, true).
+			Return(&payloads.Task{
+				Status: payloads.Failure,
+				Result: payloads.Result{Message: "creation failed"},
+			}, nil)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("task-response"))
+			_, _ = w.Write([]byte("{\"taskId\":\"task-response\"}"))
 		})
 		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
@@ -349,7 +352,7 @@ func TestCreateNetworkParams(t *testing.T) {
 		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), gomock.Any(), true).Return(&payloads.Task{
 			Status: payloads.Success,
 			Result: payloads.Result{ID: expectedID},
-		}, true, nil)
+		}, nil)
 
 		// handler will verify the JSON body contains the fields
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -360,7 +363,7 @@ func TestCreateNetworkParams(t *testing.T) {
 			assert.Equal(t, uint(1500), *body.MTU)
 			assert.Equal(t, uint(100), body.Vlan)
 			// reply with a task response string
-			_, _ = w.Write([]byte("task-response"))
+			_, _ = w.Write([]byte("{\"taskId\":\"task-response\"}"))
 		})
 
 		poolService, server := setupTestServer(t, handler)
@@ -388,13 +391,13 @@ func TestPerformPoolAction(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockTask := mock.NewMockTask(ctrl)
-		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(&payloads.Task{
-			Status: payloads.Success,
-		}, true, nil)
-
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-response"}, true).
+			Return(&payloads.Task{
+				Status: payloads.Success,
+			}, nil)
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, http.MethodPost, r.Method)
-			_, _ = w.Write([]byte("task-response"))
+			_, _ = w.Write([]byte("{\"taskId\":\"task-response\"}"))
 		})
 
 		poolService, server := setupTestServer(t, handler)
@@ -425,10 +428,11 @@ func TestPerformPoolAction(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockTask := mock.NewMockTask(ctrl)
-		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(nil, true, fmt.Errorf("boom"))
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-response"}, true).
+			Return(nil, fmt.Errorf("boom"))
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("task-response"))
+			_, _ = w.Write([]byte("{\"taskId\":\"task-response\"}"))
 		})
 		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
@@ -445,13 +449,14 @@ func TestPerformPoolAction(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockTask := mock.NewMockTask(ctrl)
-		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), "task-response", true).Return(&payloads.Task{
-			Status: payloads.Failure,
-			Result: payloads.Result{Message: "failed action"},
-		}, true, nil)
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-response"}, true).
+			Return(&payloads.Task{
+				Status: payloads.Failure,
+				Result: payloads.Result{Message: "failed action"},
+			}, nil)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("task-response"))
+			_, _ = w.Write([]byte("{\"taskId\":\"task-response\"}"))
 		})
 		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
