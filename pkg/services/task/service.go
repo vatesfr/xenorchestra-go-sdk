@@ -144,7 +144,7 @@ func (s *Service) HandleTaskResponse(
 	waitForCompletion bool,
 ) (*payloads.Task, error) {
 	if response.TaskID == "" {
-		return nil, fmt.Errorf("No TaskID found in the payload: %v", response)
+		return nil, fmt.Errorf("no TaskID found in the payload: %v", response)
 	}
 
 	taskID := response.TaskID

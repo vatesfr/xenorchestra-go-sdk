@@ -23,5 +23,6 @@ type TaskAction interface {
 	// based on the waitForCompletion parameter.
 	//
 	// Returns the task, and any error encountered.
-	HandleTaskResponse(ctx context.Context, response payloads.TaskIDResponse, waitForCompletion bool) (*payloads.Task, error)
+	HandleTaskResponse(ctx context.Context, response payloads.TaskIDResponse,
+		waitForCompletion bool) (*payloads.Task, error)
 }

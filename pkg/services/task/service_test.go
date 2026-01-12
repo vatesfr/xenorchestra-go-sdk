@@ -339,7 +339,8 @@ func TestHandleTaskResponse(t *testing.T) {
 	defer server.Close()
 
 	t.Run("handle task URL without waiting", func(t *testing.T) {
-		task, err := service.HandleTaskResponse(context.Background(), payloads.TaskIDResponse{TaskID: "success-task-123"}, false)
+		task, err := service.HandleTaskResponse(context.Background(),
+			payloads.TaskIDResponse{TaskID: "success-task-123"}, false)
 
 		require.NoError(t, err)
 		require.NotNil(t, task)
@@ -348,7 +349,8 @@ func TestHandleTaskResponse(t *testing.T) {
 	})
 
 	t.Run("handle task URL with waiting", func(t *testing.T) {
-		task, err := service.HandleTaskResponse(context.Background(), payloads.TaskIDResponse{TaskID: "success-task-123"}, true)
+		task, err := service.HandleTaskResponse(context.Background(),
+			payloads.TaskIDResponse{TaskID: "success-task-123"}, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, task)
@@ -357,7 +359,8 @@ func TestHandleTaskResponse(t *testing.T) {
 	})
 
 	t.Run("handle non-task response", func(t *testing.T) {
-		task, err := service.HandleTaskResponse(context.Background(), payloads.TaskIDResponse{TaskID: "some-other-response"}, false)
+		task, err := service.HandleTaskResponse(context.Background(),
+			payloads.TaskIDResponse{TaskID: "some-other-response"}, false)
 
 		require.Error(t, err)
 		require.Nil(t, task)
