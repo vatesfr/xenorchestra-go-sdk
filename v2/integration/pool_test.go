@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/gofrs/uuid"
@@ -76,11 +78,21 @@ func TestCreateNetwork(t *testing.T) {
 	defer cleanup()
 
 	networkName := "test-network"
+	// Choose VLAN from env var if provided to avoid collisions in lab
+	var vlan uint = 1234
+	if v := os.Getenv("XOA_TEST_VLAN"); v != "" {
+		if parsed, err := strconv.ParseUint(v, 10, 0); err == nil && parsed <= 4094 {
+			vlan = uint(parsed)
+		} else {
+			t.Logf("Ignoring invalid XOA_TEST_VLAN=%s, using default %d", v, vlan)
+		}
+	}
 	params := payloads.CreateNetworkParams{
 		Name:        integrationTestPrefix + networkName,
 		Pif:         uuid.FromStringOrNil(testNetwork.PIFs[0]), // Use the first PIF, only one PIF is expected
 		MTU:         &[]uint{1450}[0],
 		Description: "Test network created by xo-sdk-go",
+		Vlan:        vlan,
 	}
 	networkID, err := testClient.Pool().CreateNetwork(ctx, testPool.ID, params)
 	if err != nil {

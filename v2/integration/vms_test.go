@@ -30,6 +30,21 @@ func createVMsForTest(t *testing.T, ctx context.Context, count int, name string)
 	return vmIDs
 }
 
+func TestVmCreation(t *testing.T) {
+	ctx, cleanup := SetupTestContext(t)
+	defer cleanup()
+
+	vmName := integrationTestPrefix + "creation-test-" + uuid.Must(uuid.NewV4()).String()
+	params := &payloads.CreateVMParams{
+		NameLabel: vmName,
+		Template:  uuid.FromStringOrNil(testTemplate.Id),
+	}
+
+	vmID, err := testClient.VM().Create(ctx, testPool.ID, params)
+	require.NoErrorf(t, err, "error while creating VM %s in pool %s: %v", vmName, testPool.ID, err)
+	require.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
+}
+
 func TestVMs(t *testing.T) {
 	ctx, cleanup := SetupTestContext(t)
 	defer cleanup()
@@ -77,7 +92,14 @@ func TestVMListWithNoLimit(t *testing.T) {
 }
 
 func TestVMListWithFilter(t *testing.T) {
-	vms, err := testClient.VM().GetAll(t.Context(), 0, "name_label:"+integrationTestPrefix+"test-vms-A-")
+	ctx, cleanup := SetupTestContext(t)
+	defer cleanup()
+
+	// Create 2 VMs with a unique prefix for this test
+	_ = createVMsForTest(t, ctx, 2, "filter-A-")
+
+	// Filter by the specific prefix just created
+	vms, err := testClient.VM().GetAll(ctx, 0, "name_label:"+integrationTestPrefix+"filter-A-")
 	require.NoError(t, err)
 	require.NotNil(t, vms)
 	assert.Len(t, vms, 2, "expected 2 VMs with the specified name label")

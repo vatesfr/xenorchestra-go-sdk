@@ -83,11 +83,12 @@ func New(config *config.Config) (library.Library, error) {
 	}
 
 	taskService := task.New(client, log)
+	poolService := pool.New(client, taskService, log)
 
 	xoClient := &XOClient{
-		vmService:   vm.New(client, taskService, log),
+		vmService:   vm.New(client, taskService, poolService, log),
 		taskService: taskService,
-		poolService: pool.New(client, taskService, log),
+		poolService: poolService,
 		v1Config:    v1Config,
 		log:         log,
 	}

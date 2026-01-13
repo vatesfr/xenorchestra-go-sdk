@@ -21,7 +21,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
-func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockTask) {
+func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockPool) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -170,11 +170,12 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockTask
 		panic(err)
 	}
 
-	// Create mock controller and task mock
+	// Create mock controller and mocks
 	ctrl := gomock.NewController(t)
 	mockTask := mock.NewMockTask(ctrl)
+	mockPool := mock.NewMockPool(ctrl)
 
-	return server, New(restClient, mockTask, log), mockTask
+	return server, New(restClient, mockTask, mockPool, log), mockPool
 }
 
 func TestGetByID(t *testing.T) {
@@ -203,31 +204,21 @@ func TestGetAll(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	server, service, mockTask := setupTestServer(t)
+	server, service, mockPool := setupTestServer(t)
 	defer server.Close()
 
-	// Set up mock expectations for task handling
-	taskResult := &payloads.Task{
-		Status: payloads.Success,
-		Result: payloads.Result{
-			ID: uuid.Must(uuid.FromString("10000000-0000-0000-0000-000000000001")),
-		},
-	}
-	mockTask.EXPECT().HandleTaskResponse(gomock.Any(), gomock.Any(), true).Return(taskResult, nil).AnyTimes()
+	// Set up mock expectations for Pool.CreateVM
+	poolID := uuid.FromStringOrNil("201b228b-2f91-4138-969c-49cae8780448")
+	vmID := uuid.Must(uuid.FromString("10000000-0000-0000-0000-000000000001"))
 
-	newVM := &payloads.VM{
+	createParams := payloads.CreateVMParams{
 		NameLabel:       "New VM",
 		NameDescription: "Test VM",
-		CPUs: payloads.CPUs{
-			Number: 2,
-		},
-		Memory: payloads.Memory{
-			Static: []int64{1073741824, 4294967296},
-		},
-		PoolID: uuid.FromStringOrNil("201b228b-2f91-4138-969c-49cae8780448"),
 	}
 
-	vm, err := service.Create(context.Background(), newVM)
+	mockPool.EXPECT().CreateVM(gomock.Any(), poolID, createParams).Return(vmID, nil)
+
+	vm, err := service.Create(context.Background(), poolID, &createParams)
 
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, vm.ID)
