@@ -44,9 +44,10 @@ func (v VDI) Compare(obj interface{}) bool {
 	}
 
 	labelsMatch := v.NameLabel == other.NameLabel
+	poolMatch := v.PoolId == other.PoolId
 
-	if v.PoolId == other.PoolId && labelsMatch {
-		return true
+	if !labelsMatch || !poolMatch {
+		return false
 	}
 
 	if len(v.Tags) > 0 {
@@ -57,7 +58,7 @@ func (v VDI) Compare(obj interface{}) bool {
 		}
 	}
 
-	return false
+	return true
 }
 
 // TODO: Change this file to storage or disks?
