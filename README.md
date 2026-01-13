@@ -23,6 +23,8 @@ The v2 client uses the REST API and provides a more modern, type-safe interface.
 - [Architecture](docs/v2/02-architecture.md) - Design patterns and components
 - [Migration Guide](docs/v2/03-migration-guide.md) - How to migrate from v1 to v2
 - [Service Implementation Guide](docs/v2/04-service-implementation.md) - How to add new services
+- [Lazy v1 client loading](docs/v2/05-lazy-v1-client.md) - How and why v1 client is lazy loaded in v2
+- [Integration test guide](docs/v2/06-integration-test-guide.md) - How integration tests work and how to add new ones
 
 ## 🧑🏻‍💻 Usage
 
