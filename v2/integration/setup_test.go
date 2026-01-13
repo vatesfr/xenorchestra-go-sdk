@@ -18,26 +18,40 @@ import (
 	v2 "github.com/vatesfr/xenorchestra-go-sdk/v2"
 )
 
-var (
+type integrationTestContext struct {
 	// integrationCtx is the parent context for all tests
-	integrationCtx    context.Context
-	integrationCancel context.CancelFunc
-	testClient        library.Library
-	testPool          payloads.Pool
+	ctx context.Context
+	// Client is the XO v2 client used for testing
+	// Client library.Library
+	testConfig *config.Config
+
+	// testPool holds the pool used for testing
+	testPool payloads.Pool
 
 	// TODO: replace v1 struct by payloads.STRUCT when available in v2
-	testTemplate v1.Template
-	testNetwork  v1.Network
-	v1TestClient v1.XOClient // Used for resources not yet available in v2
 
-	integrationTestPrefix string = "xo-go-sdk-"
+	// testTemplate holds a template used for VM creation tests
+	testTemplate v1.Template
+	// testNetwork holds a network used for network-related tests
+	testNetwork v1.Network
+
+	// v1Client is the XO client used for resources not yet available in v2
+	// Should not be used to perform the actual test but only to setup/teardown resources
+	v1Client v1.XOClient
+}
+
+var (
+	// intTests holds global test configuration and resources shared across all integration tests
+	intTests   integrationTestContext = integrationTestContext{}
+	testPrefix string                 = "xo-go-sdk-"
 )
 
 // TestMain is the main entry point for integration tests
 func TestMain(m *testing.M) {
 	var err error
+	var integrationCancel context.CancelFunc
 	// Global setup
-	integrationCtx, integrationCancel = context.WithCancel(context.Background())
+	intTests.ctx, integrationCancel = context.WithCancel(context.Background())
 
 	devMode, _ := strconv.ParseBool(os.Getenv("XOA_DEVELOPMENT"))
 
@@ -58,40 +72,36 @@ func TestMain(m *testing.M) {
 	// - XOA_USER and XOA_PASSWORD: Credentials (required if no token)
 	// - XOA_TOKEN: Authentication token (required if no credentials)
 	// - XOA_DEVELOPMENT: true to enable development logs
-	cfg, err := config.New()
+	intTests.testConfig, err = config.New()
 	if err != nil {
 		log.Fatalf("configuration failed: %v", err)
 	}
 
 	// Force development mode for tests
-	cfg.Development = devMode
+	intTests.testConfig.Development = devMode
 
-	// Initialize XO client
-	testClient, err = v2.New(cfg)
+	// Initialize v1 client for setup/teardown tasks
+	intTests.v1Client, err = v1.NewClient(v1.GetConfigFromEnv())
 	if err != nil {
-		log.Fatalf("test client initialization failed: %v", err)
-	}
-	v1TestClient, err = v1.NewClient(v1.GetConfigFromEnv())
-	if err != nil {
-		log.Fatalf("error deleting network: error getting v1.client %s", err)
+		log.Fatalf("error getting v1.client %s", err)
 		return
 	}
 
 	// Get information for testing
-	findPoolForTests(&testPool)
-	v1.FindNetworkForTests(testPool.ID.String(), &testNetwork)
+	intTests.testPool = *findPoolForTests()
+	v1.FindNetworkForTests(intTests.testPool.ID.String(), &intTests.testNetwork)
 
 	// Replace v1 method with v2 when available
-	v1.FindTemplateForTests(&testTemplate, testPool.ID.String(), "XOA_TEMPLATE")
+	v1.FindTemplateForTests(&intTests.testTemplate, intTests.testPool.ID.String(), "XOA_TEMPLATE")
 
 	// Get resource test prefix from environment variable if set
 	if prefix, found := os.LookupEnv("XOA_TEST_PREFIX"); found {
-		integrationTestPrefix = prefix
+		testPrefix = prefix
 	}
 	// Add time to the test prefix to avoid collisions when running tests in parallel
-	integrationTestPrefix = fmt.Sprintf("%s%d-", integrationTestPrefix, time.Now().Unix())
+	testPrefix = fmt.Sprintf("%s%d-", testPrefix, time.Now().Unix())
 
-	slog.Info(fmt.Sprintf("Using test prefix: %s", integrationTestPrefix))
+	slog.Info(fmt.Sprintf("Using test prefix: %s", testPrefix))
 
 	// Run test suite
 	code := m.Run()
@@ -103,23 +113,38 @@ func TestMain(m *testing.M) {
 }
 
 // SetupTestContext prepares the environment for an individual test and returns a context with timeout
-func SetupTestContext(t *testing.T) (context.Context, func()) {
+func SetupTestContext(t *testing.T) (context.Context, func(), library.Library, string) {
 	t.Helper()
 
 	// Create a derived context with timeout for the test
-	ctx, cancel := context.WithTimeout(integrationCtx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(intTests.ctx, 5*time.Minute)
+
+	// Unique test prefix for this test to avoid to delete resources from other tests
+	prefix := testPrefix + t.Name() + "-"
+
+	// Initialize XO client
+	testClient, err := v2.New(intTests.testConfig)
+	if err != nil {
+		log.Fatalf("test client initialization failed: %v", err)
+	}
 
 	// Return the teardown function
 	return ctx, func() {
 		cancel() // Cancel the test context
 		// Teardown: cleanup any leftover test VMs and networks
-		_ = cleanupVMsWithPrefix(integrationTestPrefix)
-		_ = v1.RemoveNetworksWithNamePrefixForTests(integrationTestPrefix)
-	}
+		_ = cleanupVMsWithPrefix(testClient, prefix)
+		_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)
+	}, testClient, prefix
 }
 
 // findPoolForTests finds a pool by name from the XOA_POOL environment variable
-func findPoolForTests(pool *payloads.Pool) {
+func findPoolForTests() *payloads.Pool {
+	// Initialize XO client
+	client, err := v2.New(intTests.testConfig)
+	if err != nil {
+		log.Fatalf("test client initialization failed: %v", err)
+	}
+
 	poolName, found := os.LookupEnv("XOA_POOL")
 
 	if !found {
@@ -127,7 +152,7 @@ func findPoolForTests(pool *payloads.Pool) {
 		os.Exit(-1)
 	}
 
-	pools, err := testClient.Pool().GetAll(integrationCtx, 0, poolName)
+	pools, err := client.Pool().GetAll(intTests.ctx, 0, poolName)
 	if err != nil {
 		log.Fatalf("failed to get pool with name: %v with error: %v", poolName, err)
 		os.Exit(-1)
@@ -142,12 +167,12 @@ func findPoolForTests(pool *payloads.Pool) {
 		os.Exit(-1)
 	}
 
-	*pool = *pools[0]
+	return pools[0]
 }
 
-// CleanupVMs removes all VMs that have the testing prefix in their name
-func cleanupVMsWithPrefix(prefix string) error {
-	vms, err := testClient.VM().GetAll(integrationCtx, 0, "name_label:"+prefix)
+// cleanupVMs removes all VMs that have the testing prefix in their name
+func cleanupVMsWithPrefix(client library.Library, prefix string) error {
+	vms, err := client.VM().GetAll(intTests.ctx, 0, "name_label:"+prefix)
 	if err != nil {
 		return fmt.Errorf("failed to get VMs: %v", err)
 	}
@@ -157,7 +182,7 @@ func cleanupVMsWithPrefix(prefix string) error {
 			// Check that VM name starts with the test prefix
 			if len(vm.NameLabel) >= len(prefix) && (vm.NameLabel)[:len(prefix)] == prefix {
 				slog.Info("Found remaining test VM, Deleting test...", "NameLabel", vm.NameLabel, "ID", vm.ID)
-				err := testClient.VM().Delete(integrationCtx, vm.ID)
+				err := client.VM().Delete(intTests.ctx, vm.ID)
 				if err != nil {
 					slog.Error("failed to delete VM", "NameLabel", vm.NameLabel, "error", err)
 					return fmt.Errorf("failed to delete VM %s: %v", vm.NameLabel, err)
