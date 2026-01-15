@@ -31,8 +31,6 @@ func TestVMs(t *testing.T) {
 	createVMsForTest(t, ctx, client.Pool(), 2, testPrefix+"test-vms-A-")
 	createVMsForTest(t, ctx, client.Pool(), 3, testPrefix+"test-vms-B-")
 
-	// TODO: run subtests in parallel but this require refactoring the setup/teardown
-	//  to avoid cleanup removing VMs created by other tests
 	t.Run("ListWithLimit", testVMListWithLimit)
 	t.Run("TestVMListWithNoLimit", testVMListWithNoLimit)
 	t.Run("TestVMListWithFilter", testVMListWithFilter)

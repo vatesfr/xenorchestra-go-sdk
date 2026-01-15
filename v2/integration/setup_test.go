@@ -81,14 +81,14 @@ func TestMain(m *testing.M) {
 	intTests.testConfig.Development = devMode
 
 	// Initialize v1 client for setup/teardown tasks
-	intTests.v1Client, err = v1.NewClient(v1.GetConfigFromEnv())
+	intTests.v1Client, err = v1.NewClientWithLogger(v1.GetConfigFromEnv(), logger)
 	if err != nil {
 		log.Fatalf("error getting v1.client %s", err)
 		return
 	}
 
 	// Get information for testing
-	intTests.testPool = *findPoolForTests()
+	intTests.testPool = findPoolForTests()
 	v1.FindNetworkForTests(intTests.testPool.ID.String(), &intTests.testNetwork)
 
 	// Replace v1 method with v2 when available
@@ -132,7 +132,7 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 	t.Cleanup(func() {
 		cancel() // Cancel the test context
 		// Teardown: cleanup any leftover test VMs and networks
-		_ = cleanupVMsWithPrefix(testClient, prefix)
+		_ = cleanupVMsWithPrefix(t, testClient, prefix)
 		_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)
 	})
 
@@ -140,7 +140,7 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 }
 
 // findPoolForTests finds a pool by name from the XOA_POOL environment variable
-func findPoolForTests() *payloads.Pool {
+func findPoolForTests() payloads.Pool {
 	// Initialize XO client
 	client, err := v2.New(intTests.testConfig)
 	if err != nil {
@@ -169,11 +169,12 @@ func findPoolForTests() *payloads.Pool {
 		os.Exit(-1)
 	}
 
-	return pools[0]
+	return *pools[0]
 }
 
 // cleanupVMs removes all VMs that have the testing prefix in their name
-func cleanupVMsWithPrefix(client library.Library, prefix string) error {
+func cleanupVMsWithPrefix(t testing.TB, client library.Library, prefix string) error {
+	t.Helper()
 	vms, err := client.VM().GetAll(intTests.ctx, 0, "name_label:"+prefix)
 	if err != nil {
 		return fmt.Errorf("failed to get VMs: %v", err)
@@ -183,10 +184,10 @@ func cleanupVMsWithPrefix(client library.Library, prefix string) error {
 		if vm.NameLabel != "" && vm.ID != uuid.Nil {
 			// Check that VM name starts with the test prefix
 			if len(vm.NameLabel) >= len(prefix) && (vm.NameLabel)[:len(prefix)] == prefix {
-				slog.Info("Found remaining test VM, Deleting test...", "NameLabel", vm.NameLabel, "ID", vm.ID)
+				t.Logf("Found remaining test VM, Deleting test... NameLabel=%s ID=%s", vm.NameLabel, vm.ID)
 				err := client.VM().Delete(intTests.ctx, vm.ID)
 				if err != nil {
-					slog.Error("failed to delete VM", "NameLabel", vm.NameLabel, "error", err)
+					t.Logf("failed to delete VM NameLabel=%s error=%v", vm.NameLabel, err)
 					return fmt.Errorf("failed to delete VM %s: %v", vm.NameLabel, err)
 				}
 			}
