@@ -35,8 +35,7 @@ go test -v -run TestName ./v2/integration/...  # Specific test
 2. Basic template:
 ```go
 func TestMyFeature(t *testing.T) {
-    ctx, cleanup, client, prefix := SetupTestContext(t)
-    defer cleanup()
+    ctx, client, prefix := SetupTestContext(t)
     
     // Your operations
     result, err := client.Pool().Get(ctx, intTests.testPool.ID)
@@ -46,7 +45,7 @@ func TestMyFeature(t *testing.T) {
 ```
 
 3. Key points:
-   - Always `ctx, cleanup, client, prefix := SetupTestContext(t)` + `defer cleanup()`
+   - Always `ctx, client, prefix := SetupTestContext(t)`
    - Prefix resources: `prefix + "my-vm"`
    - Use: `client` (local), `intTests.testPool`, `intTests.testTemplate`, `intTests.testNetwork`
    - Unexpected errors: `require.NoError`

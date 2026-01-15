@@ -59,13 +59,12 @@ type integrationTestContext struct {
 
 #### 3. **SetupTestContext**
 
-Every test must call `SetupTestContext` to get its isolated environment:
+Every test must call `SetupTestContext` at the beginning. It prepares an isolated environment and automatically registers a cleanup function via `t.Cleanup()`:
 
 ```go
-func SetupTestContext(t *testing.T) (context.Context, func(), library.Library, string) {
+func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
     // Returns:
     // - ctx: A context with a 5-minute timeout.
-    // - cleanup: A function to delete resources created during the test.
     // - client: A fresh v2 SDK client.
     // - prefix: A unique name prefix for this specific test (e.g., "xo-go-sdk-12345-TestMyFeature-").
 }
@@ -117,9 +116,8 @@ Always use `SetupTestContext` and the provided `prefix` for resource names to en
 
 ```go
 func TestCreateVM(t *testing.T) {
-    // 1. Setup environment
-    ctx, cleanup, client, prefix := SetupTestContext(t)
-    defer cleanup() // Automatically deletes VMs starting with 'prefix'
+    // 1. Setup environment (cleanup is automatically registered)
+    ctx, client, prefix := SetupTestContext(t)
 
     // 2. Prepare parameters using global resources
     vmName := prefix + "my-vm"
@@ -155,10 +153,11 @@ If you find yourself repeating setup logic in multiple test files, add a new hel
 
 ## Patterns and Best Practices
 
-1.  **Isolated Cleanup**: The `cleanup` function returned by `SetupTestContext` only deletes resources starting with that specific test's `prefix`. This allows tests to run without interfering with each other.
+1.  **Isolated Cleanup**: `SetupTestContext` registers a `t.Cleanup()` function that deletes resources starting with that specific test's `prefix`. This allows tests to run without interfering with each other, even in parallel.
 2.  **Global vs. Local Client**: Use the `client` returned by `SetupTestContext` for the actual test. Use `intTests.v1Client` only for setup or verification tasks where v2 is not yet implemented.
 3.  **Error Assertion**: Use `require.NoError` for setup steps to fail fast, and `assert` for the actual test conditions.
 4.  **Descriptive Assertions**: Include messages in assertions: `assert.Equal(t, expected, actual, "VM name should match")`.
+5.  **Subtests and Parallelism**: When using `t.Run`, you can also call `SetupTestContext(t)` inside the subtest to get a fresh context and automatic cleanup specific to that subtest. Use `t.Parallel()` to speed up execution.
 
 ## Running Tests
 
@@ -170,7 +169,7 @@ make test-integration
 ### Single Test File or Function
 ```bash
 # Run only VM tests
-go test -v ./v2/integration/vms_test.go ./v2/integration/setup_test.go
+go test -v ./v2/integration/vms_test.go ./v2/integration/setup_test.go ./v2/integration/helpers_test.go 
 
 # Run a specific test function
 go test -v -run TestVmCreation ./v2/integration/...
@@ -190,5 +189,5 @@ XOA_DEVELOPMENT=true make test-integration
 
 ## Additional Resources
 
-- `v2/integration/QUICK_START.md`: Quick reference for environment setup.
+- `v2/integration/README.md`: Quick reference for environment setup and basic template.
 - `v2/integration/setup_test.go`: Implementation details of the test runner.

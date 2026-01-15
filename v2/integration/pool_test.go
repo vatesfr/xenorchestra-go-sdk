@@ -12,8 +12,7 @@ import (
 )
 
 func TestGetPoolByID(t *testing.T) {
-	ctx, cleanup, client, _ := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, _ := SetupTestContext(t)
 
 	pool, err := client.Pool().Get(ctx, intTests.testPool.ID)
 	if err != nil {
@@ -23,8 +22,7 @@ func TestGetPoolByID(t *testing.T) {
 }
 
 func TestGetPoolByInvalidID(t *testing.T) {
-	ctx, cleanup, client, _ := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, _ := SetupTestContext(t)
 
 	_, err := client.Pool().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
 	if err == nil {
@@ -34,8 +32,7 @@ func TestGetPoolByInvalidID(t *testing.T) {
 }
 
 func TestCreateVM(t *testing.T) {
-	ctx, cleanup, client, testPrefix := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := "test-vm"
 	params := payloads.CreateVMParams{
@@ -57,8 +54,7 @@ func TestCreateVM(t *testing.T) {
 }
 
 func TestCreateVMInvalidTemplate(t *testing.T) {
-	ctx, cleanup, client, testPrefix := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := "test-vm-invalid-template"
 	params := payloads.CreateVMParams{
@@ -74,8 +70,7 @@ func TestCreateVMInvalidTemplate(t *testing.T) {
 }
 
 func TestCreateNetwork(t *testing.T) {
-	ctx, cleanup, client, testPrefix := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	networkName := "test-network"
 	// Choose VLAN from env var if provided to avoid collisions in lab

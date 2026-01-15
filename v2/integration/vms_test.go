@@ -10,11 +10,8 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-var vmsIDs []string
-
 func TestVmCreation(t *testing.T) {
-	ctx, cleanup, client, testPrefix := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "creation-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
@@ -28,12 +25,11 @@ func TestVmCreation(t *testing.T) {
 }
 
 func TestVMs(t *testing.T) {
-	ctx, cleanup, client, testPrefix := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	// Setup that runs before all VM subtests
-	vmsIDs = createVMsForTest(t, ctx, client.Pool(), 2, testPrefix+"test-vms-A-")
-	vmsIDs = createVMsForTest(t, ctx, client.Pool(), 3, testPrefix+"test-vms-B-")
+	createVMsForTest(t, ctx, client.Pool(), 2, testPrefix+"test-vms-A-")
+	createVMsForTest(t, ctx, client.Pool(), 3, testPrefix+"test-vms-B-")
 
 	// TODO: run subtests in parallel but this require refactoring the setup/teardown
 	//  to avoid cleanup removing VMs created by other tests
@@ -41,8 +37,10 @@ func TestVMs(t *testing.T) {
 	t.Run("TestVMListWithNoLimit", testVMListWithNoLimit)
 	t.Run("TestVMListWithFilter", testVMListWithFilter)
 }
+
 func testVMListWithLimit(t *testing.T) {
-	ctx, _, client, _ := SetupTestContext(t)
+	ctx, client, _ := SetupTestContext(t)
+	t.Parallel()
 	testCases := []struct {
 		name string
 		n    int
@@ -54,6 +52,7 @@ func testVMListWithLimit(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			// Test with limit parameter
 			vms, err := client.VM().GetAll(ctx, tc.n, "")
 			require.NoError(t, err)
@@ -64,7 +63,8 @@ func testVMListWithLimit(t *testing.T) {
 }
 
 func testVMListWithNoLimit(t *testing.T) {
-	ctx, _, client, _ := SetupTestContext(t)
+	ctx, client, _ := SetupTestContext(t)
+	t.Parallel()
 	vms, err := client.VM().GetAll(ctx, 0, "")
 	require.NoError(t, err)
 	require.NotNil(t, vms)
@@ -73,8 +73,8 @@ func testVMListWithNoLimit(t *testing.T) {
 }
 
 func testVMListWithFilter(t *testing.T) {
-	ctx, cleanup, client, testPrefix := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
+	t.Parallel()
 
 	// Test prefix is based on test name, extract main part as we are in a subtest
 	mainTestPrefix := strings.Split(testPrefix, "/")

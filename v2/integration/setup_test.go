@@ -42,8 +42,8 @@ type integrationTestContext struct {
 
 var (
 	// intTests holds global test configuration and resources shared across all integration tests
-	intTests   integrationTestContext = integrationTestContext{}
-	testPrefix string                 = "xo-go-sdk-"
+	intTests       integrationTestContext = integrationTestContext{}
+	intTestsPrefix string                 = "xo-go-sdk-"
 )
 
 // TestMain is the main entry point for integration tests
@@ -96,12 +96,12 @@ func TestMain(m *testing.M) {
 
 	// Get resource test prefix from environment variable if set
 	if prefix, found := os.LookupEnv("XOA_TEST_PREFIX"); found {
-		testPrefix = prefix
+		intTestsPrefix = prefix
 	}
 	// Add time to the test prefix to avoid collisions when running tests in parallel
-	testPrefix = fmt.Sprintf("%s%d-", testPrefix, time.Now().Unix())
+	intTestsPrefix = fmt.Sprintf("%s%d-", intTestsPrefix, time.Now().Unix())
 
-	slog.Info(fmt.Sprintf("Using test prefix: %s", testPrefix))
+	slog.Info(fmt.Sprintf("Using test prefix: %s", intTestsPrefix))
 
 	// Run test suite
 	code := m.Run()
@@ -113,14 +113,14 @@ func TestMain(m *testing.M) {
 }
 
 // SetupTestContext prepares the environment for an individual test and returns a context with timeout
-func SetupTestContext(t *testing.T) (context.Context, func(), library.Library, string) {
+func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 	t.Helper()
 
 	// Create a derived context with timeout for the test
 	ctx, cancel := context.WithTimeout(intTests.ctx, 5*time.Minute)
 
 	// Unique test prefix for this test to avoid to delete resources from other tests
-	prefix := testPrefix + t.Name() + "-"
+	prefix := intTestsPrefix + t.Name() + "-"
 
 	// Initialize XO client
 	testClient, err := v2.New(intTests.testConfig)
@@ -128,13 +128,15 @@ func SetupTestContext(t *testing.T) (context.Context, func(), library.Library, s
 		log.Fatalf("test client initialization failed: %v", err)
 	}
 
-	// Return the teardown function
-	return ctx, func() {
+	// Register teardown function
+	t.Cleanup(func() {
 		cancel() // Cancel the test context
 		// Teardown: cleanup any leftover test VMs and networks
 		_ = cleanupVMsWithPrefix(testClient, prefix)
 		_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)
-	}, testClient, prefix
+	})
+
+	return ctx, testClient, prefix
 }
 
 // findPoolForTests finds a pool by name from the XOA_POOL environment variable
