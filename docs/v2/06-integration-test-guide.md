@@ -71,6 +71,10 @@ func SetupTestContext(t *testing.T) (context.Context, func(), library.Library, s
 }
 ```
 
+#### 4. **Test Helpers** (`helpers_test.go`)
+
+Common utility functions used across multiple test files are centralized in `helpers_test.go`. These helpers simplify setup tasks like creating multiple VMs or finding resources.
+
 ## Configuration and Initialization
 
 ### Required Environment Variables
@@ -139,10 +143,15 @@ func TestCreateVM(t *testing.T) {
 ### Step 3: Use Helpers
 
 #### `createVMsForTest`
-Located in `vms_test.go`, it helps create multiple VMs for listing or batch tests:
+Located in `helpers_test.go`, it helps create multiple VMs for listing or batch tests:
 ```go
 vmsIDs := createVMsForTest(t, ctx, client.Pool(), 3, prefix + "batch-")
 ```
+
+If you find yourself repeating setup logic in multiple test files, add a new helper function to `helpers_test.go`. Ensure it:
+1.  Uses `*testing.T` for assertions (`require.NoError`, etc.).
+2.  Accepts `context.Context` and the necessary clients.
+3.  Uses the provided `prefix` for resource names to ensure safe cleanup.
 
 ## Patterns and Best Practices
 

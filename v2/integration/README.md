@@ -63,6 +63,10 @@ Shared resources are available via the `intTests` global variable:
 
 ## Common Patterns
 
+### Shared Helpers
+Common setup logic is centralized in `helpers_test.go`:
+- `createVMsForTest(t, ctx, client.Pool(), count, prefix)`: Creates multiple VMs using the test template.
+
 ### List with filter
 ```go
 vms, _ := client.VM().GetAll(ctx, 0, "name_label:"+prefix)
