@@ -25,7 +25,7 @@ import (
 
 func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (library.Task, *httptest.Server) {
 	server := httptest.NewServer(handler)
-	log, _ := logger.New(false)
+	log, _ := logger.New(false, []string{"stdout"}, []string{"stderr"})
 
 	baseURL, err := url.Parse(server.URL)
 	assert.NoError(t, err)
@@ -136,7 +136,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 		AuthToken:  "test-token",
 	}
 
-	log, err := logger.New(false)
+	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
 	if err != nil {
 		panic(err)
 	}

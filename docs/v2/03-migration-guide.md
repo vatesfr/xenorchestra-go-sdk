@@ -82,7 +82,7 @@ if err != nil {
 
 #### v2:
 ```go
-vms, err := client.VM().List(ctx)
+vms, err := client.VM().GetAll(ctx, 0, "")
 if err != nil {
     // Handle error
 }
@@ -105,7 +105,8 @@ if err != nil {
 #### v2:
 ```go
 templateID, _ := uuid.FromString("template-id")
-newVM, err := client.VM().Create(ctx, &payloads.VM{
+poolID, _ := uuid.FromString("pool-id")
+newVM, err := client.VM().Create(ctx, poolID, &payloads.CreateVMParams{
     NameLabel:       "test-vm",
     NameDescription: "Test VM",
     Template:        templateID,
@@ -240,7 +241,7 @@ func main() {
         panic(err)
     }
 
-    vms, err := client.VM().List(ctx)
+    vms, err := client.VM().GetAll(ctx, 0, "")
     if err != nil {
         panic(err)
     }

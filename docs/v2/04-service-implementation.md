@@ -134,6 +134,7 @@ import (
 
 type XOClient struct {
     vmService       library.VM
+    // other services...
     snapshotService library.Snapshot  // Add this line
 }
 
@@ -143,13 +144,14 @@ func New(config *config.Config) (library.Library, error) {
         return nil, err
     }
 
-    log, err := logger.New(config.Development)
+    log, err := logger.New(config.Development, config.LogOutputPaths, config.LogErrorOutputPaths)
     if err != nil {
         return nil, err
     }
 
     return &XOClient{
         vmService:       vm.New(client, log),
+        // other services...
         snapshotService: snapshot.New(client, log),  // Add this line
     }, nil
 }
@@ -157,7 +159,7 @@ func New(config *config.Config) (library.Library, error) {
 func (c *XOClient) VM() library.VM {
     return c.vmService
 }
-
+// other services...
 func (c *XOClient) Snapshot() library.Snapshot {  // Add this method
     return c.snapshotService
 }

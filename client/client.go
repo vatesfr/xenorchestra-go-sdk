@@ -331,6 +331,11 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	}, nil
 }
 
+// SetLogger sets the logger for the client. Useful for tests to redirect logs.
+func (c *Client) SetLogger(logger *slog.Logger) {
+	c.logger = logger
+}
+
 func (c *Client) IsRetryableError(err jsonrpc2.Error) bool {
 
 	if c.RetryMode == None {

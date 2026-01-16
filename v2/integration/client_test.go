@@ -22,7 +22,7 @@ func TestV1ClientLazyInitializationWithRealConnection(t *testing.T) {
 	require.NoError(t, err, "failed to create client")
 
 	// Use v2 services first (without touching v1 client)
-	poolsV2, err := client.Pool().GetAll(integrationCtx, 1, "")
+	poolsV2, err := client.Pool().GetAll(intTests.ctx, 1, "")
 	require.NoError(t, err, "v2 services should work before v1 init")
 	assert.NotEmpty(t, poolsV2)
 
@@ -39,7 +39,7 @@ func TestV1ClientLazyInitializationWithRealConnection(t *testing.T) {
 
 	// With a real connection, v1Client should now be initialized
 	// Test a simple v1 operation
-	pools, err := v1Client.GetPoolByName(testPool.NameLabel)
+	pools, err := v1Client.GetPoolByName(intTests.testPool.NameLabel)
 	assert.NoError(t, err, "v1 client should work after initialization")
 	assert.NotEmpty(t, pools, "should be able to fetch pools with v1 client")
 }

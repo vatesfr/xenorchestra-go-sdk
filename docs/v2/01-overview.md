@@ -52,8 +52,8 @@ func main() {
         panic(err)
     }
 
-    // List all VMs
-    vms, err := client.VM().List(ctx)
+    // List all VMs (GetAll with no limit and no filter)
+    vms, err := client.VM().GetAll(ctx, 0, "")
     if err != nil {
         panic(err)
     }
@@ -73,10 +73,54 @@ The SDK uses the following environment variables for configuration:
 - `XOA_URL`: URL of the Xen Orchestra server
 - `XOA_USER`: Username for authentication
 - `XOA_PASSWORD`: Password for authentication
+- `XOA_TOKEN`: Authentication token (recommended: can be used instead of user/password)
 - `XOA_INSECURE`: Set to "true" to skip TLS certificate verification
 - `XOA_DEVELOPMENT`: Set to "true" to enable development mode with additional logging
 - `XOA_RETRY_MODE`: Retry strategy ("none" or "backoff")
 - `XOA_RETRY_MAX_TIME`: Maximum time to wait between retries (default: 5 minutes)
+
+
+### Custom Logging Sinks
+
+The SDK uses `uber-go/zap` for logging. You can register custom sinks to redirect logs to your own infrastructure.
+
+Example of registering a custom sink:
+
+```go
+import (
+    "fmt"
+    "net/url"
+    "go.uber.org/zap"
+)
+
+type MySink struct {
+    // your custom sink fields
+}
+
+func (s *MySink) Write(p []byte) (n int, err error) {
+    fmt.Printf("Custom Log: %s", p)
+    return len(p), nil
+}
+
+func (s *MySink) Sync() error { return nil }
+func (s *MySink) Close() error { return nil }
+
+func init() {
+    _ = zap.RegisterSink("mysink", func(u *url.URL) (zap.Sink, error) {
+        return &MySink{}, nil
+    })
+}
+
+func main() {
+    cfg, _ := config.New()
+    cfg.LogOutputPaths = []string{"stdout", "mysink://"}
+    
+    client, _ := v2.New(cfg)
+    // ...
+}
+```
+
+This is particularly useful for integration with test runners, as seen in the SDK's own integration tests.
 
 ## Next Steps
 

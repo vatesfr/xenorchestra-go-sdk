@@ -12,21 +12,19 @@ import (
 )
 
 func TestGetPoolByID(t *testing.T) {
-	ctx, cleanup := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, _ := SetupTestContext(t)
 
-	pool, err := testClient.Pool().Get(ctx, testPool.ID)
+	pool, err := client.Pool().Get(ctx, intTests.testPool.ID)
 	if err != nil {
-		t.Fatalf("error while fetching pool %s: %v", testPool.ID, err)
+		t.Fatalf("error while fetching pool %s: %v", intTests.testPool.ID, err)
 	}
-	assert.Equal(t, testPool.ID, pool.ID, "pool ID should match")
+	assert.Equal(t, intTests.testPool.ID, pool.ID, "pool ID should match")
 }
 
 func TestGetPoolByInvalidID(t *testing.T) {
-	ctx, cleanup := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, _ := SetupTestContext(t)
 
-	_, err := testClient.Pool().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+	_, err := client.Pool().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
 	if err == nil {
 		t.Fatal("expected error when fetching pool with invalid ID, got nil")
 	}
@@ -34,39 +32,37 @@ func TestGetPoolByInvalidID(t *testing.T) {
 }
 
 func TestCreateVM(t *testing.T) {
-	ctx, cleanup := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := "test-vm"
 	params := payloads.CreateVMParams{
-		NameLabel: integrationTestPrefix + vmName,
-		Template:  uuid.FromStringOrNil(testTemplate.Id),
+		NameLabel: testPrefix + vmName,
+		Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
 	}
 
-	vmID, err := testClient.Pool().CreateVM(ctx, testPool.ID, params)
+	vmID, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
 	if err != nil {
-		t.Fatalf("error while creating VM in pool %s: %v", testPool.ID, err)
+		t.Fatalf("error while creating VM in pool %s: %v", intTests.testPool.ID, err)
 	}
 	assert.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
 
 	// Cleanup
-	err = testClient.VM().Delete(ctx, vmID)
+	err = client.VM().Delete(ctx, vmID)
 	if err != nil {
 		t.Errorf("error while deleting VM %s: %v", vmID, err)
 	}
 }
 
 func TestCreateVMInvalidTemplate(t *testing.T) {
-	ctx, cleanup := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := "test-vm-invalid-template"
 	params := payloads.CreateVMParams{
-		NameLabel: integrationTestPrefix + vmName,
+		NameLabel: testPrefix + vmName,
 		Template:  uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"), // Invalid template ID
 	}
 
-	_, err := testClient.Pool().CreateVM(ctx, testPool.ID, params)
+	_, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
 	if err == nil {
 		t.Fatal("expected error when creating VM with invalid template ID, got nil")
 	}
@@ -74,8 +70,7 @@ func TestCreateVMInvalidTemplate(t *testing.T) {
 }
 
 func TestCreateNetwork(t *testing.T) {
-	ctx, cleanup := SetupTestContext(t)
-	defer cleanup()
+	ctx, client, testPrefix := SetupTestContext(t)
 
 	networkName := "test-network"
 	// Choose VLAN from env var if provided to avoid collisions in lab
@@ -88,28 +83,28 @@ func TestCreateNetwork(t *testing.T) {
 		}
 	}
 	params := payloads.CreateNetworkParams{
-		Name:        integrationTestPrefix + networkName,
-		Pif:         uuid.FromStringOrNil(testNetwork.PIFs[0]), // Use the first PIF, only one PIF is expected
+		Name:        testPrefix + networkName,
+		Pif:         uuid.FromStringOrNil(intTests.testNetwork.PIFs[0]), // Use the first PIF, only one PIF is expected
 		MTU:         &[]uint{1450}[0],
 		Description: "Test network created by xo-sdk-go",
 		Vlan:        vlan,
 	}
-	networkID, err := testClient.Pool().CreateNetwork(ctx, testPool.ID, params)
+	networkID, err := client.Pool().CreateNetwork(ctx, intTests.testPool.ID, params)
 	if err != nil {
-		t.Fatalf("error while creating network in pool %s: %v", testPool.ID, err)
+		t.Fatalf("error while creating network in pool %s: %v", intTests.testPool.ID, err)
 	}
 	assert.NotEqual(t, uuid.Nil, networkID, "created network ID should not be nil")
 
 	// Get network using v1 client to verify creation
 	// TODO use v2 Network service when available
-	createdNetwork, err := v1TestClient.GetNetwork(v1.Network{
+	createdNetwork, err := intTests.v1Client.GetNetwork(v1.Network{
 		Id: networkID.String(),
 	})
 	if err != nil {
 		t.Fatalf("error fetching created network %s: %v", networkID, err)
 	}
 	assert.Equal(t, params.Name, createdNetwork.NameLabel, "created network name should match")
-	assert.Equal(t, testPool.ID.String(), createdNetwork.PoolId, "created network PoolID should match")
+	assert.Equal(t, intTests.testPool.ID.String(), createdNetwork.PoolId, "created network PoolID should match")
 
 	// Overflow check before uint conversion
 	if createdNetwork.MTU < 0 {
@@ -122,7 +117,7 @@ func TestCreateNetwork(t *testing.T) {
 	// Cleanup
 	// For now, we use v1 client to delete the network
 	t.Log("Cleaning up network:", networkID)
-	err = v1TestClient.DeleteNetwork(networkID.String())
+	err = intTests.v1Client.DeleteNetwork(networkID.String())
 	if err != nil {
 		t.Fatal("error deleting network:", err)
 		return

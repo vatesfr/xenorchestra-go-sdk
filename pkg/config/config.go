@@ -20,6 +20,9 @@ type Config struct {
 	Development  bool
 	RetryMode    core.RetryMode
 	RetryMaxTime time.Duration
+	// OutputPaths and ErrorOutputPaths for the logger.
+	LogOutputPaths      []string
+	LogErrorOutputPaths []string
 }
 
 var (
@@ -98,14 +101,16 @@ func New() (*Config, error) {
 	}
 
 	return &Config{
-		Url:                url,
-		Username:           username,
-		Password:           password,
-		Token:              token,
-		InsecureSkipVerify: insecure,
-		Development:        development,
-		RetryMode:          retryMode,
-		RetryMaxTime:       retryMaxTime,
+		Url:                 url,
+		Username:            username,
+		Password:            password,
+		Token:               token,
+		InsecureSkipVerify:  insecure,
+		Development:         development,
+		RetryMode:           retryMode,
+		RetryMaxTime:        retryMaxTime,
+		LogOutputPaths:      []string{"stdout"},
+		LogErrorOutputPaths: []string{"stderr"},
 	}, nil
 }
 
@@ -130,13 +135,15 @@ func NewWithValues(config *Config) (*Config, error) {
 	}
 
 	return &Config{
-		Url:                config.Url,
-		Username:           config.Username,
-		Password:           config.Password,
-		Token:              config.Token,
-		InsecureSkipVerify: config.InsecureSkipVerify,
-		RetryMode:          config.RetryMode,
-		RetryMaxTime:       config.RetryMaxTime,
-		Development:        config.Development,
+		Url:                 config.Url,
+		Username:            config.Username,
+		Password:            config.Password,
+		Token:               config.Token,
+		InsecureSkipVerify:  config.InsecureSkipVerify,
+		RetryMode:           config.RetryMode,
+		RetryMaxTime:        config.RetryMaxTime,
+		Development:         config.Development,
+		LogOutputPaths:      config.LogOutputPaths,
+		LogErrorOutputPaths: config.LogErrorOutputPaths,
 	}, nil
 }
