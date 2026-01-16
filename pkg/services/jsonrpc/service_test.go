@@ -108,7 +108,7 @@ func setupJSONRPCTestServer() (*httptest.Server, library.JSONRPC) {
 		panic(fmt.Sprintf("Failed to create client: %v", err))
 	}
 
-	log, err := logger.New(false)
+	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create logger: %v", err))
 	}

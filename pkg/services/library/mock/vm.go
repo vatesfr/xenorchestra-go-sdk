@@ -65,18 +65,18 @@ func (mr *MockVMMockRecorder) CleanShutdown(arg0, arg1 interface{}) *gomock.Call
 }
 
 // Create mocks base method.
-func (m *MockVM) Create(arg0 context.Context, arg1 *payloads.VM) (*payloads.VM, error) {
+func (m *MockVM) Create(arg0 context.Context, arg1 uuid.UUID, arg2 *payloads.CreateVMParams) (*payloads.VM, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", arg0, arg1)
+	ret := m.ctrl.Call(m, "Create", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*payloads.VM)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockVMMockRecorder) Create(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockVMMockRecorder) Create(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockVM)(nil).Create), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockVM)(nil).Create), arg0, arg1, arg2)
 }
 
 // Delete mocks base method.

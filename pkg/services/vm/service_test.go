@@ -165,7 +165,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockPool
 		AuthToken:  "test-token",
 	}
 
-	log, err := logger.New(false)
+	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
 	if err != nil {
 		panic(err)
 	}

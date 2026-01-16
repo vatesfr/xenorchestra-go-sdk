@@ -16,7 +16,7 @@ type Logger struct {
 	*zap.Logger
 }
 
-func New(development bool) (*Logger, error) {
+func New(development bool, outputPaths, errorOutputPaths []string) (*Logger, error) {
 	level := zapcore.DebugLevel
 	if !development {
 		level = zapcore.InfoLevel
@@ -45,8 +45,8 @@ func New(development bool) (*Logger, error) {
 		Sampling:          nil,
 		Encoding:          "json",
 		EncoderConfig:     encoderCfg,
-		OutputPaths:       []string{"stdout"},
-		ErrorOutputPaths:  []string{"stderr"},
+		OutputPaths:       outputPaths,
+		ErrorOutputPaths:  errorOutputPaths,
 	}
 
 	logger, err := zapConfig.Build(

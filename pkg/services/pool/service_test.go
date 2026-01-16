@@ -22,7 +22,7 @@ import (
 
 func setupTestServer(t *testing.T, handler http.HandlerFunc) (library.Pool, *httptest.Server) {
 	server := httptest.NewServer(handler)
-	log, _ := logger.New(false)
+	log, _ := logger.New(false, []string{"stdout"}, []string{"stderr"})
 
 	baseURL, err := url.Parse(server.URL)
 	assert.NoError(t, err)

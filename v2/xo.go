@@ -77,7 +77,7 @@ func New(config *config.Config) (library.Library, error) {
 		InsecureSkipVerify: config.InsecureSkipVerify,
 	}
 
-	log, err := logger.New(config.Development)
+	log, err := logger.New(config.Development, config.LogOutputPaths, config.LogErrorOutputPaths)
 	if err != nil {
 		return nil, err
 	}

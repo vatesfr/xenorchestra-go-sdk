@@ -143,7 +143,7 @@ func New(config *config.Config) (library.Library, error) {
         return nil, err
     }
 
-    log, err := logger.New(config.Development)
+    log, err := logger.New(config.Development, config.LogOutputPaths, config.LogErrorOutputPaths)
     if err != nil {
         return nil, err
     }
