@@ -3,6 +3,7 @@ package integration
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +23,58 @@ func TestVmCreation(t *testing.T) {
 	vmID, err := client.VM().Create(ctx, intTests.testPool.ID, params)
 	require.NoErrorf(t, err, "error while creating VM %s in pool %s: %v", vmName, intTests.testPool.ID, err)
 	require.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
+}
+
+func TestVmDeletion(t *testing.T) {
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	vmName := testPrefix + "deletion-test-" + uuid.Must(uuid.NewV4()).String()
+	params := &payloads.CreateVMParams{
+		NameLabel: vmName,
+		Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+	}
+
+	vm, err := client.VM().Create(ctx, intTests.testPool.ID, params)
+	require.NoErrorf(t, err, "error while creating VM %s in pool %s: %v", vmName, intTests.testPool.ID, err)
+	require.NotNil(t, vm, "created VM should not be nil")
+
+	err = client.VM().Delete(ctx, vm.ID)
+	require.NoErrorf(t, err, "error while deleting VM %s: %v", vm.ID, err)
+
+	// Verify the VM is gone
+	_, err = client.VM().GetByID(ctx, vm.ID)
+	require.Error(t, err, "expected error when getting deleted VM")
+}
+
+func TestVmStart(t *testing.T) {
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	vmName := testPrefix + "start-test-" + uuid.Must(uuid.NewV4()).String()
+	params := &payloads.CreateVMParams{
+		NameLabel: vmName,
+		Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+	}
+
+	vm, err := client.VM().Create(ctx, intTests.testPool.ID, params)
+	require.NoError(t, err)
+	require.NotNil(t, vm)
+	assert.Equal(t, payloads.PowerStateHalted, vm.PowerState)
+
+	// Since Start might be asynchronous/background task in XO, we might need to poll
+	// but for now let's see if it's already Running or wait a bit
+	taskID, err := client.VM().Start(ctx, vm.ID, nil)
+	require.NoError(t, err)
+	assert.Eventually(t, func() bool {
+		task, err := client.Task().Get(ctx, taskID)
+		if err != nil {
+			return false
+		}
+		return task.Status == payloads.Success
+	}, 60*time.Second, 5*time.Second, "Task should be successful")
+
+	v, err := client.VM().GetByID(ctx, vm.ID)
+	require.NoError(t, err)
+	assert.Equal(t, payloads.PowerStateRunning, v.PowerState)
 }
 
 func TestVMs(t *testing.T) {

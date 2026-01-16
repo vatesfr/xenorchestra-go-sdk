@@ -34,13 +34,15 @@ type VM interface {
 }
 
 type VMActions interface {
-	Start(ctx context.Context, id uuid.UUID) error
-	CleanShutdown(ctx context.Context, id uuid.UUID) error
-	HardShutdown(ctx context.Context, id uuid.UUID) error
-	CleanReboot(ctx context.Context, id uuid.UUID) error
-	HardReboot(ctx context.Context, id uuid.UUID) error
-	Snapshot(ctx context.Context, id uuid.UUID, name string) error
-	Restart(ctx context.Context, id uuid.UUID) error
-	Suspend(ctx context.Context, id uuid.UUID) error
-	Resume(ctx context.Context, id uuid.UUID) error
+	Start(ctx context.Context, id uuid.UUID, hostID *uuid.UUID) (string, error)
+	CleanShutdown(ctx context.Context, id uuid.UUID) (string, error)
+	HardShutdown(ctx context.Context, id uuid.UUID) (string, error)
+	CleanReboot(ctx context.Context, id uuid.UUID) (string, error)
+	HardReboot(ctx context.Context, id uuid.UUID) (string, error)
+	Snapshot(ctx context.Context, id uuid.UUID, name string) (string, error)
+	Restart(ctx context.Context, id uuid.UUID) (string, error)
+	Suspend(ctx context.Context, id uuid.UUID) (string, error)
+	Resume(ctx context.Context, id uuid.UUID) (string, error)
+	Pause(ctx context.Context, id uuid.UUID) (string, error)
+	Unpause(ctx context.Context, id uuid.UUID) (string, error)
 }
