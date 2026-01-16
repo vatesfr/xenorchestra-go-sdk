@@ -66,6 +66,7 @@ func TestMain(m *testing.M) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, handlerOpt))
 	slog.SetDefault(logger)
 	slog.SetLogLoggerLevel(slog.LevelDebug)
+	// TODO: v1 helpers don't log errors with this logger (e.g. v1.FindTemplateForTests)
 
 	// XO client configuration via environment variables
 	// - XOA_URL: XO API URL (required)
@@ -89,9 +90,8 @@ func TestMain(m *testing.M) {
 
 	// Get information for testing
 	intTests.testPool = findPoolForTests()
+	// TODO: Replace v1 method with v2 when available
 	v1.FindNetworkForTests(intTests.testPool.ID.String(), &intTests.testNetwork)
-
-	// Replace v1 method with v2 when available
 	v1.FindTemplateForTests(&intTests.testTemplate, intTests.testPool.ID.String(), "XOA_TEMPLATE")
 
 	// Get resource test prefix from environment variable if set
@@ -122,10 +122,24 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 	// Unique test prefix for this test to avoid to delete resources from other tests
 	prefix := intTestsPrefix + t.Name() + "-"
 
+	// Configure logger to use testing.T.Logf via custom sink
+	sink := RegisterTestingSink(t)
+	testConfig := *intTests.testConfig
+	testConfig.LogOutputPaths = []string{sink}
+	testConfig.LogErrorOutputPaths = []string{sink}
+
 	// Initialize XO client
-	testClient, err := v2.New(intTests.testConfig)
+	testClient, err := v2.New(&testConfig)
 	if err != nil {
 		log.Fatalf("test client initialization failed: %v", err)
+	}
+
+	// Make the V1Client use t.Logf
+	handler := slog.NewTextHandler(&testLogWriter{t}, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	if client, ok := intTests.v1Client.(*v1.Client); ok {
+		client.SetLogger(slog.New(handler))
 	}
 
 	// Register teardown function
@@ -184,7 +198,7 @@ func cleanupVMsWithPrefix(t testing.TB, client library.Library, prefix string) e
 		if vm.NameLabel != "" && vm.ID != uuid.Nil {
 			// Check that VM name starts with the test prefix
 			if len(vm.NameLabel) >= len(prefix) && (vm.NameLabel)[:len(prefix)] == prefix {
-				t.Logf("Found remaining test VM, Deleting test... NameLabel=%s ID=%s", vm.NameLabel, vm.ID)
+				// t.Logf("Found remaining test VM, Deleting test... NameLabel=%s ID=%s", vm.NameLabel, vm.ID)
 				err := client.VM().Delete(intTests.ctx, vm.ID)
 				if err != nil {
 					t.Logf("failed to delete VM NameLabel=%s error=%v", vm.NameLabel, err)
