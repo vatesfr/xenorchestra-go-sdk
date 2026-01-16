@@ -14,13 +14,16 @@ pkg/
 ├── config/ # Configuration handling
 ├── payloads/ # API data structures
 ├── services/ # Service implementations
-├── library/ # Service interfaces
-├── vm/ # VM service implementation
-└── ... # Other service implementations
+│   ├── jsonrpc/ # JSON-RPC service (for v1 compatibility)
+│   ├── library/ # Service interfaces
+│   ├── pool/ # Pool service implementation
+│   ├── task/ # Task service implementation
+│   ├── vm/ # VM service implementation
+|   └── ... # Other service implementations
 internal/
 └── common/ # Shared utilities
-├── core/ # Core types and constants
-└── logger/ # Logging implementation
+    ├── core/ # Core types and constants
+    └── logger/ # Logging implementation
 ```
 
 
@@ -35,8 +38,8 @@ Example from `library/vm.go`:
 ```go
 type VM interface {
     GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error)
-    List(ctx context.Context) ([]*payloads.VM, error)
-    Create(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
+    GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VM, error)
+    Create(ctx context.Context, poolID uuid.UUID, vm *payloads.CreateVMParams) (*payloads.VM, error)
     // ... other methods
 }
 ```

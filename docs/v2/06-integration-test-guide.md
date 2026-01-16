@@ -121,18 +121,18 @@ func TestCreateVM(t *testing.T) {
 
     // 2. Prepare parameters using global resources
     vmName := prefix + "my-vm"
-    params := payloads.CreateVMParams{
+    params := &payloads.CreateVMParams{
         NameLabel: vmName,
         Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
     }
 
     // 3. Execute v2 operation
-    vmID, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
+    vmID, err := client.VM().Create(ctx, intTests.testPool.ID, params)
     require.NoError(t, err)
     assert.NotEqual(t, uuid.Nil, vmID)
 
     // 4. Verification
-    vm, err := client.VM().Get(ctx, vmID)
+    vm, err := client.VM().GetByID(ctx, vmID)
     require.NoError(t, err)
     assert.Equal(t, vmName, vm.NameLabel)
 }
