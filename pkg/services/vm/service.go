@@ -154,7 +154,8 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	path := core.NewPathBuilder().Resource("vms").ID(id).Build()
 	err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result)
 	if err != nil || !result.Success {
-		s.log.Error("failed to delete VM", zap.String("vmID", id.String()), zap.Error(err), zap.Bool("success", result.Success))
+		s.log.Error("failed to delete VM", zap.String("vmID", id.String()), zap.Error(err),
+			zap.Bool("success", result.Success))
 		return err
 	}
 	return nil

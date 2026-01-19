@@ -97,7 +97,8 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.VM, *mock.MockPool
 			action := strings.Split(r.URL.Path, "/")[6]
 			t.Logf("Action requested: %s", action)
 			switch action {
-			case "start", "clean_shutdown", "hard_shutdown", "clean_reboot", "hard_reboot", "snapshot", "restart", "suspend", "resume", "pause", "unpause":
+			case "start", "clean_shutdown", "hard_shutdown", "clean_reboot", "hard_reboot", "snapshot", "restart",
+				"suspend", "resume", "pause", "unpause":
 				err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: "task-123"})
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -220,7 +221,8 @@ func TestPowerOperations(t *testing.T) {
 	id := uuid.Must(uuid.NewV4())
 
 	// Expect calls to HandleTaskResponse
-	mockTask.EXPECT().HandleTaskResponse(gomock.Any(), gomock.Any(), false).Return(&payloads.Task{ID: "task-123"}, nil).AnyTimes()
+	mockTask.EXPECT().HandleTaskResponse(gomock.Any(), gomock.Any(), false).
+		Return(&payloads.Task{ID: "task-123"}, nil).AnyTimes()
 
 	taskID, err := service.Start(context.Background(), id, nil)
 	assert.NoError(t, err)
