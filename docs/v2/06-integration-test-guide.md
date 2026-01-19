@@ -90,6 +90,10 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_TEST_PREFIX`| Custom resource prefix | `ci-` | ❌ |
 | `XOA_TEST_VLAN`  | VLAN for network tests | `1234` | ❌ |
 
+### Test Template Guidance
+
+Choose a test template that boots quickly and has the Xen Orchestra guest agent installed so the VM becomes reachable before the 5-minute test timeout. Integration tests read the VM's main IP address from the guest agent, so templates without it risk timing out or returning no address.
+
 ### Running the Suite
 
 ```bash

@@ -48,7 +48,7 @@ test-v2: ## Run v2 client and pkg tests (excluding integration)
 .PHONY: test-integration
 test-integration: ## Run integration tests
 	@echo "$(BLUE)Running integration tests...$(NC)"
-	$(GO) test -timeout 120s  ./v2/integration/... 
+	$(GO) test -timeout 5m  ./v2/integration/... 
 
 .PHONY: lint
 lint: ## Run golangci-lint
