@@ -37,11 +37,12 @@ func (m *MockVM) EXPECT() *MockVMMockRecorder {
 }
 
 // CleanReboot mocks base method.
-func (m *MockVM) CleanReboot(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) CleanReboot(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CleanReboot", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CleanReboot indicates an expected call of CleanReboot.
@@ -51,11 +52,12 @@ func (mr *MockVMMockRecorder) CleanReboot(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // CleanShutdown mocks base method.
-func (m *MockVM) CleanShutdown(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) CleanShutdown(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CleanShutdown", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CleanShutdown indicates an expected call of CleanShutdown.
@@ -124,11 +126,12 @@ func (mr *MockVMMockRecorder) GetByID(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // HardReboot mocks base method.
-func (m *MockVM) HardReboot(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) HardReboot(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HardReboot", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HardReboot indicates an expected call of HardReboot.
@@ -138,11 +141,12 @@ func (mr *MockVMMockRecorder) HardReboot(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // HardShutdown mocks base method.
-func (m *MockVM) HardShutdown(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) HardShutdown(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HardShutdown", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HardShutdown indicates an expected call of HardShutdown.
@@ -166,12 +170,28 @@ func (mr *MockVMMockRecorder) List(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockVM)(nil).List), arg0)
 }
 
+// Pause mocks base method.
+func (m *MockVM) Pause(arg0 context.Context, arg1 uuid.UUID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Pause", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Pause indicates an expected call of Pause.
+func (mr *MockVMMockRecorder) Pause(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pause", reflect.TypeOf((*MockVM)(nil).Pause), arg0, arg1)
+}
+
 // Restart mocks base method.
-func (m *MockVM) Restart(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) Restart(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Restart", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Restart indicates an expected call of Restart.
@@ -181,11 +201,12 @@ func (mr *MockVMMockRecorder) Restart(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // Resume mocks base method.
-func (m *MockVM) Resume(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) Resume(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Resume", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Resume indicates an expected call of Resume.
@@ -195,11 +216,12 @@ func (mr *MockVMMockRecorder) Resume(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // Snapshot mocks base method.
-func (m *MockVM) Snapshot(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
+func (m *MockVM) Snapshot(arg0 context.Context, arg1 uuid.UUID, arg2 string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Snapshot", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Snapshot indicates an expected call of Snapshot.
@@ -209,31 +231,48 @@ func (mr *MockVMMockRecorder) Snapshot(arg0, arg1, arg2 interface{}) *gomock.Cal
 }
 
 // Start mocks base method.
-func (m *MockVM) Start(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) Start(arg0 context.Context, arg1 uuid.UUID, arg2 *uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Start", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockVMMockRecorder) Start(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockVMMockRecorder) Start(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockVM)(nil).Start), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockVM)(nil).Start), arg0, arg1, arg2)
 }
 
 // Suspend mocks base method.
-func (m *MockVM) Suspend(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVM) Suspend(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Suspend", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Suspend indicates an expected call of Suspend.
 func (mr *MockVMMockRecorder) Suspend(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Suspend", reflect.TypeOf((*MockVM)(nil).Suspend), arg0, arg1)
+}
+
+// Unpause mocks base method.
+func (m *MockVM) Unpause(arg0 context.Context, arg1 uuid.UUID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unpause", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Unpause indicates an expected call of Unpause.
+func (mr *MockVMMockRecorder) Unpause(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unpause", reflect.TypeOf((*MockVM)(nil).Unpause), arg0, arg1)
 }
 
 // Update mocks base method.
@@ -275,11 +314,12 @@ func (m *MockVMActions) EXPECT() *MockVMActionsMockRecorder {
 }
 
 // CleanReboot mocks base method.
-func (m *MockVMActions) CleanReboot(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) CleanReboot(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CleanReboot", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CleanReboot indicates an expected call of CleanReboot.
@@ -289,11 +329,12 @@ func (mr *MockVMActionsMockRecorder) CleanReboot(arg0, arg1 interface{}) *gomock
 }
 
 // CleanShutdown mocks base method.
-func (m *MockVMActions) CleanShutdown(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) CleanShutdown(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CleanShutdown", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CleanShutdown indicates an expected call of CleanShutdown.
@@ -303,11 +344,12 @@ func (mr *MockVMActionsMockRecorder) CleanShutdown(arg0, arg1 interface{}) *gomo
 }
 
 // HardReboot mocks base method.
-func (m *MockVMActions) HardReboot(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) HardReboot(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HardReboot", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HardReboot indicates an expected call of HardReboot.
@@ -317,11 +359,12 @@ func (mr *MockVMActionsMockRecorder) HardReboot(arg0, arg1 interface{}) *gomock.
 }
 
 // HardShutdown mocks base method.
-func (m *MockVMActions) HardShutdown(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) HardShutdown(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HardShutdown", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HardShutdown indicates an expected call of HardShutdown.
@@ -330,12 +373,28 @@ func (mr *MockVMActionsMockRecorder) HardShutdown(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HardShutdown", reflect.TypeOf((*MockVMActions)(nil).HardShutdown), arg0, arg1)
 }
 
+// Pause mocks base method.
+func (m *MockVMActions) Pause(arg0 context.Context, arg1 uuid.UUID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Pause", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Pause indicates an expected call of Pause.
+func (mr *MockVMActionsMockRecorder) Pause(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pause", reflect.TypeOf((*MockVMActions)(nil).Pause), arg0, arg1)
+}
+
 // Restart mocks base method.
-func (m *MockVMActions) Restart(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) Restart(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Restart", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Restart indicates an expected call of Restart.
@@ -345,11 +404,12 @@ func (mr *MockVMActionsMockRecorder) Restart(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // Resume mocks base method.
-func (m *MockVMActions) Resume(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) Resume(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Resume", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Resume indicates an expected call of Resume.
@@ -359,11 +419,12 @@ func (mr *MockVMActionsMockRecorder) Resume(arg0, arg1 interface{}) *gomock.Call
 }
 
 // Snapshot mocks base method.
-func (m *MockVMActions) Snapshot(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
+func (m *MockVMActions) Snapshot(arg0 context.Context, arg1 uuid.UUID, arg2 string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Snapshot", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Snapshot indicates an expected call of Snapshot.
@@ -373,29 +434,46 @@ func (mr *MockVMActionsMockRecorder) Snapshot(arg0, arg1, arg2 interface{}) *gom
 }
 
 // Start mocks base method.
-func (m *MockVMActions) Start(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) Start(arg0 context.Context, arg1 uuid.UUID, arg2 *uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Start", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockVMActionsMockRecorder) Start(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockVMActionsMockRecorder) Start(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockVMActions)(nil).Start), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockVMActions)(nil).Start), arg0, arg1, arg2)
 }
 
 // Suspend mocks base method.
-func (m *MockVMActions) Suspend(arg0 context.Context, arg1 uuid.UUID) error {
+func (m *MockVMActions) Suspend(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Suspend", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Suspend indicates an expected call of Suspend.
 func (mr *MockVMActionsMockRecorder) Suspend(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Suspend", reflect.TypeOf((*MockVMActions)(nil).Suspend), arg0, arg1)
+}
+
+// Unpause mocks base method.
+func (m *MockVMActions) Unpause(arg0 context.Context, arg1 uuid.UUID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unpause", arg0, arg1)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Unpause indicates an expected call of Unpause.
+func (mr *MockVMActionsMockRecorder) Unpause(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unpause", reflect.TypeOf((*MockVMActions)(nil).Unpause), arg0, arg1)
 }

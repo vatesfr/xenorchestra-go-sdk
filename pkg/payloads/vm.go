@@ -62,8 +62,10 @@ type VM struct {
 	Vga                string            `json:"vga,omitempty"`
 	XenstoreData       map[string]string `json:"xenStoreData,omitempty"`
 	BlockedOperations  map[string]string `json:"blockedOperations,omitempty"`
+	MainIpAddress      string            `json:"mainIpAddress,omitempty"`
 	PoolID             uuid.UUID         `json:"$poolId,omitempty"`
 	Container          string            `json:"$container,omitempty"`
+	Snapshots          []uuid.UUID       `json:"snapshots,omitempty"`
 }
 
 type Memory struct {
