@@ -8,6 +8,7 @@ type Library interface {
 	VM() VM
 	Task() Task
 	Pool() Pool
+	Host() Host
 	// Added to provide access to the v1 client, allowing users to:
 	// 1. Access v1 functionality without initializing a separate client
 	// 2. Use v2 features while maintaining backward compatibility
