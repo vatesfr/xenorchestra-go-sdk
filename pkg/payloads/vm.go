@@ -64,7 +64,7 @@ type VM struct {
 	BlockedOperations  map[string]string `json:"blockedOperations,omitempty"`
 	MainIpAddress      string            `json:"mainIpAddress,omitempty"`
 	PoolID             uuid.UUID         `json:"$poolId,omitempty"`
-	Container          string            `json:"$container,omitempty"`
+	Container          uuid.UUID         `json:"$container,omitempty"`
 	Snapshots          []uuid.UUID       `json:"snapshots,omitempty"`
 }
 
