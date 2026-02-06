@@ -1,11 +1,15 @@
 package integration
 
 import (
+	"context"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 )
 
 func TestHostGetAll(t *testing.T) {
@@ -42,4 +46,64 @@ func TestHostGetInvalidID(t *testing.T) {
 
 	_, err := client.Host().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
 	require.Error(t, err, "expected error when fetching host with invalid ID")
+}
+
+func hostTagExists(ctx context.Context, client library.Library, hostID uuid.UUID, tag string) bool {
+	host, err := client.Host().Get(ctx, hostID)
+	if err != nil {
+		return false
+	}
+	return slices.Contains(host.Tags, tag)
+}
+
+func TestHostAddTag(t *testing.T) {
+	ctx, client, prefix := SetupTestContext(t)
+
+	hosts, err := client.Host().GetAll(ctx, 1, "")
+	require.NoError(t, err)
+	require.NotEmpty(t, hosts, "expected at least one host")
+
+	hostID := hosts[0].ID
+	tag := prefix + "tag"
+
+	t.Cleanup(func() {
+		_ = client.Host().RemoveTag(ctx, hostID, tag)
+	})
+
+	require.NoError(t, client.Host().AddTag(ctx, hostID, tag), "adding tag should succeed")
+
+	require.Eventually(t, func() bool {
+		return hostTagExists(ctx, client, hostID, tag)
+	}, 1*time.Minute, 2*time.Second, "tag should be attached to the host")
+
+	refreshed, err := client.Host().Get(ctx, hostID)
+	require.NoError(t, err)
+	assert.Contains(t, refreshed.Tags, tag, "host tags should contain the newly added tag")
+}
+
+func TestHostRemoveTag(t *testing.T) {
+	ctx, client, prefix := SetupTestContext(t)
+
+	hosts, err := client.Host().GetAll(ctx, 1, "")
+	require.NoError(t, err)
+	require.NotEmpty(t, hosts, "expected at least one host")
+
+	hostID := hosts[0].ID
+	tag := prefix + "remove-tag"
+
+	require.NoError(t, client.Host().AddTag(ctx, hostID, tag), "setup tag addition should succeed")
+
+	require.Eventually(t, func() bool {
+		return hostTagExists(ctx, client, hostID, tag)
+	}, 1*time.Minute, 2*time.Second, "tag should be attached to the host")
+
+	require.NoError(t, client.Host().RemoveTag(ctx, hostID, tag), "removing tag should succeed")
+
+	require.Eventually(t, func() bool {
+		return !hostTagExists(ctx, client, hostID, tag)
+	}, 1*time.Minute, 2*time.Second, "tag should be removed from the host")
+
+	refreshed, err := client.Host().Get(ctx, hostID)
+	require.NoError(t, err)
+	assert.NotContains(t, refreshed.Tags, tag, "host tags should not contain the removed tag")
 }

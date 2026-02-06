@@ -84,8 +84,8 @@ func TestMain(m *testing.M) {
 	// Initialize v1 client for setup/teardown tasks
 	intTests.v1Client, err = v1.NewClientWithLogger(v1.GetConfigFromEnv(), logger)
 	if err != nil {
+		integrationCancel()
 		log.Fatalf("error getting v1.client %s", err)
-		return
 	}
 
 	// Get information for testing

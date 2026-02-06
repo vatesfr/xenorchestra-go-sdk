@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
@@ -54,4 +55,39 @@ func (s *HostService) GetAll(ctx context.Context, limit int, filter string) ([]*
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s *HostService) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	if tag == "" {
+		return fmt.Errorf("tag cannot be empty")
+	}
+
+	path := core.NewPathBuilder().Resource("hosts").ID(id).Resource("tags").IDString(tag).Build()
+
+	var result struct{}
+
+	if err := client.TypedPut(ctx, s.client, path, core.EmptyParams, &result); err != nil {
+		s.log.Error("Failed to add tag to host", zap.String("hostID", id.String()), zap.String("tag", tag), zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+func (s *HostService) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	if tag == "" {
+		return fmt.Errorf("tag cannot be empty")
+	}
+
+	path := core.NewPathBuilder().Resource("hosts").ID(id).Resource("tags").IDString(tag).Build()
+
+	var result struct{}
+
+	if err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result); err != nil {
+		s.log.Error("Failed to remove tag from host", zap.String("hostID", id.String()),
+			zap.String("tag", tag), zap.Error(err))
+		return err
+	}
+
+	return nil
 }
