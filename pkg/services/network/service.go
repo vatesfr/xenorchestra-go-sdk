@@ -77,7 +77,8 @@ func (s *NetworkService) AddTag(ctx context.Context, id uuid.UUID, tag string) e
 	var result struct{}
 
 	if err := client.TypedPut(ctx, s.client, path, core.EmptyParams, &result); err != nil {
-		s.log.Error("Failed to add tag to network", zap.String("networkID", id.String()), zap.String("tag", tag), zap.Error(err))
+		s.log.Error("Failed to add tag to network",
+			zap.String("networkID", id.String()), zap.String("tag", tag), zap.Error(err))
 		return err
 	}
 

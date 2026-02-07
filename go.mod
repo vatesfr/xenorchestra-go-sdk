@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 )
