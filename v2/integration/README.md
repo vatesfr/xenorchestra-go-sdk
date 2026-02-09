@@ -11,6 +11,7 @@ export XOA_TOKEN="token"
 
 export XOA_POOL="pool-name"
 export XOA_TEMPLATE="template-name"
+export XOA_STORAGE="storage-repository-name"
 ```
 
 Optional:

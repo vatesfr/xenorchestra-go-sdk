@@ -34,6 +34,8 @@ type integrationTestContext struct {
 	testTemplate v1.Template
 	// testNetwork holds a network used for network-related tests
 	testNetwork v1.Network
+	// testSR holds a storage repository used for VDI-related tests
+	testSR v1.StorageRepository
 
 	// v1Client is the XO client used for resources not yet available in v2
 	// Should not be used to perform the actual test but only to setup/teardown resources
@@ -93,6 +95,7 @@ func TestMain(m *testing.M) {
 	// TODO: Replace v1 method with v2 when available
 	v1.FindNetworkForTests(intTests.testPool.ID.String(), &intTests.testNetwork)
 	v1.FindTemplateForTests(&intTests.testTemplate, intTests.testPool.ID.String(), "XOA_TEMPLATE")
+	intTests.testSR = findStorageRepositoryForTests()
 
 	// Get resource test prefix from environment variable if set
 	if prefix, found := os.LookupEnv("XOA_TEST_PREFIX"); found {
@@ -147,7 +150,8 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 		cancel() // Cancel the test context
 		// Teardown: cleanup any leftover test VMs and networks
 		_ = cleanupVMsWithPrefix(t, testClient, prefix)
-		_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)
+		_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)("")
+		_ = v1.RemoveVDIsWithPrefixForTests(prefix)("")
 	})
 
 	return ctx, testClient, prefix
@@ -165,28 +169,24 @@ func findPoolForTests() payloads.Pool {
 
 	if !found {
 		log.Fatal("The XOA_POOL environment variable must be set")
-		os.Exit(-1)
 	}
 
 	pools, err := client.Pool().GetAll(intTests.ctx, 0, poolName)
 	if err != nil {
 		log.Fatalf("failed to get pool with name: %v with error: %v", poolName, err)
-		os.Exit(-1)
 	}
 	if len(pools) == 0 {
 		log.Fatalf("failed to find a pool with name: %v, no poll returned", poolName)
-		os.Exit(-1)
 	}
 	if len(pools) != 1 {
 		log.Fatalf("Found %d pools with name_label %s."+
 			"Please use a label that is unique so tests are reproducible.\n", len(pools), poolName)
-		os.Exit(-1)
 	}
 
 	return *pools[0]
 }
 
-// cleanupVMs removes all VMs that have the testing prefix in their name
+// cleanupVMsWithPrefix removes all VMs that have the testing prefix in their name
 func cleanupVMsWithPrefix(t testing.TB, client library.Library, prefix string) error {
 	t.Helper()
 	vms, err := client.VM().GetAll(intTests.ctx, 0, "name_label:"+prefix)
@@ -208,4 +208,33 @@ func cleanupVMsWithPrefix(t testing.TB, client library.Library, prefix string) e
 		}
 	}
 	return nil
+}
+
+// findStorageRepositoryForTests finds a storage repository by name from the XOA_STORAGE environment variable
+func findStorageRepositoryForTests() v1.StorageRepository {
+	client, err := v2.New(intTests.testConfig)
+	if err != nil {
+		log.Fatalf("test client initialization failed: %v", err)
+	}
+
+	srName, found := os.LookupEnv("XOA_STORAGE")
+	if !found {
+		log.Fatalf("XOA_STORAGE environment variable must be set")
+	}
+
+	srs, err := client.V1Client().GetStorageRepository(v1.StorageRepository{
+		NameLabel: srName,
+		PoolId:    intTests.testPool.ID.String(),
+	})
+	if err != nil {
+		log.Fatalf("failed to get storage repository with name: %s, with err: %v", srName, err)
+	}
+	if len(srs) == 0 {
+		log.Fatalf("failed to find a storage repository with name: %v, no storage repository returned", srName)
+	}
+	if len(srs) != 1 {
+		log.Fatalf("Found %d storage repositories with name_label %s."+
+			"Please use a label that is unique so tests are reproducible.\n", len(srs), srName)
+	}
+	return srs[0]
 }

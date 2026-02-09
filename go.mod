@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
+	github.com/docker/go-units v0.5.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/gorilla/websocket v1.5.3
