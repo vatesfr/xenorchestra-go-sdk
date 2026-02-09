@@ -1,0 +1,63 @@
+package vdi
+
+import (
+	"context"
+
+	"github.com/gofrs/uuid"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
+	"go.uber.org/zap"
+)
+
+type Service struct {
+	client *client.Client
+	log    *logger.Logger
+}
+
+func New(client *client.Client, log *logger.Logger) library.VDI {
+	return &Service{
+		client: client,
+		log:    log,
+	}
+}
+
+func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.VDI, error) {
+	var result payloads.VDI
+	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+	err := client.TypedGet(
+		ctx,
+		s.client,
+		path,
+		core.EmptyParams,
+		&result,
+	)
+	if err != nil {
+		s.log.Error("Failed to get VDI by ID", zap.String("vdiID", id.String()), zap.Error(err))
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VDI, error) {
+	path := core.NewPathBuilder().Resource("vdis").Build()
+	params := make(map[string]any)
+	if limit > 0 {
+		params["limit"] = limit
+	}
+	// Get all fields to retrieve complete VDI objects
+	params["fields"] = "*"
+
+	if filter != "" {
+		params["filter"] = filter
+	}
+
+	var result []*payloads.VDI
+	if err := client.TypedGet(ctx, s.client, path, params, &result); err != nil {
+		s.log.Error("Failed to get all VDIs", zap.Error(err))
+		return nil, err
+	}
+	return result, nil
+}
