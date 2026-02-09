@@ -2,6 +2,7 @@ package vdi
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
@@ -60,4 +61,39 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	if tag == "" {
+		return fmt.Errorf("tag cannot be empty")
+	}
+
+	path := core.NewPathBuilder().Resource("vdis").ID(id).Resource("tags").IDString(tag).Build()
+
+	var result struct{}
+
+	if err := client.TypedPut(ctx, s.client, path, core.EmptyParams, &result); err != nil {
+		s.log.Error("Failed to add tag to VDI", zap.String("vdiID", id.String()), zap.String("tag", tag), zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	if tag == "" {
+		return fmt.Errorf("tag cannot be empty")
+	}
+
+	path := core.NewPathBuilder().Resource("vdis").ID(id).Resource("tags").IDString(tag).Build()
+
+	var result struct{}
+
+	if err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result); err != nil {
+		s.log.Error("Failed to remove tag from VDI", zap.String("vdiID", id.String()),
+			zap.String("tag", tag), zap.Error(err))
+		return err
+	}
+
+	return nil
 }

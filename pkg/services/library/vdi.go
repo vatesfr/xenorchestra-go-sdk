@@ -20,4 +20,6 @@ type VDI interface {
 	//   - filter: filter string for VDI selection (empty for no filter)
 	// Returns all matching VDIs or an error if the operation fails.
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VDI, error)
+	AddTag(ctx context.Context, id uuid.UUID, tag string) error
+	RemoveTag(ctx context.Context, id uuid.UUID, tag string) error
 }
