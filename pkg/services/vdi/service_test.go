@@ -141,6 +141,22 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service) {
 		}
 	})
 
+	// DELETE /rest/v0/vdis/{id} - Delete VDI
+	mux.HandleFunc("DELETE /rest/v0/vdis/{id}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		vdiID := r.PathValue("id")
+
+		if vdiID != testVDIID1 && vdiID != testVDIID2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
 	server := httptest.NewServer(mux)
 
 	restClient := &client.Client{
@@ -332,6 +348,31 @@ func TestRemoveTag(t *testing.T) {
 	t.Run("remove tag with unexistent vdi", func(t *testing.T) {
 		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
 		err := service.RemoveTag(context.Background(), vdiID, "tag1")
+
+		assert.Error(t, err)
+	})
+}
+
+func TestDelete(t *testing.T) {
+	server, service := setupTestServer(t)
+	defer server.Close()
+
+	t.Run("successful VDI deletion", func(t *testing.T) {
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		err := service.Delete(context.Background(), vdiID)
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("delete VDI with unexistent ID", func(t *testing.T) {
+		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
+		err := service.Delete(context.Background(), vdiID)
+
+		assert.Error(t, err)
+	})
+
+	t.Run("delete VDI with nil ID", func(t *testing.T) {
+		err := service.Delete(context.Background(), uuid.Nil)
 
 		assert.Error(t, err)
 	})

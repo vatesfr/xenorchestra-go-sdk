@@ -97,3 +97,16 @@ func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error
 
 	return nil
 }
+
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+
+	var result struct{}
+
+	if err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result); err != nil {
+		s.log.Error("Failed to delete VDI", zap.String("vdiID", id.String()), zap.Error(err))
+		return err
+	}
+
+	return nil
+}
