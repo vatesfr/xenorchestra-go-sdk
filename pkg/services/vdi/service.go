@@ -14,14 +14,16 @@ import (
 )
 
 type Service struct {
-	client *client.Client
-	log    *logger.Logger
+	client      *client.Client
+	log         *logger.Logger
+	taskService library.Task
 }
 
-func New(client *client.Client, log *logger.Logger) library.VDI {
+func New(client *client.Client, taskService library.Task, log *logger.Logger) library.VDI {
 	return &Service{
-		client: client,
-		log:    log,
+		client:      client,
+		log:         log,
+		taskService: taskService,
 	}
 }
 
@@ -109,4 +111,33 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (s *Service) Migrate(ctx context.Context, id uuid.UUID, srId uuid.UUID) (string, error) {
+
+	path := core.NewPathBuilder().Resource("vdis").ID(id).ActionsGroup().Action("migrate").Build()
+
+	var result payloads.TaskIDResponse
+
+	params := map[string]string{
+		"srId": srId.String(),
+	}
+
+	err := client.TypedPost(ctx, s.client, path, params, &result)
+	if err != nil {
+		s.log.Error("failed to migrate VDI", zap.String("vdiID", id.String()), zap.Error(err))
+		return "", err
+	}
+
+	taskResult, err := s.taskService.HandleTaskResponse(ctx, result, false)
+	if err != nil {
+		s.log.Error("Task handling failed", zap.Error(err))
+		return "", fmt.Errorf("VDI migration failed: %w", err)
+	}
+
+	if taskResult != nil {
+		return taskResult.ID, nil
+	}
+
+	return "", fmt.Errorf("unexpected response from API call: %v", result)
 }

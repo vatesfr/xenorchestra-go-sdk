@@ -106,3 +106,38 @@ func TestVDIDeletion(t *testing.T) {
 	_, err = client.VDI().Get(ctx, vdiTestID)
 	assert.Error(t, err, "expected error when fetching deleted VDI")
 }
+
+func TestVDIMigration(t *testing.T) {
+	t.Parallel()
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-migrate", 512*units.MB)
+	// We will migrate the VDI to the same SR, this is just to test the migration functionality without
+	// needing to create a new SR for the test.
+	srTestID := uuid.Must(uuid.FromString(intTests.testSR.Id))
+
+	taskID, err := client.VDI().Migrate(ctx, vdiTestID, srTestID)
+	require.NoError(t, err, "migrating VDI should succeed")
+	require.NotEmpty(t, taskID, "migration should return a task ID")
+
+	// Wait for the migration task to complete
+	task, err := client.Task().Wait(ctx, taskID)
+	require.NoError(t, err, "migration task should complete successfully")
+	assert.NotNil(t, task, "migration task result should not be nil")
+
+	// The completed task should indicate the new VDI ID in its result.
+	// We can verify that the new VDI exists and has the expected SR ID and the VDI name.
+	assert.NotEqual(t, uuid.Nil, task.Result.ID, "new VDI ID should be present in task result")
+	newVDI, err := client.VDI().Get(ctx, task.Result.ID)
+	require.NoError(t, err, "should be able to get the new VDI after migration")
+	assert.Equal(t, srTestID, newVDI.SR, "new VDI should be in the target SR")
+	assert.Equal(t, testPrefix+"vdi-migrate", newVDI.NameLabel, "new VDI should have the same name label as original VDI")
+
+	// After migration, the VDI should have a new ID. We can check that the original VDI no longer exists
+	// NOTE: as we are migrating on the same SR, the VDI will keep its ID, so this test is not relevant in this case.
+	// require.Eventually(t, func() bool {
+	// 	_, err := client.VDI().Get(ctx, vdiTestID)
+	// 	return err != nil
+	// }, 1*time.Minute, 2*time.Second, "original VDI should be deleted after migration")
+
+}

@@ -3,6 +3,7 @@ package vdi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,11 +11,13 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
+	mock "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
@@ -43,9 +46,11 @@ const (
 	testVDIID1        = "c77f9955-c1d2-4b39-aa1c-73cdb2dacb7e"
 	testVDIID2        = "d88fa066-d2e3-5c4a-bc2d-84deb3eadcbf"
 	testVDIIDNotFound = "e99fb177-e3f4-6d5b-cd3e-95efc4fbedc0"
+	testSRID          = "f2345678-1234-1234-1234-123456789abc"
+	testMigrateTaskID = "task-migrate-123"
 )
 
-func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Server) {
+func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Server, *mock.MockTask) {
 	server := httptest.NewServer(handler)
 
 	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
@@ -64,10 +69,13 @@ func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Servic
 		AuthToken:  "test-token",
 	}
 
-	return New(restClient, log).(*Service), server
+	ctrl := gomock.NewController(t)
+	mockTask := mock.NewMockTask(ctrl)
+
+	return New(restClient, mockTask, log).(*Service), server, mockTask
 }
 
-func setupTestServer(t *testing.T) (*httptest.Server, *Service) {
+func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) {
 	mux := http.NewServeMux()
 
 	// GET /rest/v0/vdis - List all VDIs
@@ -157,6 +165,33 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service) {
 		}
 	})
 
+	// POST /rest/v0/vdis/{id}/actions/migrate - Migrate VDI
+	mux.HandleFunc("POST /rest/v0/vdis/{id}/actions/migrate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		vdiID := r.PathValue("id")
+
+		if vdiID != testVDIID1 && vdiID != testVDIID2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		var params map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if params["srId"] != testSRID {
+			http.Error(w, "missing srId", http.StatusBadRequest)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: testMigrateTaskID}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
 	server := httptest.NewServer(mux)
 
 	restClient := &client.Client{
@@ -169,7 +204,10 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service) {
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	return server, New(restClient, log).(*Service)
+
+	ctrl := gomock.NewController(t)
+	mockTask := mock.NewMockTask(ctrl)
+	return server, New(restClient, mockTask, log).(*Service), mockTask
 }
 
 // This is a basic test to ensure the service can be instantiated.
@@ -182,7 +220,9 @@ func TestNew(t *testing.T) {
 	assert.NoError(t, err)
 
 	log, _ := logger.New(true, nil, nil)
-	svc := New(c, log)
+	ctrl := gomock.NewController(t)
+	mockTask := mock.NewMockTask(ctrl)
+	svc := New(c, mockTask, log)
 
 	assert.NotNil(t, svc)
 }
@@ -197,7 +237,9 @@ func TestVDIService_Get_ConnectionError(t *testing.T) {
 	assert.NoError(t, err)
 
 	log, _ := logger.New(true, nil, nil)
-	svc := New(c, log)
+	ctrl := gomock.NewController(t)
+	mockTask := mock.NewMockTask(ctrl)
+	svc := New(c, mockTask, log)
 
 	_, err = svc.Get(t.Context(), uuid.Nil)
 	// Since we don't have a real server, we expect an error or it to try to connect
@@ -206,7 +248,7 @@ func TestVDIService_Get_ConnectionError(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	server, svc := setupTestServer(t)
+	server, svc, _ := setupTestServer(t)
 	defer server.Close()
 
 	t.Run("get existing VDI by ID", func(t *testing.T) {
@@ -254,7 +296,7 @@ func TestGetAll(t *testing.T) {
 			err := json.NewEncoder(w).Encode([]*payloads.VDI{})
 			assert.NoError(t, err)
 		})
-		service, server := setupTestServerWithHandler(t, handler)
+		service, server, _ := setupTestServerWithHandler(t, handler)
 		defer server.Close()
 		vdis, err := service.GetAll(context.Background(), limit, filter)
 		assert.NoError(t, err)
@@ -266,7 +308,7 @@ func TestGetAll(t *testing.T) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 		})
-		service, server := setupTestServerWithHandler(t, handler)
+		service, server, _ := setupTestServerWithHandler(t, handler)
 		defer server.Close()
 		vdis, err := service.GetAll(context.Background(), 0, "")
 		assert.Error(t, err)
@@ -279,7 +321,7 @@ func TestGetAll(t *testing.T) {
 			_, err := w.Write([]byte("not a json"))
 			assert.NoError(t, err)
 		})
-		service, server := setupTestServerWithHandler(t, handler)
+		service, server, _ := setupTestServerWithHandler(t, handler)
 		defer server.Close()
 		vdis, err := service.GetAll(context.Background(), 0, "")
 		assert.Error(t, err)
@@ -287,7 +329,7 @@ func TestGetAll(t *testing.T) {
 	})
 
 	t.Run("successfully retrieves all VDIs", func(t *testing.T) {
-		server, service := setupTestServer(t)
+		server, service, _ := setupTestServer(t)
 		defer server.Close()
 
 		vdis, err := service.GetAll(context.Background(), 0, "")
@@ -300,7 +342,7 @@ func TestGetAll(t *testing.T) {
 }
 
 func TestAddTag(t *testing.T) {
-	server, service := setupTestServer(t)
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	t.Run("successful tag addition", func(t *testing.T) {
@@ -327,7 +369,7 @@ func TestAddTag(t *testing.T) {
 }
 
 func TestRemoveTag(t *testing.T) {
-	server, service := setupTestServer(t)
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	t.Run("successful tag removal", func(t *testing.T) {
@@ -354,7 +396,7 @@ func TestRemoveTag(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	server, service := setupTestServer(t)
+	server, service, _ := setupTestServer(t)
 	defer server.Close()
 
 	t.Run("successful VDI deletion", func(t *testing.T) {
@@ -375,5 +417,64 @@ func TestDelete(t *testing.T) {
 		err := service.Delete(context.Background(), uuid.Nil)
 
 		assert.Error(t, err)
+	})
+}
+
+func TestMigrate(t *testing.T) {
+	t.Run("returns task ID on success", func(t *testing.T) {
+		server, service, mockTask := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		srID := uuid.Must(uuid.FromString(testSRID))
+
+		mockTask.EXPECT().
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testMigrateTaskID}, false).
+			Return(&payloads.Task{ID: testMigrateTaskID}, nil)
+
+		taskID, err := service.Migrate(t.Context(), vdiID, srID)
+		assert.NoError(t, err)
+		assert.Equal(t, testMigrateTaskID, taskID)
+	})
+
+	t.Run("fails when task handling errors", func(t *testing.T) {
+		server, service, mockTask := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		srID := uuid.Must(uuid.FromString(testSRID))
+
+		mockTask.EXPECT().
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testMigrateTaskID}, false).
+			Return(nil, errors.New("boom"))
+
+		taskID, err := service.Migrate(t.Context(), vdiID, srID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VDI migration failed")
+		assert.Empty(t, taskID)
+	})
+
+	t.Run("fails when use invalid SR ID", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		invalidSrID := uuid.Nil
+
+		taskID, err := service.Migrate(t.Context(), vdiID, invalidSrID)
+		assert.Error(t, err)
+		assert.Empty(t, taskID)
+	})
+
+	t.Run("fails when VDI does not exist", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
+		srID := uuid.Must(uuid.FromString(testSRID))
+
+		taskID, err := service.Migrate(t.Context(), vdiID, srID)
+		assert.Error(t, err)
+		assert.Empty(t, taskID)
 	})
 }
