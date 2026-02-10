@@ -10,6 +10,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 )
 
@@ -139,5 +140,61 @@ func TestVDIMigration(t *testing.T) {
 	// 	_, err := client.VDI().Get(ctx, vdiTestID)
 	// 	return err != nil
 	// }, 1*time.Minute, 2*time.Second, "original VDI should be deleted after migration")
+}
 
+func TestVDIGetTasks(t *testing.T) {
+	t.Parallel()
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	// Create and migrate the VDI multiple times to generate some tasks
+	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-tasks", 512*units.MB)
+	srTestID := uuid.Must(uuid.FromString(intTests.testSR.Id))
+	taskID1, err := client.VDI().Migrate(ctx, vdiTestID, srTestID)
+	require.NoError(t, err, "1st migrating VDI should succeed")
+	task, err := client.Task().Wait(ctx, taskID1)
+	require.NoError(t, err, "migration task should complete successfully")
+	require.NotNil(t, task, "migration task result should not be nil")
+	require.Equal(t, payloads.Success, task.Status, "migration task should complete successfully")
+	taskID2, err := client.VDI().Migrate(ctx, vdiTestID, srTestID)
+	require.NoError(t, err, "2nd migrating VDI should succeed")
+	task, err = client.Task().Wait(ctx, taskID2)
+	require.NoError(t, err, "migration task should complete successfully")
+	require.NotNil(t, task, "migration task result should not be nil")
+	require.Equal(t, payloads.Success, task.Status, "migration task should complete successfully")
+
+	t.Run("GetTasksSuccess", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VDI().GetTasks(ctx, vdiTestID, 0, "")
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.GreaterOrEqual(t, len(tasks), 2, "there should be at least 2 tasks associated with the VDI")
+	})
+
+	t.Run("GetTasksWithLimit", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VDI().GetTasks(ctx, vdiTestID, 1, "")
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.Len(t, tasks, 1)
+	})
+
+	t.Run("GetTasksWithFilter", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VDI().GetTasks(ctx, vdiTestID, 0, "status:failure")
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.Len(t, tasks, 0)
+
+		tasks, err = client.VDI().GetTasks(ctx, vdiTestID, 0, "id:"+taskID1)
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.Len(t, tasks, 1)
+	})
+
+	t.Run("GetTasksInvalidVDI", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VDI().GetTasks(ctx, uuid.Must(uuid.FromString("123e4567-e89b-12d3-a456-426655440000")), 0, "")
+		require.Error(t, err)
+		assert.Nil(t, tasks)
+	})
 }

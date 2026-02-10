@@ -141,3 +141,26 @@ func (s *Service) Migrate(ctx context.Context, id uuid.UUID, srId uuid.UUID) (st
 
 	return "", fmt.Errorf("unexpected response from API call: %v", result)
 }
+
+func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
+	path := core.NewPathBuilder().Resource("vdis").ID(id).Resource("tasks").Build()
+
+	params := make(map[string]any)
+	params["fields"] = "*"
+	if limit > 0 {
+		params["limit"] = limit
+	}
+	if filter != "" {
+		params["filter"] = filter
+	}
+
+	var result []*payloads.Task
+
+	err := client.TypedGet(ctx, s.client, path, params, &result)
+	if err != nil {
+		s.log.Error("Failed to get tasks for VDI", zap.String("vdiID", id.String()), zap.Error(err))
+		return nil, err
+	}
+
+	return result, nil
+}

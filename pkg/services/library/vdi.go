@@ -27,6 +27,8 @@ type VDI interface {
 	//   - id: ID of the VDI to delete
 	// Returns an error if the operation fails.
 	Delete(ctx context.Context, id uuid.UUID) error
+	// GetTasks retrieves tasks associated with a VDI, with optional limit and filtering.
+	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
 
 	// VDIActions is a group of actions that can be performed on a VDI.
 	VDIActions

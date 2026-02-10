@@ -42,6 +42,22 @@ var mockVDIs = func() []*payloads.VDI {
 	}
 }
 
+var mockTasks = func() []*payloads.Task {
+	return []*payloads.Task{
+		{
+			ID:     "task-1",
+			Status: payloads.Success,
+			Result: payloads.Result{
+				ID: uuid.Must(uuid.FromString(testVDIID2)),
+			},
+		},
+		{
+			ID:     "task-2",
+			Status: payloads.Failure,
+		},
+	}
+}
+
 const (
 	testVDIID1        = "c77f9955-c1d2-4b39-aa1c-73cdb2dacb7e"
 	testVDIID2        = "d88fa066-d2e3-5c4a-bc2d-84deb3eadcbf"
@@ -189,6 +205,22 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 
 		if err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: testMigrateTaskID}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	// GET /rest/v0/vdis/{id}/tasks - Get tasks for a VDI
+	mux.HandleFunc("GET /rest/v0/vdis/{id}/tasks", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		vdiID := r.PathValue("id")
+		if vdiID != testVDIID1 && vdiID != testVDIID2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		tasks := mockTasks()
+		err := json.NewEncoder(w).Encode(tasks)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	})
 
@@ -476,5 +508,62 @@ func TestMigrate(t *testing.T) {
 		taskID, err := service.Migrate(t.Context(), vdiID, srID)
 		assert.Error(t, err)
 		assert.Empty(t, taskID)
+	})
+}
+
+func TestGetTasks(t *testing.T) {
+	t.Run("passes limit and filter parameters", func(t *testing.T) {
+		limit := 42
+		filter := "filter-to-check"
+		called := false
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			called = true
+			assert.Equal(t, http.MethodGet, r.Method)
+			values := r.URL.Query()
+			assert.Equal(t, fmt.Sprintf("%d", limit), values.Get("limit"))
+			assert.Equal(t, filter, values.Get("filter"))
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode([]*payloads.VDI{})
+			assert.NoError(t, err)
+		})
+		service, server, _ := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+		tasks, err := service.GetTasks(context.Background(), uuid.Must(uuid.FromString(testVDIID1)), limit, filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, tasks)
+		assert.True(t, called)
+	})
+
+	t.Run("returns error on invalid json", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, err := w.Write([]byte("not a json"))
+			assert.NoError(t, err)
+		})
+		service, server, _ := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+		tasks, err := service.GetTasks(context.Background(), uuid.Must(uuid.FromString(testVDIID1)), 0, "")
+		assert.Error(t, err)
+		assert.Nil(t, tasks)
+	})
+
+	t.Run("returns error on http error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+		tasks, err := service.GetTasks(context.Background(), uuid.Must(uuid.FromString(testVDIIDNotFound)), 0, "")
+		assert.Error(t, err)
+		assert.Nil(t, tasks)
+	})
+
+	t.Run("successfully retrieves all tasks", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		tasks, err := service.GetTasks(context.Background(), uuid.Must(uuid.FromString(testVDIID1)), 0, "")
+		assert.NoError(t, err)
+		assert.NotNil(t, tasks)
+		assert.Len(t, tasks, 2)
+		assert.Equal(t, "task-1", tasks[0].ID)
+		assert.Equal(t, "task-2", tasks[1].ID)
 	})
 }
