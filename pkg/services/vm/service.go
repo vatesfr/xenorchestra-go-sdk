@@ -251,3 +251,23 @@ func (s *Service) performAction(ctx context.Context, id uuid.UUID, action string
 
 	return "", fmt.Errorf("unexpected response from API call: %v", result)
 }
+
+func (s *Service) GetVDIs(ctx context.Context, vmID uuid.UUID, limit int, filter string) ([]*payloads.VDI, error) {
+	path := core.NewPathBuilder().Resource("vms").ID(vmID).Resource("vdis").Build()
+
+	params := make(map[string]any)
+	params["fields"] = "*"
+	if limit > 0 {
+		params["limit"] = limit
+	}
+	if filter != "" {
+		params["filter"] = filter
+	}
+
+	var result []*payloads.VDI
+	if err := client.TypedGet(ctx, s.client, path, params, &result); err != nil {
+		s.log.Error("Failed to get VDIs for VM", zap.String("vmID", vmID.String()), zap.Error(err))
+		return nil, err
+	}
+	return result, nil
+}

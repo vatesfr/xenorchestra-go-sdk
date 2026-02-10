@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/go-units"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -338,4 +339,55 @@ func testVMListWithFilter(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, vms)
 	assert.Len(t, vms, 2, "expected 2 VMs with the specified name label")
+}
+
+func TestVMGetVDIs(t *testing.T) {
+	t.Parallel()
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	vmName := testPrefix + "get-vdis-test"
+	params := &payloads.CreateVMParams{
+		NameLabel: vmName,
+		Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+		VDIs: []payloads.VDIParams{
+			{
+				NameLabel: ptr(testPrefix + "vm-vdi-1"),
+				Size:      ptr(int64(1 * units.GB)),
+			},
+			{
+				NameLabel: ptr(testPrefix + "vm-vdi-2"),
+				Size:      ptr(int64(512 * units.MB)),
+			},
+		},
+	}
+
+	vm, err := client.VM().Create(ctx, intTests.testPool.ID, params)
+	require.NoError(t, err, "error while creating VM with VDIs")
+	require.NotNil(t, vm, "created VM should not be nil")
+	// VM can already have the OS disk and the cloud-init disk, so we expect at least 2 VDIs attached
+	require.GreaterOrEqual(t, len(vm.VBDs), 2, "VM should have 2 VBDs attached")
+
+	t.Run("GetVDIsIncludesAttachedDisks", func(t *testing.T) {
+		vdis, err := client.VM().GetVDIs(ctx, vm.ID, 0, "")
+		require.NoError(t, err)
+		require.NotNil(t, vdis)
+		assert.GreaterOrEqual(t, len(vdis), 2, "expected at least two VDIs attached to the VM")
+
+		names := make(map[string]struct{}, len(vdis))
+		for _, vdi := range vdis {
+			names[vdi.NameLabel] = struct{}{}
+		}
+
+		_, found := names[testPrefix+"vm-vdi-1"]
+		assert.True(t, found, "expected VDI 1 to be attached")
+		_, found = names[testPrefix+"vm-vdi-2"]
+		assert.True(t, found, "expected VDI 2 to be attached")
+	})
+
+	t.Run("GetVDIsWithLimit", func(t *testing.T) {
+		vdis, err := client.VM().GetVDIs(ctx, vm.ID, 1, "")
+		require.NoError(t, err)
+		require.NotNil(t, vdis)
+		assert.LessOrEqual(t, len(vdis), 1)
+	})
 }
