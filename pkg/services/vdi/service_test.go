@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/gofrs/uuid"
@@ -107,10 +109,35 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 		}
 	})
 
-	// GET /rest/v0/vdis/{id} - Get specific VDI
+	// GET /rest/v0/vdis/{id} - Get specific VDI or export with format suffix
 	mux.HandleFunc("GET /rest/v0/vdis/{id}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		idStr := r.PathValue("id")
+
+		// Check if this is an export request (contains a dot)
+		if strings.Contains(idStr, ".") {
+			parts := strings.Split(idStr, ".")
+			if len(parts) != 2 {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			vdiID := parts[0]
+			if vdiID != testVDIID1 && vdiID != testVDIID2 {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			format := parts[1]
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, err := w.Write([]byte("export content for format: " + format))
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// Regular get request
 		vdiID, err := uuid.FromString(idStr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -222,6 +249,43 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+	})
+
+	// PUT /rest/v0/vdis/{id} - Import VDI with format suffix
+	mux.HandleFunc("PUT /rest/v0/vdis/{id}", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+
+		// Check if this is an import request (contains a dot)
+		if !strings.Contains(idStr, ".") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		parts := strings.Split(idStr, ".")
+		if len(parts) != 2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		vdiID := parts[0]
+		if vdiID != testVDIID1 && vdiID != testVDIID2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		// Verify Content-Type header
+		if r.Header.Get("Content-Type") != "application/octet-stream" {
+			http.Error(w, "invalid content type", http.StatusBadRequest)
+			return
+		}
+
+		// Verify Content-Length header
+		if r.Header.Get("Content-Length") == "" {
+			http.Error(w, "missing content length", http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	})
 
 	server := httptest.NewServer(mux)
@@ -565,5 +629,120 @@ func TestGetTasks(t *testing.T) {
 		assert.Len(t, tasks, 2)
 		assert.Equal(t, "task-1", tasks[0].ID)
 		assert.Equal(t, "task-2", tasks[1].ID)
+	})
+}
+
+func TestExport(t *testing.T) {
+	t.Run("export with empty format returns error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		result, err := service.Export(context.Background(), vdiID, "")
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "format cannot be empty")
+	})
+
+	t.Run("export non-existent VDI returns error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
+		result, err := service.Export(context.Background(), vdiID, payloads.VDIFormatVHD)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("successfully exports VDI content", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		format := payloads.VDIFormatVHD
+		result, err := service.Export(context.Background(), vdiID, format)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+
+		// Read and verify the content
+		content, err := io.ReadAll(result)
+		assert.NoError(t, err)
+		assert.Contains(t, string(content), "export content for format")
+		result.Close()
+	})
+}
+
+func TestImport(t *testing.T) {
+	t.Run("import with empty format returns error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		content := strings.NewReader("test content")
+		err := service.Import(context.Background(), vdiID, "", content, 12)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "format cannot be empty")
+	})
+
+	t.Run("import with nil content returns error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		err := service.Import(context.Background(), vdiID, payloads.VDIFormatVHD, nil, 100)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "content cannot be nil")
+	})
+
+	t.Run("import with zero or negative size returns error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		testCases := []struct {
+			size int64
+			name string
+		}{
+			{0, "zero size"},
+			{-1, "negative size"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				vdiID := uuid.Must(uuid.FromString(testVDIID1))
+				content := strings.NewReader("test content")
+				err := service.Import(context.Background(), vdiID, payloads.VDIFormatVHD, content, tc.size)
+
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "size must be greater than 0")
+			})
+		}
+	})
+
+	t.Run("import to non-existent VDI returns error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
+		content := strings.NewReader("test content")
+		err := service.Import(context.Background(), vdiID, payloads.VDIFormatVHD, content, 12)
+
+		assert.Error(t, err)
+	})
+
+	t.Run("successfully imports VDI content", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		testContent := "test import content"
+		content := strings.NewReader(testContent)
+		err := service.Import(context.Background(), vdiID, payloads.VDIFormatVHD, content, int64(len(testContent)))
+
+		assert.NoError(t, err)
 	})
 }
