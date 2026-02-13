@@ -50,6 +50,13 @@ const (
 	VDITypeCBTMetadata VDIType = "cbt_metadata"
 )
 
+type VDIFormat string
+
+const (
+	VDIFormatRaw VDIFormat = "raw"
+	VDIFormatVHD VDIFormat = "vhd"
+)
+
 type VDIOperation string
 
 // VDI operation constants

@@ -3,6 +3,7 @@ package vdi
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
@@ -163,4 +164,48 @@ func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter 
 	}
 
 	return result, nil
+}
+
+func (s *Service) Export(ctx context.Context, id uuid.UUID, format payloads.VDIFormat) (io.ReadCloser, error) {
+	if format == "" {
+		return nil, fmt.Errorf("format cannot be empty")
+	}
+
+	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+	endpoint := fmt.Sprintf("%s.%s", path, format)
+
+	resp, err := client.RawGet(ctx, s.client, endpoint)
+	if err != nil {
+		s.log.Error("Failed to export VDI content", zap.String("vdiID", id.String()),
+			zap.String("format", string(format)), zap.Error(err))
+		return nil, err
+	}
+
+	return resp.Body, nil
+}
+
+func (s *Service) Import(
+	ctx context.Context, id uuid.UUID, format payloads.VDIFormat, content io.Reader, size int64) error {
+	if format == "" {
+		return fmt.Errorf("format cannot be empty")
+	}
+	if content == nil {
+		return fmt.Errorf("content cannot be nil")
+	}
+	if size <= 0 {
+		return fmt.Errorf("size must be greater than 0")
+	}
+
+	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+	endpoint := fmt.Sprintf("%s.%s", path, format)
+
+	resp, err := client.RawPut(ctx, s.client, endpoint, content, "application/octet-stream", size)
+	if err != nil {
+		s.log.Error("Failed to import VDI content", zap.String("vdiID", id.String()),
+			zap.String("format", string(format)), zap.Error(err))
+		return err
+	}
+	_ = resp.Body.Close()
+
+	return nil
 }

@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"io"
 
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
@@ -29,6 +30,20 @@ type VDI interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	// GetTasks retrieves tasks associated with a VDI, with optional limit and filtering.
 	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
+	// Export downloads the VDI content in the given format.
+	// Parameters:
+	// - id: ID of the VDI to export
+	// - format: export format (e.g., "raw", "vhd")
+	// Returns a ReadCloser for the exported content or an error if the operation fails.
+	Export(ctx context.Context, id uuid.UUID, format payloads.VDIFormat) (io.ReadCloser, error)
+	// Import uploads VDI content in the given format.
+	// Parameters:
+	// - id: ID of the VDI to import into
+	// - format: format of the content being imported (e.g., "raw", "vhd")
+	// - content: reader for the content to be imported
+	// - size: size of the content in bytes
+	// Returns an error if the operation fails.
+	Import(ctx context.Context, id uuid.UUID, format payloads.VDIFormat, content io.Reader, size int64) error
 
 	// VDIActions is a group of actions that can be performed on a VDI.
 	VDIActions

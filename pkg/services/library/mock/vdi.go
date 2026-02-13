@@ -6,6 +6,7 @@ package mock_library
 
 import (
 	context "context"
+	io "io"
 	reflect "reflect"
 
 	uuid "github.com/gofrs/uuid"
@@ -36,6 +37,49 @@ func (m *MockVDI) EXPECT() *MockVDIMockRecorder {
 	return m.recorder
 }
 
+// AddTag mocks base method.
+func (m *MockVDI) AddTag(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTag", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTag indicates an expected call of AddTag.
+func (mr *MockVDIMockRecorder) AddTag(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockVDI)(nil).AddTag), arg0, arg1, arg2)
+}
+
+// Delete mocks base method.
+func (m *MockVDI) Delete(arg0 context.Context, arg1 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockVDIMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockVDI)(nil).Delete), arg0, arg1)
+}
+
+// Export mocks base method.
+func (m *MockVDI) Export(arg0 context.Context, arg1 uuid.UUID, arg2 payloads.VDIFormat) (io.ReadCloser, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Export", arg0, arg1, arg2)
+	ret0, _ := ret[0].(io.ReadCloser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Export indicates an expected call of Export.
+func (mr *MockVDIMockRecorder) Export(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Export", reflect.TypeOf((*MockVDI)(nil).Export), arg0, arg1, arg2)
+}
+
 // Get mocks base method.
 func (m *MockVDI) Get(arg0 context.Context, arg1 uuid.UUID) (*payloads.VDI, error) {
 	m.ctrl.T.Helper()
@@ -64,4 +108,62 @@ func (m *MockVDI) GetAll(arg0 context.Context, arg1 int, arg2 string) ([]*payloa
 func (mr *MockVDIMockRecorder) GetAll(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockVDI)(nil).GetAll), arg0, arg1, arg2)
+}
+
+// GetTasks mocks base method.
+func (m *MockVDI) GetTasks(arg0 context.Context, arg1 uuid.UUID, arg2 int, arg3 string) ([]*payloads.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTasks", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*payloads.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTasks indicates an expected call of GetTasks.
+func (mr *MockVDIMockRecorder) GetTasks(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTasks", reflect.TypeOf((*MockVDI)(nil).GetTasks), arg0, arg1, arg2, arg3)
+}
+
+// Import mocks base method.
+func (m *MockVDI) Import(arg0 context.Context, arg1 uuid.UUID, arg2 payloads.VDIFormat, arg3 io.Reader, arg4 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Import", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Import indicates an expected call of Import.
+func (mr *MockVDIMockRecorder) Import(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Import", reflect.TypeOf((*MockVDI)(nil).Import), arg0, arg1, arg2, arg3, arg4)
+}
+
+// Migrate mocks base method.
+func (m *MockVDI) Migrate(arg0 context.Context, arg1, arg2 uuid.UUID) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Migrate", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Migrate indicates an expected call of Migrate.
+func (mr *MockVDIMockRecorder) Migrate(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Migrate", reflect.TypeOf((*MockVDI)(nil).Migrate), arg0, arg1, arg2)
+}
+
+// RemoveTag mocks base method.
+func (m *MockVDI) RemoveTag(arg0 context.Context, arg1 uuid.UUID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveTag", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveTag indicates an expected call of RemoveTag.
+func (mr *MockVDIMockRecorder) RemoveTag(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockVDI)(nil).RemoveTag), arg0, arg1, arg2)
 }

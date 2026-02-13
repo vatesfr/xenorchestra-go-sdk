@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"os"
 	"slices"
 	"testing"
 	"time"
@@ -196,5 +197,105 @@ func TestVDIGetTasks(t *testing.T) {
 		tasks, err := client.VDI().GetTasks(ctx, uuid.Must(uuid.FromString("123e4567-e89b-12d3-a456-426655440000")), 0, "")
 		require.Error(t, err)
 		assert.Nil(t, tasks)
+	})
+}
+
+func TestVDIExport(t *testing.T) {
+	t.Parallel()
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-export-import", 10*units.MB)
+
+	t.Run("export in raw", func(t *testing.T) {
+		t.Parallel()
+
+		exportedContent, err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatRaw)
+		require.NoError(t, err, "exporting VDI should succeed")
+		require.NotNil(t, exportedContent, "exported content should not be nil")
+		defer exportedContent.Close()
+
+		// Verify the exported content is in raw format using qemu-img
+		verifyDiskFormat(t, exportedContent, "raw")
+	})
+
+	t.Run("export in vhd", func(t *testing.T) {
+		t.Parallel()
+
+		exportedContent, err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatVHD)
+		require.NoError(t, err, "exporting VDI should succeed")
+		require.NotNil(t, exportedContent, "exported content should not be nil")
+		defer exportedContent.Close()
+
+		// Verify the exported content is in VHD format using qemu-img
+		// Note: qemu-img identifies VHD format as "vpc" (Virtual PC)
+		verifyDiskFormat(t, exportedContent, "vpc")
+	})
+
+}
+
+func TestVDIImportxport(t *testing.T) {
+	t.Parallel()
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	t.Run("with raw disk", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a VDI to import into
+		vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-import-raw", 10*units.MB)
+
+		// Create a test RAW disk image
+		diskPath := createTestDiskImage(t, "raw", 10*units.MB)
+		defer os.Remove(diskPath)
+
+		// Open the disk image file
+		file, err := os.Open(diskPath)
+		require.NoError(t, err, "opening test disk should succeed")
+		defer file.Close()
+
+		// Get file size
+		fileInfo, err := file.Stat()
+		require.NoError(t, err, "getting file info should succeed")
+
+		// Import the disk into the VDI
+		err = client.VDI().Import(ctx, vdiID, payloads.VDIFormatRaw, file, fileInfo.Size())
+		require.NoError(t, err, "importing RAW disk should succeed")
+
+		// Verify the VDI exists and has expected properties
+		vdi, err := client.VDI().Get(ctx, vdiID)
+		require.NoError(t, err, "getting imported VDI should succeed")
+		assert.Equal(t, vdiID, vdi.ID, "VDI ID should match")
+		assert.Equal(t, testPrefix+"vdi-import-raw", vdi.NameLabel, "VDI name should match")
+		assert.Greater(t, vdi.Size, int64(0), "VDI should have non-zero size")
+	})
+
+	t.Run("with vhd disk", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a VDI to import into
+		vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-import-vhd", 10*units.MB)
+
+		// Create a test VHD disk image
+		diskPath := createTestDiskImage(t, "vpc", 10*units.MB)
+		defer os.Remove(diskPath)
+
+		// Open the disk image file
+		file, err := os.Open(diskPath)
+		require.NoError(t, err, "opening test disk should succeed")
+		defer file.Close()
+
+		// Get file size
+		fileInfo, err := file.Stat()
+		require.NoError(t, err, "getting file info should succeed")
+
+		// Import the disk into the VDI
+		err = client.VDI().Import(ctx, vdiID, payloads.VDIFormatVHD, file, fileInfo.Size())
+		require.NoError(t, err, "importing VHD disk should succeed")
+
+		// Verify the VDI exists and has expected properties
+		vdi, err := client.VDI().Get(ctx, vdiID)
+		require.NoError(t, err, "getting imported VDI should succeed")
+		assert.Equal(t, vdiID, vdi.ID, "VDI ID should match")
+		assert.Equal(t, testPrefix+"vdi-import-vhd", vdi.NameLabel, "VDI name should match")
+		assert.Greater(t, vdi.Size, int64(0), "VDI should have non-zero size")
 	})
 }
