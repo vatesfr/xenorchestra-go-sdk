@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"io"
 	"os"
 	"slices"
 	"testing"
@@ -209,31 +210,29 @@ func TestVDIExport(t *testing.T) {
 	t.Run("export in raw", func(t *testing.T) {
 		t.Parallel()
 
-		exportedContent, err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatRaw)
+		err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatRaw, func(reader io.Reader) error {
+			// Verify the exported content is in raw format using qemu-img
+			require.NotNil(t, reader, "exported content should not be nil")
+			return verifyDiskFormat(t, reader, "raw")
+		})
 		require.NoError(t, err, "exporting VDI should succeed")
-		require.NotNil(t, exportedContent, "exported content should not be nil")
-		defer exportedContent.Close()
-
-		// Verify the exported content is in raw format using qemu-img
-		verifyDiskFormat(t, exportedContent, "raw")
 	})
 
 	t.Run("export in vhd", func(t *testing.T) {
 		t.Parallel()
 
-		exportedContent, err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatVHD)
+		err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatVHD, func(reader io.Reader) error {
+			// Verify the exported content is in VHD format using qemu-img
+			// Note: qemu-img identifies VHD format as "vpc" (Virtual PC)
+			require.NotNil(t, reader, "exported content should not be nil")
+			return verifyDiskFormat(t, reader, "vpc")
+		})
 		require.NoError(t, err, "exporting VDI should succeed")
-		require.NotNil(t, exportedContent, "exported content should not be nil")
-		defer exportedContent.Close()
-
-		// Verify the exported content is in VHD format using qemu-img
-		// Note: qemu-img identifies VHD format as "vpc" (Virtual PC)
-		verifyDiskFormat(t, exportedContent, "vpc")
 	})
 
 }
 
-func TestVDIImportxport(t *testing.T) {
+func TestVDIImportExport(t *testing.T) {
 	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 

@@ -638,11 +638,23 @@ func TestExport(t *testing.T) {
 		defer server.Close()
 
 		vdiID := uuid.Must(uuid.FromString(testVDIID1))
-		result, err := service.Export(context.Background(), vdiID, "")
+		err := service.Export(context.Background(), vdiID, "", func(io.Reader) error {
+			return nil
+		})
 
 		assert.Error(t, err)
-		assert.Nil(t, result)
 		assert.Contains(t, err.Error(), "format cannot be empty")
+	})
+
+	t.Run("export with nil callback returns error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		vdiID := uuid.Must(uuid.FromString(testVDIID1))
+		err := service.Export(context.Background(), vdiID, payloads.VDIFormatVHD, nil)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "callback function cannot be nil")
 	})
 
 	t.Run("export non-existent VDI returns error", func(t *testing.T) {
@@ -650,10 +662,11 @@ func TestExport(t *testing.T) {
 		defer server.Close()
 
 		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
-		result, err := service.Export(context.Background(), vdiID, payloads.VDIFormatVHD)
+		err := service.Export(context.Background(), vdiID, payloads.VDIFormatVHD, func(io.Reader) error {
+			return nil
+		})
 
 		assert.Error(t, err)
-		assert.Nil(t, result)
 	})
 
 	t.Run("successfully exports VDI content", func(t *testing.T) {
@@ -662,16 +675,15 @@ func TestExport(t *testing.T) {
 
 		vdiID := uuid.Must(uuid.FromString(testVDIID1))
 		format := payloads.VDIFormatVHD
-		result, err := service.Export(context.Background(), vdiID, format)
+		err := service.Export(context.Background(), vdiID, format, func(reader io.Reader) error {
+			// Read and verify the content
+			content, readErr := io.ReadAll(reader)
+			assert.NoError(t, readErr)
+			assert.Contains(t, string(content), "export content for format")
+			return readErr
+		})
 
 		assert.NoError(t, err)
-		assert.NotNil(t, result)
-
-		// Read and verify the content
-		content, err := io.ReadAll(result)
-		assert.NoError(t, err)
-		assert.Contains(t, string(content), "export content for format")
-		result.Close()
 	})
 }
 

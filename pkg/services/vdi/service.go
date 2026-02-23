@@ -166,9 +166,12 @@ func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter 
 	return result, nil
 }
 
-func (s *Service) Export(ctx context.Context, id uuid.UUID, format payloads.VDIFormat) (io.ReadCloser, error) {
+func (s *Service) Export(ctx context.Context, id uuid.UUID, format payloads.VDIFormat, fn func(io.Reader) error) error {
 	if format == "" {
-		return nil, fmt.Errorf("format cannot be empty")
+		return fmt.Errorf("format cannot be empty")
+	}
+	if fn == nil {
+		return fmt.Errorf("callback function cannot be nil")
 	}
 
 	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
@@ -178,10 +181,11 @@ func (s *Service) Export(ctx context.Context, id uuid.UUID, format payloads.VDIF
 	if err != nil {
 		s.log.Error("Failed to export VDI content", zap.String("vdiID", id.String()),
 			zap.String("format", string(format)), zap.Error(err))
-		return nil, err
+		return err
 	}
+	defer resp.Body.Close()
 
-	return resp.Body, nil
+	return fn(resp.Body)
 }
 
 func (s *Service) Import(

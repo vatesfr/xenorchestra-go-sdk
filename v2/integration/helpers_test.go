@@ -89,39 +89,53 @@ func createVDIForTest(t *testing.T, ctx context.Context, client v1.XOClient, nam
 
 // verifyDiskFormat saves the exported content to a temporary file, runs qemu-img info to verify the format
 // comparing them against the expected values.
-func verifyDiskFormat(t *testing.T, exportedContent io.ReadCloser, expectedFormat string) {
+func verifyDiskFormat(t *testing.T, exportedContent io.Reader, expectedFormat string) error {
 	t.Helper()
 
 	// Create a temporary file to save the exported content
 	tmpFile, err := os.CreateTemp("", "vdi-export-*.img")
-	require.NoError(t, err, "creating temporary file should succeed")
+	if err != nil {
+		return fmt.Errorf("creating temporary file: %w", err)
+	}
 	defer os.Remove(tmpFile.Name())
 	defer tmpFile.Close()
 
 	// Copy the exported content to the temporary file
 	_, err = io.Copy(tmpFile, exportedContent)
-	require.NoError(t, err, "copying exported content to file should succeed")
+	if err != nil {
+		return fmt.Errorf("copying exported content to file: %w", err)
+	}
 
 	// Close the file to ensure all data is flushed
 	err = tmpFile.Close()
-	require.NoError(t, err, "closing temporary file should succeed")
+	if err != nil {
+		return fmt.Errorf("closing temporary file: %w", err)
+	}
 	// Store the file path in a variable to satisfy gosec
 	tmpPath := tmpFile.Name()
 
 	// Run qemu-img info to get the format and size
 	cmd := exec.Command("qemu-img", "info", "--output=json", tmpPath)
 	output, err := cmd.CombinedOutput()
-	require.NoError(t, err, "qemu-img info should succeed: %s", string(output))
+	if err != nil {
+		return fmt.Errorf("qemu-img info failed: %w: %s", err, string(output))
+	}
 
 	// Parse the JSON output
 	var info struct {
 		Format string `json:"format"`
 	}
 	err = json.Unmarshal(output, &info)
-	require.NoError(t, err, "parsing qemu-img info output should succeed")
+	if err != nil {
+		return fmt.Errorf("parsing qemu-img info output: %w", err)
+	}
 
 	// Verify the format
-	assert.Equal(t, expectedFormat, info.Format, "disk format should match expected format")
+	if info.Format != expectedFormat {
+		return fmt.Errorf("disk format mismatch: got %q, want %q", info.Format, expectedFormat)
+	}
+
+	return nil
 }
 
 // createTestDiskImage creates a temporary disk image with qemu-img for import tests.

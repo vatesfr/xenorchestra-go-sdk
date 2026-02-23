@@ -66,18 +66,17 @@ func (mr *MockVDIMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // Export mocks base method.
-func (m *MockVDI) Export(arg0 context.Context, arg1 uuid.UUID, arg2 payloads.VDIFormat) (io.ReadCloser, error) {
+func (m *MockVDI) Export(arg0 context.Context, arg1 uuid.UUID, arg2 payloads.VDIFormat, arg3 func(io.Reader) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Export", arg0, arg1, arg2)
-	ret0, _ := ret[0].(io.ReadCloser)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "Export", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Export indicates an expected call of Export.
-func (mr *MockVDIMockRecorder) Export(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockVDIMockRecorder) Export(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Export", reflect.TypeOf((*MockVDI)(nil).Export), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Export", reflect.TypeOf((*MockVDI)(nil).Export), arg0, arg1, arg2, arg3)
 }
 
 // Get mocks base method.

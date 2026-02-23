@@ -30,12 +30,14 @@ type VDI interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	// GetTasks retrieves tasks associated with a VDI, with optional limit and filtering.
 	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
-	// Export downloads the VDI content in the given format.
+	// Export streams the VDI content in the given format.
 	// Parameters:
 	// - id: ID of the VDI to export
 	// - format: export format (e.g., "raw", "vhd")
-	// Returns a ReadCloser for the exported content or an error if the operation fails.
-	Export(ctx context.Context, id uuid.UUID, format payloads.VDIFormat) (io.ReadCloser, error)
+	// - fn: callback function that receives the stream reader. The service handles resource cleanup automatically.
+	// The callback receives the io.Reader and is responsible for consuming the stream.
+	// The underlying HTTP connection is automatically closed after the callback returns.
+	Export(ctx context.Context, id uuid.UUID, format payloads.VDIFormat, fn func(io.Reader) error) error
 	// Import uploads VDI content in the given format.
 	// Parameters:
 	// - id: ID of the VDI to import into
