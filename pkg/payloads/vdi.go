@@ -28,11 +28,6 @@ type VDI struct {
 	XapiRef           string                  `json:"_xapiRef"`
 }
 
-type ResourceType string
-
-// VDI resource type identifier
-const VDIResourceType ResourceType = "VDI"
-
 type VDIType string
 
 // VDI type constants

@@ -136,11 +136,7 @@ func (s *Service) Migrate(ctx context.Context, id uuid.UUID, srId uuid.UUID) (st
 		return "", fmt.Errorf("VDI migration failed: %w", err)
 	}
 
-	if taskResult != nil {
-		return taskResult.ID, nil
-	}
-
-	return "", fmt.Errorf("unexpected response from API call: %v", result)
+	return taskResult.ID, nil
 }
 
 func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {

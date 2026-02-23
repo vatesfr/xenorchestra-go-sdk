@@ -75,7 +75,7 @@ type HostCertificate struct {
 type Host struct {
 	ID                uuid.UUID              `json:"id"`
 	Uuid              string                 `json:"uuid"`
-	Type              string                 `json:"type"`
+	Type              ResourceType           `json:"type"`
 	NameLabel         string                 `json:"name_label"`
 	NameDescription   string                 `json:"name_description"`
 	Address           string                 `json:"address"`

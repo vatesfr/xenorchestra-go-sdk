@@ -7,12 +7,6 @@ type PoolCPUs struct {
 	Sockets int `json:"sockets"`
 }
 
-type PoolType string
-
-const (
-	PoolTypePool PoolType = "pool"
-)
-
 type Pool struct {
 	AutoPoweron               bool              `json:"auto_poweron"`
 	CurrentOperations         map[string]any    `json:"current_operations"`
@@ -31,7 +25,7 @@ type Pool struct {
 	VTPMSupported             bool              `json:"vtpmSupported"`
 	PlatformVersion           string            `json:"platform_version"`
 	ID                        uuid.UUID         `json:"id"`
-	Type                      PoolType          `json:"type"`
+	Type                      ResourceType      `json:"type"`
 	UUID                      uuid.UUID         `json:"uuid"`
 	PoolRef                   string            `json:"$pool"`
 	PoolID                    uuid.UUID         `json:"$poolId"`
