@@ -153,7 +153,10 @@ func (c *Client) buildURL(endpoint string) url.URL {
 	return reqURL
 }
 
-func (c *Client) doRequest(req *http.Request, readBody bool) (*http.Response, []byte, error) {
+// doRequest performs an HTTP request and returns the raw response.
+// The caller is responsible for closing the response body when finished reading it.
+// For error responses (non-2xx), the body is read, closed, and included in the error message.
+func (c *Client) doRequest(req *http.Request) (*http.Response, error) {
 	req.AddCookie(&http.Cookie{
 		Name:  "authenticationToken",
 		Value: c.AuthToken.String(),
@@ -161,29 +164,19 @@ func (c *Client) doRequest(req *http.Request, readBody bool) (*http.Response, []
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
-		return nil, nil, core.ErrFailedToDoRequest.WithArgs(err, req.URL.String())
+		return nil, core.ErrFailedToDoRequest.WithArgs(err, req.URL.String())
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		bodyBytes, readErr := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 		if readErr != nil {
-			return nil, nil, core.ErrFailedToReadResponse.WithArgs(readErr, "")
+			return nil, core.ErrFailedToReadResponse.WithArgs(readErr, "")
 		}
-		return nil, nil, fmt.Errorf("API error: %s - %s", resp.Status, string(bodyBytes))
+		return nil, fmt.Errorf("API error: %s - %s", resp.Status, string(bodyBytes))
 	}
 
-	if !readBody {
-		return resp, nil, nil
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if err != nil {
-		return nil, nil, core.ErrFailedToReadResponse.WithArgs(err, string(bodyBytes))
-	}
-
-	return resp, bodyBytes, nil
+	return resp, nil
 }
 
 func (c *Client) do(ctx context.Context, method, endpoint string, params map[string]any, result any) error {
@@ -214,9 +207,15 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	_, bodyBytes, err := c.doRequest(req, true)
+	resp, err := c.doRequest(req)
 	if err != nil {
 		return err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return core.ErrFailedToReadResponse.WithArgs(err, string(bodyBytes))
 	}
 
 	// Parse response as JSON first; if it fails and the expected result is a string, fall back to raw string.
@@ -234,6 +233,9 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 	return nil
 }
 
+// doRaw performs a raw HTTP request and returns the response.
+// The caller is responsible for closing the response body when finished reading it.
+// This is useful for endpoints that return binary data or where the caller needs direct control over body consumption.
 func (c *Client) doRaw(ctx context.Context, method, endpoint string,
 	body io.Reader, contentType string, contentLength ...int64) (*http.Response, error) {
 	reqURL := c.buildURL(endpoint)
@@ -251,8 +253,7 @@ func (c *Client) doRaw(ctx context.Context, method, endpoint string,
 		req.ContentLength = contentLength[0]
 	}
 
-	resp, _, err := c.doRequest(req, false)
-	return resp, err
+	return c.doRequest(req)
 }
 
 func (c *Client) get(ctx context.Context, endpoint string, params map[string]any, result any) error {
