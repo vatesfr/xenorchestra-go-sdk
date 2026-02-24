@@ -115,7 +115,6 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *Service) Migrate(ctx context.Context, id uuid.UUID, srId uuid.UUID) (string, error) {
-
 	path := core.NewPathBuilder().Resource("vdis").ID(id).ActionsGroup().Action("migrate").Build()
 
 	var result payloads.TaskIDResponse

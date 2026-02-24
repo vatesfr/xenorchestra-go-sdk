@@ -121,6 +121,7 @@ func (c *Client) authenticate(username, password string) (Token, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	// #nosec G704 -- The URL is provided by the SDK user via configuration, this is not an SSRF vulnerability
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send request: %w", err)
@@ -162,6 +163,7 @@ func (c *Client) doRequest(req *http.Request) (*http.Response, error) {
 		Value: c.AuthToken.String(),
 	})
 
+	// #nosec G704 -- The URL is provided by the SDK user via configuration, this is not an SSRF vulnerability
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return nil, core.ErrFailedToDoRequest.WithArgs(err, req.URL.String())

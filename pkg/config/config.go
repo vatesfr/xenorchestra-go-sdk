@@ -13,7 +13,7 @@ import (
 type Config struct {
 	Url                string
 	Username           string
-	Password           string
+	Password           string //gosec:disable G117 // TODO: remove password field and use token-based authentication only
 	Token              string
 	InsecureSkipVerify bool
 	// Mostly used for log level.

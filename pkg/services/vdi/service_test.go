@@ -93,6 +93,7 @@ func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Servic
 	return New(restClient, mockTask, log).(*Service), server, mockTask
 }
 
+// #nosec G705 -- This is a test server for unit tests, so we can ignore the gosec warning
 func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) {
 	mux := http.NewServeMux()
 
@@ -291,7 +292,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 	server := httptest.NewServer(mux)
 
 	restClient := &client.Client{
-		HttpClient: http.DefaultClient,
+		HttpClient: server.Client(),
 		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
 		AuthToken:  "test-token",
 	}

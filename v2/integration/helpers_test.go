@@ -115,6 +115,7 @@ func verifyDiskFormat(t *testing.T, exportedContent io.Reader, expectedFormat st
 	tmpPath := tmpFile.Name()
 
 	// Run qemu-img info to get the format and size
+	// #nosec G702 -- tmpPath is a temporary file created by this function
 	cmd := exec.Command("qemu-img", "info", "--output=json", tmpPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -140,6 +141,8 @@ func verifyDiskFormat(t *testing.T, exportedContent io.Reader, expectedFormat st
 
 // createTestDiskImage creates a temporary disk image with qemu-img for import tests.
 // Returns the path to the created image file. The caller is responsible for cleanup.
+//
+//gosec:disable G702 // This is a test helper that creates temporary files for testing
 func createTestDiskImage(t *testing.T, format string, size int64) string {
 	t.Helper()
 
