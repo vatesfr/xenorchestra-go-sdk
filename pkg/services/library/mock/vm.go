@@ -125,6 +125,21 @@ func (mr *MockVMMockRecorder) GetByID(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockVM)(nil).GetByID), arg0, arg1)
 }
 
+// GetVDIs mocks base method.
+func (m *MockVM) GetVDIs(arg0 context.Context, arg1 uuid.UUID, arg2 int, arg3 string) ([]*payloads.VDI, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetVDIs", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*payloads.VDI)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetVDIs indicates an expected call of GetVDIs.
+func (mr *MockVMMockRecorder) GetVDIs(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVDIs", reflect.TypeOf((*MockVM)(nil).GetVDIs), arg0, arg1, arg2, arg3)
+}
+
 // HardReboot mocks base method.
 func (m *MockVM) HardReboot(arg0 context.Context, arg1 uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()

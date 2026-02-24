@@ -16,6 +16,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/pool"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/task"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vdi"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vm"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 	"go.uber.org/zap"
@@ -26,6 +27,7 @@ type XOClient struct {
 	taskService library.Task
 	poolService library.Pool
 	hostService library.Host
+	vdiService  library.VDI
 	// We can provide access to the v1 client directly, allowing users to:
 	// 1. Access v1 functionality without initializing a separate client
 	// 2. Use v2 features while maintaining backward compatibility
@@ -87,12 +89,14 @@ func New(config *config.Config) (library.Library, error) {
 	taskService := task.New(client, log)
 	poolService := pool.New(client, taskService, log)
 	hostService := host.New(client, log)
+	vdiService := vdi.New(client, taskService, log)
 
 	xoClient := &XOClient{
 		vmService:   vm.New(client, taskService, poolService, log),
 		taskService: taskService,
 		poolService: poolService,
 		hostService: hostService,
+		vdiService:  vdiService,
 		v1Config:    v1Config,
 		log:         log,
 	}
@@ -135,6 +139,10 @@ func (c *XOClient) Pool() library.Pool {
 
 func (c *XOClient) Host() library.Host {
 	return c.hostService
+}
+
+func (c *XOClient) VDI() library.VDI {
+	return c.vdiService
 }
 
 func (c *XOClient) V1Client() v1.XOClient {

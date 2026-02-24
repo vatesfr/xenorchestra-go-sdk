@@ -121,6 +121,7 @@ func (c *Client) authenticate(username, password string) (Token, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	// #nosec G704 -- The URL is provided by the SDK user via configuration, this is not an SSRF vulnerability
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send request: %w", err)
@@ -141,15 +142,47 @@ func (c *Client) authenticate(username, password string) (Token, error) {
 	return "", fmt.Errorf("no auth token found")
 }
 
-func (c *Client) do(ctx context.Context, method, endpoint string, params map[string]any, result any) error {
+func (c *Client) buildURL(endpoint string) url.URL {
 	reqURL := *c.BaseURL
 
-	// We are using the v0 REST API, but also the previous REST API
 	if strings.HasPrefix(endpoint, "api/") {
 		reqURL.Path = strings.TrimSuffix(reqURL.Path, core.RestV0Path)
 	} else {
 		reqURL.Path = path.Join(reqURL.Path, endpoint)
 	}
+
+	return reqURL
+}
+
+// doRequest performs an HTTP request and returns the raw response.
+// The caller is responsible for closing the response body when finished reading it.
+// For error responses (non-2xx), the body is read, closed, and included in the error message.
+func (c *Client) doRequest(req *http.Request) (*http.Response, error) {
+	req.AddCookie(&http.Cookie{
+		Name:  "authenticationToken",
+		Value: c.AuthToken.String(),
+	})
+
+	// #nosec G704 -- The URL is provided by the SDK user via configuration, this is not an SSRF vulnerability
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return nil, core.ErrFailedToDoRequest.WithArgs(err, req.URL.String())
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return nil, core.ErrFailedToReadResponse.WithArgs(readErr, "")
+		}
+		return nil, fmt.Errorf("API error: %s - %s", resp.Status, string(bodyBytes))
+	}
+
+	return resp, nil
+}
+
+func (c *Client) do(ctx context.Context, method, endpoint string, params map[string]any, result any) error {
+	reqURL := c.buildURL(endpoint)
 
 	var reqBody io.Reader
 	if params != nil && (method == "POST" || method == "PUT" || method == "PATCH") {
@@ -176,24 +209,15 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	req.AddCookie(&http.Cookie{
-		Name:  "authenticationToken",
-		Value: c.AuthToken.String(),
-	})
-
-	resp, err := c.HttpClient.Do(req)
+	resp, err := c.doRequest(req)
 	if err != nil {
-		return core.ErrFailedToDoRequest.WithArgs(err, reqURL.String())
+		return err
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return core.ErrFailedToReadResponse.WithArgs(err, string(bodyBytes))
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("API error: %s - %s", resp.Status, string(bodyBytes))
 	}
 
 	// Parse response as JSON first; if it fails and the expected result is a string, fall back to raw string.
@@ -209,6 +233,29 @@ func (c *Client) do(ctx context.Context, method, endpoint string, params map[str
 	}
 
 	return nil
+}
+
+// doRaw performs a raw HTTP request and returns the response.
+// The caller is responsible for closing the response body when finished reading it.
+// This is useful for endpoints that return binary data or where the caller needs direct control over body consumption.
+func (c *Client) doRaw(ctx context.Context, method, endpoint string,
+	body io.Reader, contentType string, contentLength ...int64) (*http.Response, error) {
+	reqURL := c.buildURL(endpoint)
+	req, err := http.NewRequestWithContext(ctx, method, reqURL.String(), body)
+	if err != nil {
+		return nil, core.ErrFailedToMakeRequest.WithArgs(err, reqURL.String())
+	}
+
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+
+	// Set Content-Length if provided
+	if len(contentLength) > 0 && contentLength[0] >= 0 {
+		req.ContentLength = contentLength[0]
+	}
+
+	return c.doRequest(req)
 }
 
 func (c *Client) get(ctx context.Context, endpoint string, params map[string]any, result any) error {
@@ -343,4 +390,13 @@ func TypedPatch[P any, R any](ctx context.Context, c *Client, endpoint string, p
 		}
 	}
 	return c.patch(ctx, endpoint, paramsMap, result)
+}
+
+func RawGet(ctx context.Context, c *Client, endpoint string) (*http.Response, error) {
+	return c.doRaw(ctx, "GET", endpoint, nil, "")
+}
+
+func RawPut(ctx context.Context, c *Client, endpoint string,
+	body io.Reader, contentType string, contentLength ...int64) (*http.Response, error) {
+	return c.doRaw(ctx, "PUT", endpoint, body, contentType, contentLength...)
 }

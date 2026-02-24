@@ -32,7 +32,7 @@ func TestAuthenticate(t *testing.T) {
 		if r.URL.Path == "/auth/login" {
 			var creds struct {
 				Username string `json:"username"`
-				Password string `json:"password"`
+				Password string `json:"password"` //gosec:disable G117
 			}
 			_ = json.NewDecoder(r.Body).Decode(&creds)
 

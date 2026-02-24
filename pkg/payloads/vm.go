@@ -66,6 +66,7 @@ type VM struct {
 	PoolID             uuid.UUID         `json:"$poolId,omitempty"`
 	Container          uuid.UUID         `json:"$container,omitempty"`
 	Snapshots          []uuid.UUID       `json:"snapshots,omitempty"`
+	Type               ResourceType      `json:"type"`
 }
 
 type Memory struct {

@@ -42,6 +42,7 @@ func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (library
 	return mockService, server
 }
 
+// #nosec G706 -- Log injection as it's test code and we control the input
 func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 	// Compile regex pattern once for efficiency
 	taskURLRegex := regexp.MustCompile(`(?m)^/rest/v0/tasks/([^/]+)(?:/([^/]+))?$`)

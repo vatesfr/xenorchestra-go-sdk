@@ -162,7 +162,7 @@ const (
 type Config struct {
 	Url                string
 	Username           string
-	Password           string
+	Password           string //gosec:disable G117 // use token-based authentication, keeping for backward compatibility
 	Token              string
 	InsecureSkipVerify bool
 	RetryMode          RetryMode

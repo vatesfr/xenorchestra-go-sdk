@@ -356,6 +356,7 @@ func (c *Client) InsertCd(vmId, cdId string) error {
 	return c.Call("vm.insertCd", params, &success)
 }
 
+// #nosec G704 -- ignoring this as migration to v2 SDK is in progress
 func (c *Client) CreateVDI(vdiReq CreateVDIReq) (VDI, error) {
 	file, err := os.Open(vdiReq.Filepath)
 	if err != nil {

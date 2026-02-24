@@ -29,6 +29,8 @@ type VM interface {
 	// Not implemented yet
 	Update(ctx context.Context, vm *payloads.VM) (*payloads.VM, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	// GetVDIs retrieves VDIs associated with a VM, with optional limit and filtering.
+	GetVDIs(ctx context.Context, vmID uuid.UUID, limit int, filter string) ([]*payloads.VDI, error)
 
 	// VMActions is a group of actions that can be performed on a VM.
 	VMActions

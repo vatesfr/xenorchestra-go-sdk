@@ -85,6 +85,7 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_PASSWORD` | Password | `password123` | If no token |
 | `XOA_TOKEN` | Authentication token | `xxxxxxx` | If no credentials |
 | `XOA_POOL` | Test pool Name Label | `My Pool` | ✅ |
+| `XOA_STORAGE` | Test storage repository Name Label | `My SR` | ✅ |
 | `XOA_TEMPLATE` | Template Name Label | `Debian 12` | ✅ |
 | `XOA_DEVELOPMENT`| Enable debug logs | `true` | ❌ |
 | `XOA_TEST_PREFIX`| Custom resource prefix | `ci-` | ❌ |
@@ -101,6 +102,7 @@ export XOA_URL="https://xoa.lab.local"
 export XOA_TOKEN="token"
 export XOA_POOL="Pool A"
 export XOA_TEMPLATE="Debian 12"
+export XOA_STORAGE="storage repository name"
 
 make test-integration
 ```

@@ -1,5 +1,23 @@
 # v2 Integration Tests - Quick Start
 
+## System Prerequisites
+
+### Required Software
+
+- **Go 1.21+**
+- **qemu-img**: Required for VDI export/import tests
+
+### Why qemu-img?
+
+VDI export/import tests use `qemu-img` to:
+- **Create test disk images** in various formats (RAW, VHD/VPC)
+- **Verify exported disk format and size** using `qemu-img info --output=json`
+
+If `qemu-img` is not installed, VDI-related tests will fail with:
+```
+exec: "qemu-img": executable file not found in $PATH
+```
+
 ## Required Configuration
 
 ```bash
@@ -11,6 +29,7 @@ export XOA_TOKEN="token"
 
 export XOA_POOL="pool-name"
 export XOA_TEMPLATE="template-name"
+export XOA_STORAGE="storage-repository-name"
 ```
 
 Optional:
@@ -65,6 +84,11 @@ Shared resources are available via the `intTests` global variable:
 ### Shared Helpers
 Common setup logic is centralized in `helpers_test.go`:
 - `createVMsForTest(t, ctx, client.Pool(), count, prefix)`: Creates multiple VMs using the test template.
+- `waitForTask(t, ctx, client, taskID)`: Waits until the task with the given ID is no longer pending and returns the final task details.
+- `waitForVMReady(t, ctx, client, vmID)`: Waits until the VM is in the Running state and has a MainIpAddress assigned, indicating it's ready for use.
+- `createVDIForTest(t, ctx, client, name, size)`: Creates a VDI with the specified name and size using the v1 client and returns its ID.
+- `createTestDiskImage(t, format, size)`: Creates a temporary disk image with qemu-img.
+- `verifyDiskFormat(t, exportedContent, expectedFormat)`: Saves the exported content to a temporary file, runs qemu-img info to verify the format.
 
 ### List with filter
 ```go
@@ -108,6 +132,7 @@ go test -v ./v2/integration/... 2>&1 | grep -i error
 | "failed to find pool" | Check exact pool name |
 | "cannot connect" | Verify `XOA_URL` |
 | Orphaned resources | Check `defer cleanup()` |
+| `qemu-img: executable file not found` | Install qemu-img (see System Prerequisites) |
 
 ---
 
