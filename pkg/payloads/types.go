@@ -5,6 +5,7 @@ type ResourceType string
 
 // Resource type constants
 const (
+	ResourceTypeVBD  ResourceType = "VBD"
 	ResourceTypeVDI  ResourceType = "VDI"
 	ResourceTypePool ResourceType = "pool"
 	ResourceTypeHost ResourceType = "host"
