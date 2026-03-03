@@ -162,34 +162,33 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *Service) Start(ctx context.Context, id uuid.UUID, hostID *uuid.UUID) (string, error) {
-	payload := map[string]any{
-		"id": id.String(),
-	}
+	var payload any
 	if hostID != nil {
-		payload["hostId"] = hostID.String()
+		payload = map[string]any{
+			"hostId": hostID.String(),
+		}
 	}
 	return s.performAction(ctx, id, "start", payload)
 }
 
 func (s *Service) CleanShutdown(ctx context.Context, id uuid.UUID) (string, error) {
-	return s.performAction(ctx, id, "clean_shutdown", map[string]any{"id": id.String()})
+	return s.performAction(ctx, id, "clean_shutdown", nil)
 }
 
 func (s *Service) HardShutdown(ctx context.Context, id uuid.UUID) (string, error) {
-	return s.performAction(ctx, id, "hard_shutdown", map[string]any{"id": id.String()})
+	return s.performAction(ctx, id, "hard_shutdown", nil)
 }
 
 func (s *Service) CleanReboot(ctx context.Context, id uuid.UUID) (string, error) {
-	return s.performAction(ctx, id, "clean_reboot", map[string]any{"id": id.String()})
+	return s.performAction(ctx, id, "clean_reboot", nil)
 }
 
 func (s *Service) HardReboot(ctx context.Context, id uuid.UUID) (string, error) {
-	return s.performAction(ctx, id, "hard_reboot", map[string]any{"id": id.String()})
+	return s.performAction(ctx, id, "hard_reboot", nil)
 }
 
 func (s *Service) Snapshot(ctx context.Context, id uuid.UUID, name string) (string, error) {
 	return s.performAction(ctx, id, "snapshot", map[string]any{
-		"id":         id.String(),
 		"name_label": name,
 	})
 }

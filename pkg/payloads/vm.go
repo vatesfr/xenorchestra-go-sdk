@@ -50,7 +50,7 @@ type VM struct {
 	Memory             Memory            `json:"memory"`
 	CPUs               CPUs              `json:"CPUs"`
 	VIFs               []string          `json:"VIFs,omitempty"`
-	VBDs               []string          `json:"$VBDs,omitempty"`
+	VBDs               []uuid.UUID       `json:"$VBDs,omitempty"`
 	Tags               []string          `json:"tags,omitempty"`
 	AutoPoweron        bool              `json:"auto_poweron"`
 	HA                 string            `json:"high_availability,omitempty"`
