@@ -69,6 +69,26 @@ func waitForVMReady(t *testing.T, ctx context.Context, client library.Library, v
 	}, 2*time.Minute, 10*time.Second, "VM %s should be running and reported an IP", vmID)
 }
 
+// createVBDForTest attaches vdiID to vmID by creating a new VBD, and returns the new VBD's UUID.
+// It waits for the VBD to become visible via GET before returning (the object may not be immediately queryable).
+func createVBDForTest(t *testing.T, ctx context.Context, client library.Library,
+	vmID, vdiID uuid.UUID,
+) uuid.UUID {
+	t.Helper()
+	vbdID, err := client.VBD().Create(ctx, &payloads.CreateVBDParams{
+		VM:  vmID,
+		VDI: vdiID,
+	})
+	require.NoError(t, err, "creating VBD should succeed")
+	require.NotEqual(t, uuid.Nil, vbdID, "created VBD ID should not be nil")
+	// The VBD may not be immediately visible after creation.
+	require.Eventually(t, func() bool {
+		_, err := client.VBD().Get(ctx, vbdID)
+		return err == nil
+	}, 30*time.Second, 1*time.Second, "VBD %s should become visible after creation", vbdID)
+	return vbdID
+}
+
 // createVDIForTest creates a VDI with the specified name and size using the v1 client and returns its ID
 // TODO: replace with v2 client once VDI creation is supported in v2
 func createVDIForTest(t *testing.T, ctx context.Context, client v1.XOClient, name string, size int64) uuid.UUID {
