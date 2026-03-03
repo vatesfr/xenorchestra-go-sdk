@@ -134,6 +134,23 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 		}
 	})
 
+	// POST /rest/v0/vbds/{id}/actions/{action} - Connect/Disconnect a VBD
+	mux.HandleFunc("POST /rest/v0/vbds/{id}/actions/{action}", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := uuid.FromString(r.PathValue("id")); err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		switch r.PathValue("action") {
+		case "connect", "disconnect":
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: "task-abc"}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	})
+
 	server := httptest.NewServer(mux)
 
 	restClient := &client.Client{
@@ -425,5 +442,95 @@ func TestDelete(t *testing.T) {
 		err := svc.Delete(t.Context(), uuid.Must(uuid.FromString(testVBDID1)))
 
 		assert.Error(t, err)
+	})
+}
+
+func TestConnect(t *testing.T) {
+	vbdID := uuid.Must(uuid.FromString(testVBDID1))
+
+	t.Run("successfully connects a VBD", func(t *testing.T) {
+		server, svc, mockTask := setupTestServer(t)
+		defer server.Close()
+
+		mockTask.EXPECT().
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			Return(&payloads.Task{ID: "task-abc"}, nil)
+
+		taskID, err := svc.Connect(t.Context(), vbdID)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "task-abc", taskID)
+	})
+
+	t.Run("returns error on http error", func(t *testing.T) {
+		svc, server, _ := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		})
+		defer server.Close()
+
+		taskID, err := svc.Connect(t.Context(), vbdID)
+
+		assert.Error(t, err)
+		assert.Empty(t, taskID)
+	})
+
+	t.Run("returns error when task handling fails", func(t *testing.T) {
+		server, svc, mockTask := setupTestServer(t)
+		defer server.Close()
+
+		mockTask.EXPECT().
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			Return(nil, fmt.Errorf("task failed"))
+
+		taskID, err := svc.Connect(t.Context(), vbdID)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VBD connect failed")
+		assert.Empty(t, taskID)
+	})
+}
+
+func TestDisconnect(t *testing.T) {
+	vbdID := uuid.Must(uuid.FromString(testVBDID1))
+
+	t.Run("successfully disconnects a VBD", func(t *testing.T) {
+		server, svc, mockTask := setupTestServer(t)
+		defer server.Close()
+
+		mockTask.EXPECT().
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			Return(&payloads.Task{ID: "task-abc"}, nil)
+
+		taskID, err := svc.Disconnect(t.Context(), vbdID)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "task-abc", taskID)
+	})
+
+	t.Run("returns error on http error", func(t *testing.T) {
+		svc, server, _ := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		})
+		defer server.Close()
+
+		taskID, err := svc.Disconnect(t.Context(), vbdID)
+
+		assert.Error(t, err)
+		assert.Empty(t, taskID)
+	})
+
+	t.Run("returns error when task handling fails", func(t *testing.T) {
+		server, svc, mockTask := setupTestServer(t)
+		defer server.Close()
+
+		mockTask.EXPECT().
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			Return(nil, fmt.Errorf("task failed"))
+
+		taskID, err := svc.Disconnect(t.Context(), vbdID)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "VBD disconnect failed")
+		assert.Empty(t, taskID)
 	})
 }
