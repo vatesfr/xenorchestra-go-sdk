@@ -57,6 +57,22 @@ var mockVBDs = func() []*payloads.VBD {
 	}
 }
 
+var mockTasks = func() []*payloads.Task {
+	return []*payloads.Task{
+		{
+			ID:     "task-1",
+			Status: payloads.Success,
+			Result: payloads.Result{
+				ID: uuid.Must(uuid.FromString(testVBDID2)),
+			},
+		},
+		{
+			ID:     "task-2",
+			Status: payloads.Failure,
+		},
+	}
+}
+
 func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Server, *mock.MockTask) {
 	t.Helper()
 	server := httptest.NewServer(handler)
@@ -148,6 +164,22 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 			}
 		default:
 			http.NotFound(w, r)
+		}
+	})
+
+	// GET /rest/v0/vbds/{id}/tasks - Get tasks for a VBD
+	mux.HandleFunc("GET /rest/v0/vbds/{id}/tasks", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		vbdID := r.PathValue("id")
+		if vbdID != testVBDID1 && vbdID != testVBDID2 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		tasks := mockTasks()
+		err := json.NewEncoder(w).Encode(tasks)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	})
 
@@ -532,5 +564,37 @@ func TestDisconnect(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "VBD disconnect failed")
 		assert.Empty(t, taskID)
+	})
+}
+
+func TestGetTasks(t *testing.T) {
+	t.Run("passes limit and filter parameters", func(t *testing.T) {
+		limit := 42
+		filter := "filter-to-check"
+		called := false
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			called = true
+			assert.Equal(t, http.MethodGet, r.Method)
+			values := r.URL.Query()
+			assert.Equal(t, fmt.Sprintf("%d", limit), values.Get("limit"))
+			assert.Equal(t, filter, values.Get("filter"))
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode([]*payloads.Task{})
+			assert.NoError(t, err)
+		})
+		service, server, _ := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+		tasks, err := service.GetTasks(context.Background(), uuid.Must(uuid.FromString(testVBDID1)), limit, filter)
+		assert.NoError(t, err)
+		assert.NotNil(t, tasks)
+		assert.True(t, called)
+	})
+
+	t.Run("returns error on http error", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+		tasks, err := service.GetTasks(context.Background(), uuid.Must(uuid.FromString(testVBDIDNotFound)), 0, "")
+		assert.Error(t, err)
+		assert.Nil(t, tasks)
 	})
 }

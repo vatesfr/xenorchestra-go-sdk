@@ -208,3 +208,80 @@ func TestVBDConnectDisconnect(t *testing.T) {
 		return err == nil && v.Attached
 	}, 1*time.Minute, 2*time.Second, "VBD should be attached after Connect")
 }
+
+func TestVBDGetTasks(t *testing.T) {
+	t.Parallel()
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	// Create and start a VM.
+	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
+		NameLabel: testPrefix + "vbd-connect-vm",
+		Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+		Boot:      ptr(true),
+	})
+	require.NoError(t, err, "creating VM should succeed")
+	require.Equal(t, vm.PowerState, payloads.PowerStateRunning, "VM should be running after creation with Boot=true")
+
+	// VBD hotplug requires PV drivers. Wait for the VM to report an IP, confirming guest tools are active.
+	waitForVMReady(t, ctx, client, vm.ID)
+
+	// Create VDI and VBD while VM is running.
+	// XO auto-attaches VBDs created on running VMs when PV drivers are active.
+	vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vbd-connect-vdi", 512*units.MB)
+	vbdID := createVBDForTest(t, ctx, client, vm.ID, vdiID)
+
+	// Wait for XO auto-attach to complete.
+	require.Eventually(t, func() bool {
+		v, err := client.VBD().Get(ctx, vbdID)
+		return err == nil && v.Attached
+	}, 1*time.Minute, 2*time.Second, "VBD should be auto-attached after creation on running VM")
+
+	// Disconnect and reconnect to create a task we can retrieve.
+	disconnectTaskID, err := client.VBD().Disconnect(ctx, vbdID)
+	require.NoError(t, err, "setup Disconnect should succeed")
+	task, err := client.Task().Wait(ctx, disconnectTaskID)
+	require.NoError(t, err, "disconnect task should complete successfully")
+	require.NotNil(t, task, "disconnect task result should not be nil")
+
+	connectTaskID, err := client.VBD().Connect(ctx, vbdID)
+	require.NoError(t, err, "VBD Connect should succeed")
+	connectTask, err := client.Task().Wait(ctx, connectTaskID)
+	require.NoError(t, err, "connect task should complete successfully")
+	require.NotNil(t, connectTask, "connect task result should not be nil")
+
+	t.Run("GetTasksSuccess", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VBD().GetTasks(ctx, vbdID, 0, "")
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.GreaterOrEqual(t, len(tasks), 2, "there should be at least 2 tasks associated with the VBD")
+	})
+
+	t.Run("GetTasksWithLimit", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VBD().GetTasks(ctx, vbdID, 1, "")
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.Len(t, tasks, 1)
+	})
+
+	t.Run("GetTasksWithFilter", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VBD().GetTasks(ctx, vbdID, 0, "status:failure")
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.Len(t, tasks, 0)
+
+		tasks, err = client.VBD().GetTasks(ctx, vbdID, 0, "id:"+disconnectTaskID)
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.Len(t, tasks, 1)
+	})
+
+	t.Run("GetTasksInvalidVBD", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.VBD().GetTasks(ctx, uuid.Must(uuid.FromString("123e4567-e89b-12d3-a456-426655440000")), 0, "")
+		require.Error(t, err)
+		assert.Nil(t, tasks)
+	})
+}

@@ -124,3 +124,18 @@ func (mr *MockVBDMockRecorder) GetAll(arg0, arg1, arg2 interface{}) *gomock.Call
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockVBD)(nil).GetAll), arg0, arg1, arg2)
 }
+
+// GetTasks mocks base method.
+func (m *MockVBD) GetTasks(arg0 context.Context, arg1 uuid.UUID, arg2 int, arg3 string) ([]*payloads.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTasks", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]*payloads.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTasks indicates an expected call of GetTasks.
+func (mr *MockVBDMockRecorder) GetTasks(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTasks", reflect.TypeOf((*MockVBD)(nil).GetTasks), arg0, arg1, arg2, arg3)
+}

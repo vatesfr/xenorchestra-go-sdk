@@ -33,6 +33,9 @@ type VBD interface {
 	// Returns an error if the operation fails.
 	Delete(ctx context.Context, id uuid.UUID) error
 
+	// GetTasks retrieves tasks associated with a VBD, with optional limit and filtering.
+	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
+
 	// VBDActions is a group of actions that can be performed on a VBD.
 	VBDActions
 }
