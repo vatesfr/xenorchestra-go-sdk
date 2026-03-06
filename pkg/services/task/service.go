@@ -104,7 +104,7 @@ func (s *Service) WaitWithTimeout(ctx context.Context, id string, timeout time.D
 	return s.Wait(ctx, id)
 }
 
-func (s *Service) Wait(ctx context.Context, id string) (*payloads.Task, error) {
+func (s *Service) Wait(ctx context.Context, id string) (task *payloads.Task, err error) {
 	taskID := s.cleanDuplicateV0Path(id)
 	s.log.Debug("Waiting for task completion", zap.String("taskID", taskID))
 
@@ -113,7 +113,12 @@ func (s *Service) Wait(ctx context.Context, id string) (*payloads.Task, error) {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			err := ctx.Err()
+			if errors.Is(err, context.DeadlineExceeded) {
+				s.log.Error("Task wait timed out", zap.String("taskID", taskID))
+				return nil, fmt.Errorf("task wait timed out: %s - %v", taskID, task)
+			}
+			return nil, err
 		default:
 			task, err := s.Get(ctx, taskID)
 			if err != nil {
