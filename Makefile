@@ -79,6 +79,16 @@ run-example-v2: ## Run v2 example program
 run-examples: run-example-v1 run-example-v2 ## Run all examples
 	@echo "$(GREEN)All examples executed successfully$(NC)"
 
+.PHONY: check-test-resources
+check-test-resources: ## Check for leftover integration test resources in XO (requires XOA_URL and XOA_TOKEN)
+	@echo "$(BLUE)Checking for leftover test resources in XO...$(NC)"
+	@./scripts/check-test-resources.sh
+
+.PHONY: cleanup-test-resources
+cleanup-test-resources: ## Delete leftover integration test resources in XO (requires XOA_URL and XOA_TOKEN)
+	@echo "$(BLUE)Cleaning up leftover test resources in XO...$(NC)"
+	@./scripts/cleanup-test-resources.sh
+
 .PHONY: clean
 clean: ## Clean build artifacts and caches
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
