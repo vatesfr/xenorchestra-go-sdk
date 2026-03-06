@@ -120,6 +120,7 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 	t.Helper()
 
 	// Create a derived context with timeout for the test
+	// #nosec G118 -- cancel() is called in the test cleanup function to ensure it is always called
 	ctx, cancel := context.WithTimeout(intTests.ctx, 5*time.Minute)
 
 	// Unique test prefix for this test to avoid to delete resources from other tests
