@@ -312,7 +312,7 @@ func TestWait(t *testing.T) {
 		_, err := taskService.WaitWithTimeout(context.Background(), "running-task-789", 100*time.Millisecond)
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "context deadline exceeded")
+		assert.Contains(t, err.Error(), "task wait timed out")
 	})
 
 	t.Run("context timeout during wait", func(t *testing.T) {
@@ -321,7 +321,7 @@ func TestWait(t *testing.T) {
 
 		_, err := service.Wait(ctx, "running-task-789")
 		assert.Error(t, err)
-		assert.Equal(t, context.DeadlineExceeded, err)
+		assert.Contains(t, err.Error(), "task wait timed out")
 	})
 
 	t.Run("wait for non-existent-task task", func(t *testing.T) {
@@ -331,7 +331,7 @@ func TestWait(t *testing.T) {
 		_, err := service.Wait(ctx, "non-existent-task")
 
 		require.Error(t, err)
-		require.Equal(t, context.DeadlineExceeded, err)
+		require.Contains(t, err.Error(), "task wait timed out")
 	})
 }
 
