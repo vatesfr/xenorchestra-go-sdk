@@ -1,6 +1,6 @@
 module github.com/vatesfr/xenorchestra-go-sdk
 
-go 1.24.0
+go 1.25.8
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
