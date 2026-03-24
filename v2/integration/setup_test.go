@@ -40,6 +40,10 @@ type integrationTestContext struct {
 	// v1Client is the XO client used for resources not yet available in v2
 	// Should not be used to perform the actual test but only to setup/teardown resources
 	v1Client v1.XOClient
+
+	// testPBD is the UUID of a PBD that is safe to temporarily plug/unplug during tests.
+	// Populated from XOA_TEST_PBD_ID. When uuid.Nil, plug/unplug tests are skipped.
+	testPBD uuid.UUID
 }
 
 var (
@@ -96,6 +100,7 @@ func TestMain(m *testing.M) {
 	v1.FindNetworkForTests(intTests.testPool.ID.String(), &intTests.testNetwork)
 	v1.FindTemplateForTests(&intTests.testTemplate, intTests.testPool.ID.String(), "XOA_TEMPLATE")
 	intTests.testSR = findStorageRepositoryForTests()
+	intTests.testPBD = findPBDForTests()
 
 	// Get resource test prefix from environment variable if set
 	if prefix, found := os.LookupEnv("XOA_TEST_PREFIX"); found {
@@ -209,6 +214,20 @@ func cleanupVMsWithPrefix(t testing.TB, client library.Library, prefix string) e
 		}
 	}
 	return nil
+}
+
+// findPBDForTests returns the UUID of the PBD identified by XOA_TEST_PBD_ID, or uuid.Nil if unset.
+// Tests that require a specific PBD (e.g. plug/unplug) will be skipped when uuid.Nil.
+func findPBDForTests() uuid.UUID {
+	raw, ok := os.LookupEnv("XOA_TEST_PBD_ID")
+	if !ok || raw == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.FromString(raw)
+	if err != nil {
+		log.Fatalf("XOA_TEST_PBD_ID=%q is not a valid UUID: %v", raw, err)
+	}
+	return id
 }
 
 // findStorageRepositoryForTests finds a storage repository by name from the XOA_STORAGE environment variable

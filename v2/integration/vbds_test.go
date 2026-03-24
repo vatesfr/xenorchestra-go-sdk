@@ -90,6 +90,15 @@ func TestVBDGetAll(t *testing.T) {
 			assert.Equal(t, vm.ID, vbd.VM, "every returned VBD should belong to the filtered VM")
 		}
 	})
+
+	t.Run("WithFilterNoResult", func(t *testing.T) {
+		t.Parallel()
+		vbds, err := client.VBD().GetAll(ctx, 0,
+			"VM:"+uuid.Must(uuid.NewV4()).String()+" VDI:"+uuid.Must(uuid.NewV4()).String())
+		require.NoError(t, err)
+		require.NotNil(t, vbds)
+		assert.Len(t, vbds, 0, "filter by non-existent VM ID should return no VBDs")
+	})
 }
 
 func TestVBDCreate(t *testing.T) {
