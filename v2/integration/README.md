@@ -37,6 +37,7 @@ Optional:
 export XOA_DEVELOPMENT="true"          # Debug logs
 export XOA_TEST_PREFIX="my-prefix-"    # Custom prefix
 export XOA_TEST_VLAN="1234"            # VLAN for network tests
+export XOA_TEST_PBD_ID="<pbd-uuid>"    # UUID of a PBD safe to plug/unplug (e.g. removable storage); PBD plug/unplug tests are skipped when unset
 ```
 
 ## Running Tests
