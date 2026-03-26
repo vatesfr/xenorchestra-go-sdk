@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/gofrs/uuid"
-	"go.uber.org/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
@@ -18,6 +17,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	mock "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
+	"go.uber.org/mock/gomock"
 )
 
 const (
