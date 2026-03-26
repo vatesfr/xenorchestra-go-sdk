@@ -16,7 +16,10 @@ require (
 
 require (
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 )
 
 require (
@@ -25,3 +28,5 @@ require (
 	go.uber.org/zap v1.27.1
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+tool go.uber.org/mock/mockgen
