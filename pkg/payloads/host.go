@@ -110,12 +110,9 @@ type Host struct {
 	Logging           map[string]interface{} `json:"logging,omitempty"`
 	ResidentVMs       []uuid.UUID            `json:"residentVms,omitempty"`
 	PIFs              []uuid.UUID            `json:"PIFs,omitempty"`
-	PIFsRef           []uuid.UUID            `json:"$PIFs,omitempty"`
 	PCIs              []uuid.UUID            `json:"PCIs,omitempty"`
-	PCIsRef           []uuid.UUID            `json:"$PCIs,omitempty"`
 	PGPUs             []uuid.UUID            `json:"PGPUs,omitempty"`
-	PGPUsRef          []uuid.UUID            `json:"$PGPUs,omitempty"`
-	PBDsRef           []uuid.UUID            `json:"$PBDs,omitempty"`
+	PBDs              []uuid.UUID            `json:"$PBDs,omitempty"`
 	Patches           []interface{}          `json:"patches,omitempty"`
 	SupplementalPacks []interface{}          `json:"supplementalPacks,omitempty"`
 	Tags              []string               `json:"tags,omitempty"`

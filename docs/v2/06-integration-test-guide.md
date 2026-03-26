@@ -90,6 +90,7 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_DEVELOPMENT`| Enable debug logs | `true` | ❌ |
 | `XOA_TEST_PREFIX`| Custom resource prefix | `ci-` | ❌ |
 | `XOA_TEST_VLAN`  | VLAN for network tests | `1234` | ❌ |
+| `XOA_TEST_PBD_ID`| UUID of a PBD safe to plug/unplug (e.g. removable storage). Required for PBD plug/unplug tests; skipped when unset. | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | ❌ |
 
 ### Test Template Guidance
 
