@@ -8,7 +8,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination mock/vdi.go . VDI
+//go:generate go run go.uber.org/mock/mockgen --build_flags=--mod=mod --destination mock/vdi.go . VDI
 type VDI interface {
 	// Get retrieves a VDI by its ID.
 	// Parameters:

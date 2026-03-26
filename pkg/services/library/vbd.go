@@ -7,7 +7,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination mock/vbd.go . VBD
+//go:generate go run go.uber.org/mock/mockgen --build_flags=--mod=mod --destination mock/vbd.go . VBD
 type VBD interface {
 	// Get retrieves a VBD by its ID.
 	// Parameters:

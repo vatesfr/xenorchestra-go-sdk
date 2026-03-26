@@ -1,7 +1,7 @@
 PROJECT_NAME := xenorchestra-go-sdk
 GO := go
 GOFLAGS :=
-MOCKGEN_VERSION := 1.6.0
+MOCKGEN_VERSION := 0.6.0
 
 # Colors
 BLUE := \033[0;34m
@@ -58,7 +58,7 @@ lint: ## Run golangci-lint
 .PHONY: install-mockgen
 install-mockgen: ## Install mockgen tool
 	@echo "$(BLUE)Installing mockgen v$(MOCKGEN_VERSION)...$(NC)"
-	$(GO) install github.com/golang/mock/mockgen@v$(MOCKGEN_VERSION)
+	$(GO) install go.uber.org/mock/mockgen@v$(MOCKGEN_VERSION)
 
 .PHONY: mock
 mock: install-mockgen ## Generate mocks

@@ -7,7 +7,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination mock/pool.go . Pool,PoolAction
+//go:generate go run go.uber.org/mock/mockgen --build_flags=--mod=mod --destination mock/pool.go . Pool,PoolAction
 type Pool interface {
 	Get(ctx context.Context, id uuid.UUID) (*payloads.Pool, error)
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Pool, error)
