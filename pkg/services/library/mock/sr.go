@@ -57,10 +57,10 @@ func (mr *MockSRMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
 }
 
 // Get mocks base method.
-func (m *MockSR) Get(ctx context.Context, id uuid.UUID) (*payloads.SR, error) {
+func (m *MockSR) Get(ctx context.Context, id uuid.UUID) (*payloads.StorageRepository, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", ctx, id)
-	ret0, _ := ret[0].(*payloads.SR)
+	ret0, _ := ret[0].(*payloads.StorageRepository)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -72,10 +72,10 @@ func (mr *MockSRMockRecorder) Get(ctx, id any) *gomock.Call {
 }
 
 // GetAll mocks base method.
-func (m *MockSR) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.SR, error) {
+func (m *MockSR) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.StorageRepository, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAll", ctx, limit, filter)
-	ret0, _ := ret[0].([]*payloads.SR)
+	ret0, _ := ret[0].([]*payloads.StorageRepository)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

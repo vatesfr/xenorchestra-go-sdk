@@ -117,9 +117,8 @@ func TestVDIMigration(t *testing.T) {
 	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-migrate", 512*units.MB)
 	// We will migrate the VDI to the same SR, this is just to test the migration functionality without
 	// needing to create a new SR for the test.
-	srTestID := uuid.Must(uuid.FromString(intTests.testSR.Id))
 
-	taskID, err := client.VDI().Migrate(ctx, vdiTestID, srTestID)
+	taskID, err := client.VDI().Migrate(ctx, vdiTestID, intTests.testSR.ID)
 	require.NoError(t, err, "migrating VDI should succeed")
 	require.NotEmpty(t, taskID, "migration should return a task ID")
 
@@ -133,7 +132,7 @@ func TestVDIMigration(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, task.Result.ID, "new VDI ID should be present in task result")
 	newVDI, err := client.VDI().Get(ctx, task.Result.ID)
 	require.NoError(t, err, "should be able to get the new VDI after migration")
-	assert.Equal(t, srTestID, newVDI.SR, "new VDI should be in the target SR")
+	assert.Equal(t, intTests.testSR.ID, newVDI.SR, "new VDI should be in the target SR")
 	assert.Equal(t, testPrefix+"vdi-migrate", newVDI.NameLabel, "new VDI should have the same name label as original VDI")
 
 	// After migration, the VDI should have a new ID. We can check that the original VDI no longer exists
@@ -150,14 +149,13 @@ func TestVDIGetTasks(t *testing.T) {
 
 	// Create and migrate the VDI multiple times to generate some tasks
 	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-tasks", 512*units.MB)
-	srTestID := uuid.Must(uuid.FromString(intTests.testSR.Id))
-	taskID1, err := client.VDI().Migrate(ctx, vdiTestID, srTestID)
+	taskID1, err := client.VDI().Migrate(ctx, vdiTestID, intTests.testSR.ID)
 	require.NoError(t, err, "1st migrating VDI should succeed")
 	task, err := client.Task().Wait(ctx, taskID1)
 	require.NoError(t, err, "migration task should complete successfully")
 	require.NotNil(t, task, "migration task result should not be nil")
 	require.Equal(t, payloads.Success, task.Status, "migration task should complete successfully")
-	taskID2, err := client.VDI().Migrate(ctx, vdiTestID, srTestID)
+	taskID2, err := client.VDI().Migrate(ctx, vdiTestID, intTests.testSR.ID)
 	require.NoError(t, err, "2nd migrating VDI should succeed")
 	task, err = client.Task().Wait(ctx, taskID2)
 	require.NoError(t, err, "migration task should complete successfully")

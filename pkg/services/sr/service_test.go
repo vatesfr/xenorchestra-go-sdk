@@ -27,8 +27,8 @@ const (
 	testPoolID       = "b2c3d4e5-0000-0000-0000-000000000001"
 )
 
-var mockSRs = func() []*payloads.SR {
-	return []*payloads.SR{
+var mockSRs = func() []*payloads.StorageRepository {
+	return []*payloads.StorageRepository{
 		{
 			ID:                uuid.Must(uuid.FromString(testSRID1)),
 			UUID:              uuid.Must(uuid.FromString(testSRID1)),
@@ -113,7 +113,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 			return
 		}
 
-		var sr *payloads.SR
+		var sr *payloads.StorageRepository
 		switch srID.String() {
 		case testSRID1:
 			sr = mockSRs()[0]
@@ -254,7 +254,7 @@ func TestGetAll(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("%d", limit), values.Get("limit"))
 			assert.Equal(t, filter, values.Get("filter"))
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode([]*payloads.SR{}); err != nil {
+			if err := json.NewEncoder(w).Encode([]*payloads.StorageRepository{}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		})
@@ -273,7 +273,7 @@ func TestGetAll(t *testing.T) {
 			values := r.URL.Query()
 			assert.Empty(t, values.Get("limit"))
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode([]*payloads.SR{}); err != nil {
+			if err := json.NewEncoder(w).Encode([]*payloads.StorageRepository{}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		})

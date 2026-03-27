@@ -28,14 +28,15 @@ type integrationTestContext struct {
 	// testPool holds the pool used for testing
 	testPool payloads.Pool
 
+	// testSR holds a storage repository used for VDI-related tests
+	testSR payloads.StorageRepository
+
 	// TODO: replace v1 struct by payloads.STRUCT when available in v2
 
 	// testTemplate holds a template used for VM creation tests
 	testTemplate v1.Template
 	// testNetwork holds a network used for network-related tests
 	testNetwork v1.Network
-	// testSR holds a storage repository used for VDI-related tests
-	testSR v1.StorageRepository
 
 	// v1Client is the XO client used for resources not yet available in v2
 	// Should not be used to perform the actual test but only to setup/teardown resources
@@ -231,7 +232,7 @@ func findPBDForTests() uuid.UUID {
 }
 
 // findStorageRepositoryForTests finds a storage repository by name from the XOA_STORAGE environment variable
-func findStorageRepositoryForTests() v1.StorageRepository {
+func findStorageRepositoryForTests() payloads.StorageRepository {
 	client, err := v2.New(intTests.testConfig)
 	if err != nil {
 		log.Fatalf("test client initialization failed: %v", err)
@@ -242,10 +243,7 @@ func findStorageRepositoryForTests() v1.StorageRepository {
 		log.Fatalf("XOA_STORAGE environment variable must be set")
 	}
 
-	srs, err := client.V1Client().GetStorageRepository(v1.StorageRepository{
-		NameLabel: srName,
-		PoolId:    intTests.testPool.ID.String(),
-	})
+	srs, err := client.SR().GetAll(intTests.ctx, 0, "name_label:"+srName+" $pool:"+intTests.testPool.ID.String())
 	if err != nil {
 		log.Fatalf("failed to get storage repository with name: %s, with err: %v", srName, err)
 	}
@@ -256,5 +254,5 @@ func findStorageRepositoryForTests() v1.StorageRepository {
 		log.Fatalf("Found %d storage repositories with name_label %s."+
 			"Please use a label that is unique so tests are reproducible.\n", len(srs), srName)
 	}
-	return srs[0]
+	return *srs[0]
 }

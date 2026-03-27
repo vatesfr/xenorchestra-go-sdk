@@ -40,9 +40,9 @@ const (
 	AllocationStrategyThick AllocationStrategy = "thick"
 )
 
-// SR represents a Storage Repository in Xen Orchestra.
-// An SR is a storage container that holds VDIs (Virtual Disk Images).
-type SR struct {
+// StorageRepository represents a Storage Repository in Xen Orchestra.
+// An StorageRepository is a storage container that holds VDIs (Virtual Disk Images).
+type StorageRepository struct {
 	ID   uuid.UUID    `json:"id"`
 	UUID uuid.UUID    `json:"uuid"`
 	Type ResourceType `json:"type"`

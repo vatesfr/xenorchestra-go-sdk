@@ -13,14 +13,14 @@ type SR interface {
 	// Parameters:
 	//   - id: ID of the SR to retrieve
 	// Returns the SR details or an error if the operation fails.
-	Get(ctx context.Context, id uuid.UUID) (*payloads.SR, error)
+	Get(ctx context.Context, id uuid.UUID) (*payloads.StorageRepository, error)
 
 	// GetAll retrieves Storage Repositories with configurable limit and filtering.
 	// Parameters:
 	//   - limit: maximum number of SRs to return (0 for no limit)
 	//   - filter: filter string for SR selection (empty for no filter)
 	// Returns all matching SRs or an error if the operation fails.
-	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.SR, error)
+	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.StorageRepository, error)
 
 	// GetTasks retrieves tasks associated with an SR, with optional limit and filtering.
 	// Parameters:

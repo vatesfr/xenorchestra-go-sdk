@@ -27,8 +27,8 @@ func New(client *client.Client, taskService library.Task, log *logger.Logger) li
 	}
 }
 
-func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.SR, error) {
-	var result payloads.SR
+func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.StorageRepository, error) {
+	var result payloads.StorageRepository
 	path := core.NewPathBuilder().Resource("srs").ID(id).Build()
 	err := client.TypedGet(
 		ctx,
@@ -44,7 +44,7 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.SR, error) {
 	return &result, nil
 }
 
-func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.SR, error) {
+func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.StorageRepository, error) {
 	path := core.NewPathBuilder().Resource("srs").Build()
 	params := make(map[string]any)
 	if limit > 0 {
@@ -57,7 +57,7 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 		params["filter"] = filter
 	}
 
-	var result []*payloads.SR
+	var result []*payloads.StorageRepository
 	if err := client.TypedGet(ctx, s.client, path, params, &result); err != nil {
 		s.log.Error("Failed to get all SRs", zap.Error(err))
 		return nil, err
