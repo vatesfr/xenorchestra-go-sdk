@@ -7,7 +7,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination mock/vm.go . VM,VMActions
+//go:generate go run go.uber.org/mock/mockgen --build_flags=--mod=mod --destination mock/vm.go . VM,VMActions
 
 type VM interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error)

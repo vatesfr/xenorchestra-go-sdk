@@ -7,7 +7,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
-//go:generate mockgen --build_flags=--mod=mod --destination mock/pbd.go . PBD
+//go:generate go run go.uber.org/mock/mockgen --build_flags=--mod=mod --destination mock/pbd.go . PBD
 type PBD interface {
 	// Get retrieves a PBD by its ID.
 	// Parameters:
