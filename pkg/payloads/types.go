@@ -11,4 +11,5 @@ const (
 	ResourceTypeHost ResourceType = "host"
 	ResourceTypeVM   ResourceType = "VM"
 	ResourceTypePBD  ResourceType = "PBD"
+	ResourceTypeSR   ResourceType = "SR"
 )

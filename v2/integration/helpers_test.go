@@ -100,9 +100,9 @@ func createVDIForTest(t *testing.T, ctx context.Context, client v1.XOClient, nam
 		err := client.Call("disk.create", map[string]any{
 			"name": name,
 			"size": size,
-			"sr":   intTests.testSR.Id,
+			"sr":   intTests.testSR.ID.String(),
 		}, &id)
-		require.NoError(t, err, "error while creating VDI %s in SR %s: %v", name, intTests.testSR.Id, err)
+		require.NoError(t, err, "error while creating VDI %s in SR %s: %v", name, intTests.testSR.ID, err)
 	}
 	return uuid.FromStringOrNil(id)
 }
