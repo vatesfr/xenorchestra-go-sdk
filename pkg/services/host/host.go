@@ -2,14 +2,13 @@ package host
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
-	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/tag"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 	"go.uber.org/zap"
 )
@@ -17,19 +16,23 @@ import (
 type HostService struct {
 	client     *client.Client
 	log        *logger.Logger
-	tagService library.TagService
+	tagService *tagger.Tagger
 }
 
 func New(client *client.Client, log *logger.Logger) library.Host {
 	return &HostService{
 		client:     client,
 		log:        log,
-		tagService: tag.New(client, log, payloads.ResourceTypeHost),
+		tagService: tagger.New(client, log, payloads.ResourceTypeHost),
 	}
 }
 
-func (s *HostService) Tag() library.TagService {
-	return s.tagService
+func (s *HostService) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Add(ctx, id, tag)
+}
+
+func (s *HostService) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Remove(ctx, id, tag)
 }
 
 func (s *HostService) Get(ctx context.Context, id uuid.UUID) (*payloads.Host, error) {
@@ -62,39 +65,4 @@ func (s *HostService) GetAll(ctx context.Context, limit int, filter string) ([]*
 		return nil, err
 	}
 	return result, nil
-}
-
-func (s *HostService) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
-	if tag == "" {
-		return fmt.Errorf("tag cannot be empty")
-	}
-
-	path := core.NewPathBuilder().Resource("hosts").ID(id).Resource("tags").IDString(tag).Build()
-
-	var result struct{}
-
-	if err := client.TypedPut(ctx, s.client, path, core.EmptyParams, &result); err != nil {
-		s.log.Error("Failed to add tag to host", zap.String("hostID", id.String()), zap.String("tag", tag), zap.Error(err))
-		return err
-	}
-
-	return nil
-}
-
-func (s *HostService) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
-	if tag == "" {
-		return fmt.Errorf("tag cannot be empty")
-	}
-
-	path := core.NewPathBuilder().Resource("hosts").ID(id).Resource("tags").IDString(tag).Build()
-
-	var result struct{}
-
-	if err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result); err != nil {
-		s.log.Error("Failed to remove tag from host", zap.String("hostID", id.String()),
-			zap.String("tag", tag), zap.Error(err))
-		return err
-	}
-
-	return nil
 }

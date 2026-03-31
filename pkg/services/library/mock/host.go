@@ -15,7 +15,6 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
-	library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,6 +40,20 @@ func NewMockHost(ctrl *gomock.Controller) *MockHost {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockHost) EXPECT() *MockHostMockRecorder {
 	return m.recorder
+}
+
+// AddTag mocks base method.
+func (m *MockHost) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTag indicates an expected call of AddTag.
+func (mr *MockHostMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockHost)(nil).AddTag), ctx, id, tag)
 }
 
 // Get mocks base method.
@@ -73,16 +86,16 @@ func (mr *MockHostMockRecorder) GetAll(ctx, limit, filter any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockHost)(nil).GetAll), ctx, limit, filter)
 }
 
-// Tag mocks base method.
-func (m *MockHost) Tag() library.TagService {
+// RemoveTag mocks base method.
+func (m *MockHost) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Tag")
-	ret0, _ := ret[0].(library.TagService)
+	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Tag indicates an expected call of Tag.
-func (mr *MockHostMockRecorder) Tag() *gomock.Call {
+// RemoveTag indicates an expected call of RemoveTag.
+func (mr *MockHostMockRecorder) RemoveTag(ctx, id, tag any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tag", reflect.TypeOf((*MockHost)(nil).Tag))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockHost)(nil).RemoveTag), ctx, id, tag)
 }

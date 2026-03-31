@@ -67,10 +67,10 @@ func TestHostAddTag(t *testing.T) {
 	tag := prefix + "tag"
 
 	t.Cleanup(func() {
-		_ = client.Host().Tag().Remove(ctx, hostID, tag)
+		_ = client.Host().RemoveTag(ctx, hostID, tag)
 	})
 
-	require.NoError(t, client.Host().Tag().Add(ctx, hostID, tag), "adding tag should succeed")
+	require.NoError(t, client.Host().AddTag(ctx, hostID, tag), "adding tag should succeed")
 
 	require.Eventually(t, func() bool {
 		return hostTagExists(ctx, client, hostID, tag)
@@ -91,13 +91,13 @@ func TestHostRemoveTag(t *testing.T) {
 	hostID := hosts[0].ID
 	tag := prefix + "remove-tag"
 
-	require.NoError(t, client.Host().Tag().Add(ctx, hostID, tag), "setup tag addition should succeed")
+	require.NoError(t, client.Host().AddTag(ctx, hostID, tag), "setup tag addition should succeed")
 
 	require.Eventually(t, func() bool {
 		return hostTagExists(ctx, client, hostID, tag)
 	}, 1*time.Minute, 2*time.Second, "tag should be attached to the host")
 
-	require.NoError(t, client.Host().Tag().Remove(ctx, hostID, tag), "removing tag should succeed")
+	require.NoError(t, client.Host().RemoveTag(ctx, hostID, tag), "removing tag should succeed")
 
 	require.Eventually(t, func() bool {
 		return !hostTagExists(ctx, client, hostID, tag)

@@ -7,9 +7,9 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
-	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/tag"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 	"go.uber.org/zap"
 )
@@ -19,7 +19,7 @@ type Service struct {
 	log    *logger.Logger
 	// Needed by the actions
 	taskService library.Task
-	tagService  library.TagService
+	tagService  *tagger.Tagger
 }
 
 func New(
@@ -30,13 +30,17 @@ func New(
 	return &Service{
 		client:      client,
 		taskService: task,
-		tagService:  tag.New(client, log, payloads.ResourceTypePool),
+		tagService:  tagger.New(client, log, payloads.ResourceTypePool),
 		log:         log,
 	}
 }
 
-func (s *Service) Tag() library.TagService {
-	return s.tagService
+func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Add(ctx, id, tag)
+}
+
+func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Remove(ctx, id, tag)
 }
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.Pool, error) {

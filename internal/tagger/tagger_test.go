@@ -1,4 +1,4 @@
-package tag
+package tagger
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
-	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
@@ -30,7 +29,7 @@ func newTestLogger(t *testing.T) *logger.Logger {
 }
 
 // setupTestServer creates an httptest.Server with modular handlers for Add and Remove tag endpoints.
-func setupTestServer(t *testing.T, resourceType payloads.ResourceType) (*httptest.Server, library.TagService) {
+func setupTestServer(t *testing.T, resourceType payloads.ResourceType) (*httptest.Server, *Tagger) {
 	t.Helper()
 
 	mux := http.NewServeMux()
@@ -70,7 +69,7 @@ func setupTestServer(t *testing.T, resourceType payloads.ResourceType) (*httptes
 
 // setupTestServerWithHandler creates an httptest.Server with a custom handler for focused unit tests.
 func setupTestServerWithHandler(
-	t *testing.T, handler http.HandlerFunc, resourceType payloads.ResourceType) (*httptest.Server, library.TagService) {
+	t *testing.T, handler http.HandlerFunc, resourceType payloads.ResourceType) (*httptest.Server, *Tagger) {
 	t.Helper()
 
 	server := httptest.NewServer(handler)

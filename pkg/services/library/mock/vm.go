@@ -15,7 +15,6 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
-	library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,6 +40,20 @@ func NewMockVM(ctrl *gomock.Controller) *MockVM {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockVM) EXPECT() *MockVMMockRecorder {
 	return m.recorder
+}
+
+// AddTag mocks base method.
+func (m *MockVM) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTag indicates an expected call of AddTag.
+func (mr *MockVMMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockVM)(nil).AddTag), ctx, id, tag)
 }
 
 // CleanReboot mocks base method.
@@ -207,6 +220,20 @@ func (mr *MockVMMockRecorder) Pause(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pause", reflect.TypeOf((*MockVM)(nil).Pause), ctx, id)
 }
 
+// RemoveTag mocks base method.
+func (m *MockVM) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveTag indicates an expected call of RemoveTag.
+func (mr *MockVMMockRecorder) RemoveTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockVM)(nil).RemoveTag), ctx, id, tag)
+}
+
 // Restart mocks base method.
 func (m *MockVM) Restart(ctx context.Context, id uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
@@ -280,20 +307,6 @@ func (m *MockVM) Suspend(ctx context.Context, id uuid.UUID) (string, error) {
 func (mr *MockVMMockRecorder) Suspend(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Suspend", reflect.TypeOf((*MockVM)(nil).Suspend), ctx, id)
-}
-
-// Tag mocks base method.
-func (m *MockVM) Tag() library.TagService {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Tag")
-	ret0, _ := ret[0].(library.TagService)
-	return ret0
-}
-
-// Tag indicates an expected call of Tag.
-func (mr *MockVMMockRecorder) Tag() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tag", reflect.TypeOf((*MockVM)(nil).Tag))
 }
 
 // Unpause mocks base method.

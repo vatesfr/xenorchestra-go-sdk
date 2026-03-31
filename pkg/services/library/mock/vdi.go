@@ -16,7 +16,6 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
-	library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,6 +41,20 @@ func NewMockVDI(ctrl *gomock.Controller) *MockVDI {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockVDI) EXPECT() *MockVDIMockRecorder {
 	return m.recorder
+}
+
+// AddTag mocks base method.
+func (m *MockVDI) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTag indicates an expected call of AddTag.
+func (mr *MockVDIMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockVDI)(nil).AddTag), ctx, id, tag)
 }
 
 // Delete mocks base method.
@@ -146,16 +159,16 @@ func (mr *MockVDIMockRecorder) Migrate(ctx, id, srId any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Migrate", reflect.TypeOf((*MockVDI)(nil).Migrate), ctx, id, srId)
 }
 
-// Tag mocks base method.
-func (m *MockVDI) Tag() library.TagService {
+// RemoveTag mocks base method.
+func (m *MockVDI) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Tag")
-	ret0, _ := ret[0].(library.TagService)
+	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Tag indicates an expected call of Tag.
-func (mr *MockVDIMockRecorder) Tag() *gomock.Call {
+// RemoveTag indicates an expected call of RemoveTag.
+func (mr *MockVDIMockRecorder) RemoveTag(ctx, id, tag any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tag", reflect.TypeOf((*MockVDI)(nil).Tag))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockVDI)(nil).RemoveTag), ctx, id, tag)
 }

@@ -8,9 +8,9 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
-	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/tag"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 	"go.uber.org/zap"
 )
@@ -19,7 +19,7 @@ type Service struct {
 	client      *client.Client
 	log         *logger.Logger
 	taskService library.Task
-	tagService  library.TagService
+	tagService  *tagger.Tagger
 }
 
 func New(client *client.Client, taskService library.Task, log *logger.Logger) library.VDI {
@@ -27,12 +27,16 @@ func New(client *client.Client, taskService library.Task, log *logger.Logger) li
 		client:      client,
 		log:         log,
 		taskService: taskService,
-		tagService:  tag.New(client, log, payloads.ResourceTypeVDI),
+		tagService:  tagger.New(client, log, payloads.ResourceTypeVDI),
 	}
 }
 
-func (s *Service) Tag() library.TagService {
-	return s.tagService
+func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Add(ctx, id, tag)
+}
+
+func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Remove(ctx, id, tag)
 }
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.VDI, error) {

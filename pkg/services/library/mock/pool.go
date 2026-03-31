@@ -15,7 +15,6 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
-	library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,6 +40,20 @@ func NewMockPool(ctrl *gomock.Controller) *MockPool {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPool) EXPECT() *MockPoolMockRecorder {
 	return m.recorder
+}
+
+// AddTag mocks base method.
+func (m *MockPool) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTag indicates an expected call of AddTag.
+func (mr *MockPoolMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockPool)(nil).AddTag), ctx, id, tag)
 }
 
 // CreateNetwork mocks base method.
@@ -117,6 +130,20 @@ func (mr *MockPoolMockRecorder) GetAll(ctx, limit, filter any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockPool)(nil).GetAll), ctx, limit, filter)
 }
 
+// RemoveTag mocks base method.
+func (m *MockPool) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveTag indicates an expected call of RemoveTag.
+func (mr *MockPoolMockRecorder) RemoveTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockPool)(nil).RemoveTag), ctx, id, tag)
+}
+
 // RollingReboot mocks base method.
 func (m *MockPool) RollingReboot(ctx context.Context, poolID uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -143,20 +170,6 @@ func (m *MockPool) RollingUpdate(ctx context.Context, poolID uuid.UUID) error {
 func (mr *MockPoolMockRecorder) RollingUpdate(ctx, poolID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RollingUpdate", reflect.TypeOf((*MockPool)(nil).RollingUpdate), ctx, poolID)
-}
-
-// Tag mocks base method.
-func (m *MockPool) Tag() library.TagService {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Tag")
-	ret0, _ := ret[0].(library.TagService)
-	return ret0
-}
-
-// Tag indicates an expected call of Tag.
-func (mr *MockPoolMockRecorder) Tag() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tag", reflect.TypeOf((*MockPool)(nil).Tag))
 }
 
 // MockPoolAction is a mock of PoolAction interface.
