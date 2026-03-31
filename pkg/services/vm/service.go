@@ -10,6 +10,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/tag"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 	"go.uber.org/zap"
 )
@@ -18,6 +19,7 @@ type Service struct {
 	// Needed by VM for the task related but not part of the VM interface
 	taskService library.Task
 	poolService library.Pool
+	tagService  library.TagService
 
 	client *client.Client
 	log    *logger.Logger
@@ -33,8 +35,13 @@ func New(
 		client:      client,
 		taskService: task,
 		poolService: pool,
+		tagService:  tag.New(client, log, payloads.ResourceTypeVM),
 		log:         log,
 	}
+}
+
+func (s *Service) Tag() library.TagService {
+	return s.tagService
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error) {

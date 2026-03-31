@@ -438,60 +438,6 @@ func TestGetAll(t *testing.T) {
 	})
 }
 
-func TestAddTag(t *testing.T) {
-	server, service, _ := setupTestServer(t)
-	defer server.Close()
-
-	t.Run("successful tag addition", func(t *testing.T) {
-		vdiID := uuid.Must(uuid.FromString(testVDIID1))
-		err := service.AddTag(context.Background(), vdiID, "new-tag")
-
-		assert.NoError(t, err)
-	})
-
-	t.Run("add tag with empty string", func(t *testing.T) {
-		vdiID := uuid.Must(uuid.FromString(testVDIID1))
-		err := service.AddTag(context.Background(), vdiID, "")
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "tag cannot be empty")
-	})
-
-	t.Run("add tag with unexistent vdi", func(t *testing.T) {
-		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
-		err := service.AddTag(context.Background(), vdiID, "tag1")
-
-		assert.Error(t, err)
-	})
-}
-
-func TestRemoveTag(t *testing.T) {
-	server, service, _ := setupTestServer(t)
-	defer server.Close()
-
-	t.Run("successful tag removal", func(t *testing.T) {
-		vdiID := uuid.Must(uuid.FromString(testVDIID1))
-		err := service.RemoveTag(context.Background(), vdiID, "tag1")
-
-		assert.NoError(t, err)
-	})
-
-	t.Run("remove tag with empty string", func(t *testing.T) {
-		vdiID := uuid.Must(uuid.FromString(testVDIID1))
-		err := service.RemoveTag(context.Background(), vdiID, "")
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "tag cannot be empty")
-	})
-
-	t.Run("remove tag with unexistent vdi", func(t *testing.T) {
-		vdiID := uuid.Must(uuid.FromString(testVDIIDNotFound))
-		err := service.RemoveTag(context.Background(), vdiID, "tag1")
-
-		assert.Error(t, err)
-	})
-}
-
 func TestDelete(t *testing.T) {
 	server, service, _ := setupTestServer(t)
 	defer server.Close()

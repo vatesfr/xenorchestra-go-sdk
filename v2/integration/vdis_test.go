@@ -77,7 +77,7 @@ func TestVDITags(t *testing.T) {
 	t.Run("AddTag", func(t *testing.T) {
 		t.Parallel()
 		tag := testPrefix + "tag"
-		require.NoError(t, client.VDI().AddTag(ctx, vdiTestID, tag), "adding tag should succeed")
+		require.NoError(t, client.VDI().Tag().Add(ctx, vdiTestID, tag), "adding tag should succeed")
 		require.Eventually(t, func() bool {
 			return vdiTagExists(ctx, client, vdiTestID, tag)
 		}, 1*time.Minute, 2*time.Second, "tag should be attached to the VDI")
@@ -86,12 +86,12 @@ func TestVDITags(t *testing.T) {
 	t.Run("RemoveTag", func(t *testing.T) {
 		t.Parallel()
 		tag := testPrefix + "remove-tag"
-		require.NoError(t, client.VDI().AddTag(ctx, vdiTestID, tag), "setup tag addition should succeed")
+		require.NoError(t, client.VDI().Tag().Add(ctx, vdiTestID, tag), "setup tag addition should succeed")
 		require.Eventually(t, func() bool {
 			return vdiTagExists(ctx, client, vdiTestID, tag)
 		}, 1*time.Minute, 2*time.Second, "tag should be attached to the VDI")
 
-		require.NoError(t, client.VDI().RemoveTag(ctx, vdiTestID, tag), "removing tag should succeed")
+		require.NoError(t, client.VDI().Tag().Remove(ctx, vdiTestID, tag), "removing tag should succeed")
 		require.Eventually(t, func() bool {
 			return !vdiTagExists(ctx, client, vdiTestID, tag)
 		}, 1*time.Minute, 2*time.Second, "tag should be removed from the VDI")

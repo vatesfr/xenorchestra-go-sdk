@@ -9,20 +9,27 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/tag"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 	"go.uber.org/zap"
 )
 
 type HostService struct {
-	client *client.Client
-	log    *logger.Logger
+	client     *client.Client
+	log        *logger.Logger
+	tagService library.TagService
 }
 
 func New(client *client.Client, log *logger.Logger) library.Host {
 	return &HostService{
-		client: client,
-		log:    log,
+		client:     client,
+		log:        log,
+		tagService: tag.New(client, log, payloads.ResourceTypeHost),
 	}
+}
+
+func (s *HostService) Tag() library.TagService {
+	return s.tagService
 }
 
 func (s *HostService) Get(ctx context.Context, id uuid.UUID) (*payloads.Host, error) {

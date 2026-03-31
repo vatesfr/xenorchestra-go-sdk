@@ -30,19 +30,7 @@ type SR interface {
 	// Returns all matching tasks or an error if the operation fails.
 	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
 
-	// AddTag adds a tag to the SR.
-	// Parameters:
-	//   - id: ID of the SR
-	//   - tag: tag string to add
-	// Returns an error if the operation fails.
-	AddTag(ctx context.Context, id uuid.UUID, tag string) error
-
-	// RemoveTag removes a tag from the SR.
-	// Parameters:
-	//   - id: ID of the SR
-	//   - tag: tag string to remove
-	// Returns an error if the operation fails.
-	RemoveTag(ctx context.Context, id uuid.UUID, tag string) error
+	Taggable
 
 	SRActions
 }

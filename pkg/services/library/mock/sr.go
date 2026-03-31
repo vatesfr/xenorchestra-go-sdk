@@ -15,6 +15,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
+	library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,20 +41,6 @@ func NewMockSR(ctrl *gomock.Controller) *MockSR {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockSR) EXPECT() *MockSRMockRecorder {
 	return m.recorder
-}
-
-// AddTag mocks base method.
-func (m *MockSR) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddTag indicates an expected call of AddTag.
-func (mr *MockSRMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockSR)(nil).AddTag), ctx, id, tag)
 }
 
 // Get mocks base method.
@@ -116,20 +103,6 @@ func (mr *MockSRMockRecorder) ReclaimSpace(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReclaimSpace", reflect.TypeOf((*MockSR)(nil).ReclaimSpace), ctx, id)
 }
 
-// RemoveTag mocks base method.
-func (m *MockSR) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RemoveTag indicates an expected call of RemoveTag.
-func (mr *MockSRMockRecorder) RemoveTag(ctx, id, tag any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockSR)(nil).RemoveTag), ctx, id, tag)
-}
-
 // Scan mocks base method.
 func (m *MockSR) Scan(ctx context.Context, id uuid.UUID) (string, error) {
 	m.ctrl.T.Helper()
@@ -143,4 +116,18 @@ func (m *MockSR) Scan(ctx context.Context, id uuid.UUID) (string, error) {
 func (mr *MockSRMockRecorder) Scan(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Scan", reflect.TypeOf((*MockSR)(nil).Scan), ctx, id)
+}
+
+// Tag mocks base method.
+func (m *MockSR) Tag() library.TagService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Tag")
+	ret0, _ := ret[0].(library.TagService)
+	return ret0
+}
+
+// Tag indicates an expected call of Tag.
+func (mr *MockSRMockRecorder) Tag() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tag", reflect.TypeOf((*MockSR)(nil).Tag))
 }

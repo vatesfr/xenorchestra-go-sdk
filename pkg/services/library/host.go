@@ -11,6 +11,6 @@ import (
 type Host interface {
 	Get(ctx context.Context, id uuid.UUID) (*payloads.Host, error)
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Host, error)
-	AddTag(ctx context.Context, id uuid.UUID, tag string) error
-	RemoveTag(ctx context.Context, id uuid.UUID, tag string) error
+
+	Taggable
 }

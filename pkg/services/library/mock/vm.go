@@ -15,6 +15,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
+	library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -279,6 +280,20 @@ func (m *MockVM) Suspend(ctx context.Context, id uuid.UUID) (string, error) {
 func (mr *MockVMMockRecorder) Suspend(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Suspend", reflect.TypeOf((*MockVM)(nil).Suspend), ctx, id)
+}
+
+// Tag mocks base method.
+func (m *MockVM) Tag() library.TagService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Tag")
+	ret0, _ := ret[0].(library.TagService)
+	return ret0
+}
+
+// Tag indicates an expected call of Tag.
+func (mr *MockVMMockRecorder) Tag() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tag", reflect.TypeOf((*MockVM)(nil).Tag))
 }
 
 // Unpause mocks base method.

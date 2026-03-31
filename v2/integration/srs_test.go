@@ -171,10 +171,10 @@ func TestSRAddTag(t *testing.T) {
 	tag := prefix + "tag"
 
 	t.Cleanup(func() {
-		_ = client.SR().RemoveTag(ctx, intTests.testSR.ID, tag)
+		_ = client.SR().Tag().Remove(ctx, intTests.testSR.ID, tag)
 	})
 
-	require.NoError(t, client.SR().AddTag(ctx, intTests.testSR.ID, tag), "adding tag should succeed")
+	require.NoError(t, client.SR().Tag().Add(ctx, intTests.testSR.ID, tag), "adding tag should succeed")
 
 	require.Eventually(t, func() bool {
 		return srTagExists(ctx, client, intTests.testSR.ID, tag)
@@ -190,13 +190,13 @@ func TestSRRemoveTag(t *testing.T) {
 
 	tag := prefix + "remove-tag"
 
-	require.NoError(t, client.SR().AddTag(ctx, intTests.testSR.ID, tag), "setup tag addition should succeed")
+	require.NoError(t, client.SR().Tag().Add(ctx, intTests.testSR.ID, tag), "setup tag addition should succeed")
 
 	require.Eventually(t, func() bool {
 		return srTagExists(ctx, client, intTests.testSR.ID, tag)
 	}, 1*time.Minute, 2*time.Second, "tag should be attached to the SR before removal")
 
-	require.NoError(t, client.SR().RemoveTag(ctx, intTests.testSR.ID, tag), "removing tag should succeed")
+	require.NoError(t, client.SR().Tag().Remove(ctx, intTests.testSR.ID, tag), "removing tag should succeed")
 
 	require.Eventually(t, func() bool {
 		return !srTagExists(ctx, client, intTests.testSR.ID, tag)

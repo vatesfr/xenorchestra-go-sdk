@@ -9,6 +9,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/tag"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 	"go.uber.org/zap"
 )
@@ -17,6 +18,7 @@ type Service struct {
 	client      *client.Client
 	log         *logger.Logger
 	taskService library.Task
+	tagService  library.TagService
 }
 
 func New(client *client.Client, taskService library.Task, log *logger.Logger) library.SR {
@@ -24,12 +26,17 @@ func New(client *client.Client, taskService library.Task, log *logger.Logger) li
 		client:      client,
 		log:         log,
 		taskService: taskService,
+		tagService:  tag.New(client, log, payloads.ResourceTypeSR),
 	}
+}
+
+func (s *Service) Tag() library.TagService {
+	return s.tagService
 }
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.StorageRepository, error) {
 	var result payloads.StorageRepository
-	path := core.NewPathBuilder().Resource("srs").ID(id).Build()
+	path := core.NewPathBuilder().Resource(payloads.ResourceTypeSR.Path()).ID(id).Build()
 	err := client.TypedGet(
 		ctx,
 		s.client,
@@ -45,7 +52,7 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.StorageRepos
 }
 
 func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.StorageRepository, error) {
-	path := core.NewPathBuilder().Resource("srs").Build()
+	path := core.NewPathBuilder().Resource(payloads.ResourceTypeSR.Path()).Build()
 	params := make(map[string]any)
 	if limit > 0 {
 		params["limit"] = limit
@@ -66,7 +73,7 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 }
 
 func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
-	path := core.NewPathBuilder().Resource("srs").ID(id).Resource("tasks").Build()
+	path := core.NewPathBuilder().Resource(payloads.ResourceTypeSR.Path()).ID(id).Resource("tasks").Build()
 
 	params := make(map[string]any)
 	params["fields"] = "*"
@@ -89,7 +96,8 @@ func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter 
 }
 
 func (s *Service) ReclaimSpace(ctx context.Context, id uuid.UUID) (string, error) {
-	path := core.NewPathBuilder().Resource("srs").ID(id).ActionsGroup().Action("reclaim_space").Build()
+	path := core.NewPathBuilder().Resource(payloads.ResourceTypeSR.Path()).
+		ID(id).ActionsGroup().Action("reclaim_space").Build()
 
 	var result payloads.TaskIDResponse
 
@@ -109,7 +117,7 @@ func (s *Service) ReclaimSpace(ctx context.Context, id uuid.UUID) (string, error
 }
 
 func (s *Service) Scan(ctx context.Context, id uuid.UUID) (string, error) {
-	path := core.NewPathBuilder().Resource("srs").ID(id).ActionsGroup().Action("scan").Build()
+	path := core.NewPathBuilder().Resource(payloads.ResourceTypeSR.Path()).ID(id).ActionsGroup().Action("scan").Build()
 
 	var result payloads.TaskIDResponse
 
@@ -126,38 +134,4 @@ func (s *Service) Scan(ctx context.Context, id uuid.UUID) (string, error) {
 	}
 
 	return taskResult.ID, nil
-}
-
-func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
-	if tag == "" {
-		return fmt.Errorf("tag cannot be empty")
-	}
-
-	path := core.NewPathBuilder().Resource("srs").ID(id).Resource("tags").IDString(tag).Build()
-
-	var result struct{}
-
-	if err := client.TypedPut(ctx, s.client, path, core.EmptyParams, &result); err != nil {
-		s.log.Error("Failed to add tag to SR", zap.String("srID", id.String()), zap.String("tag", tag), zap.Error(err))
-		return err
-	}
-
-	return nil
-}
-
-func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
-	if tag == "" {
-		return fmt.Errorf("tag cannot be empty")
-	}
-
-	path := core.NewPathBuilder().Resource("srs").ID(id).Resource("tags").IDString(tag).Build()
-
-	var result struct{}
-
-	if err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result); err != nil {
-		s.log.Error("Failed to remove tag from SR", zap.String("srID", id.String()), zap.String("tag", tag), zap.Error(err))
-		return err
-	}
-
-	return nil
 }

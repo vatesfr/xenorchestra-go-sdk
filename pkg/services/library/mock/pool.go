@@ -15,6 +15,7 @@ import (
 
 	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
+	library "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -142,6 +143,20 @@ func (m *MockPool) RollingUpdate(ctx context.Context, poolID uuid.UUID) error {
 func (mr *MockPoolMockRecorder) RollingUpdate(ctx, poolID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RollingUpdate", reflect.TypeOf((*MockPool)(nil).RollingUpdate), ctx, poolID)
+}
+
+// Tag mocks base method.
+func (m *MockPool) Tag() library.TagService {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Tag")
+	ret0, _ := ret[0].(library.TagService)
+	return ret0
+}
+
+// Tag indicates an expected call of Tag.
+func (mr *MockPoolMockRecorder) Tag() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tag", reflect.TypeOf((*MockPool)(nil).Tag))
 }
 
 // MockPoolAction is a mock of PoolAction interface.
