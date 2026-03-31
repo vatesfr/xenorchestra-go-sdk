@@ -23,22 +23,33 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+const (
+	testVDIID1         = "c77f9955-c1d2-4b39-aa1c-73cdb2dacb7e"
+	testVDIID2         = "d88fa066-d2e3-5c4a-bc2d-84deb3eadcbf"
+	testVDIIDNotFound  = "e99fb177-e3f4-6d5b-cd3e-95efc4fbedc0"
+	testSRID           = "f2345678-1234-1234-1234-123456789abc"
+	testMigrateTaskID  = "task-migrate-123"
+	testVDINameLabel1  = "VDI 1"
+	testVDINameLabel2  = "VDI 2"
+	testVDIVirtualSize = int64(8589934592)
+)
+
 var mockVDIs = func() []*payloads.VDI {
 	return []*payloads.VDI{
 		{
 			UUID:            uuid.Must(uuid.FromString(testVDIID1)),
 			Type:            "VDI",
-			NameLabel:       "VDI 1",
+			NameLabel:       testVDINameLabel1,
 			NameDescription: "Test VDI 1",
 			VDIType:         "user",
 		},
 		{
 			UUID:            uuid.Must(uuid.FromString(testVDIID2)),
 			Type:            "VDI",
-			NameLabel:       "VDI 2",
+			NameLabel:       testVDINameLabel2,
 			NameDescription: "Test VDI 2",
 			VDIType:         "user",
-			Size:            8589934592,
+			Size:            testVDIVirtualSize,
 			Usage:           17152,
 		},
 	}
@@ -59,14 +70,6 @@ var mockTasks = func() []*payloads.Task {
 		},
 	}
 }
-
-const (
-	testVDIID1        = "c77f9955-c1d2-4b39-aa1c-73cdb2dacb7e"
-	testVDIID2        = "d88fa066-d2e3-5c4a-bc2d-84deb3eadcbf"
-	testVDIIDNotFound = "e99fb177-e3f4-6d5b-cd3e-95efc4fbedc0"
-	testSRID          = "f2345678-1234-1234-1234-123456789abc"
-	testMigrateTaskID = "task-migrate-123"
-)
 
 func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Server, *mock.MockTask) {
 	server := httptest.NewServer(handler)
@@ -433,8 +436,8 @@ func TestGetAll(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, vdis)
 		assert.Len(t, vdis, 2)
-		assert.Equal(t, "VDI 1", vdis[0].NameLabel)
-		assert.Equal(t, "VDI 2", vdis[1].NameLabel)
+		assert.Equal(t, testVDINameLabel1, vdis[0].NameLabel)
+		assert.Equal(t, testVDINameLabel2, vdis[1].NameLabel)
 	})
 }
 

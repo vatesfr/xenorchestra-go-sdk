@@ -15,6 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	vdiResourcePath = "vdis"
+)
+
 type Service struct {
 	client      *client.Client
 	log         *logger.Logger
@@ -41,7 +45,7 @@ func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.VDI, error) {
 	var result payloads.VDI
-	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+	path := core.NewPathBuilder().Resource(vdiResourcePath).ID(id).Build()
 	err := client.TypedGet(
 		ctx,
 		s.client,
@@ -57,7 +61,7 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.VDI, error) 
 }
 
 func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VDI, error) {
-	path := core.NewPathBuilder().Resource("vdis").Build()
+	path := core.NewPathBuilder().Resource(vdiResourcePath).Build()
 	params := make(map[string]any)
 	if limit > 0 {
 		params["limit"] = limit
@@ -78,7 +82,7 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
-	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+	path := core.NewPathBuilder().Resource(vdiResourcePath).ID(id).Build()
 
 	var result struct{}
 
@@ -91,7 +95,7 @@ func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *Service) Migrate(ctx context.Context, id uuid.UUID, srId uuid.UUID) (string, error) {
-	path := core.NewPathBuilder().Resource("vdis").ID(id).ActionsGroup().Action("migrate").Build()
+	path := core.NewPathBuilder().Resource(vdiResourcePath).ID(id).ActionsGroup().Action("migrate").Build()
 
 	var result payloads.TaskIDResponse
 
@@ -115,7 +119,7 @@ func (s *Service) Migrate(ctx context.Context, id uuid.UUID, srId uuid.UUID) (st
 }
 
 func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
-	path := core.NewPathBuilder().Resource("vdis").ID(id).Resource("tasks").Build()
+	path := core.NewPathBuilder().Resource(vdiResourcePath).ID(id).Resource("tasks").Build()
 
 	params := make(map[string]any)
 	params["fields"] = "*"
@@ -145,7 +149,7 @@ func (s *Service) Export(ctx context.Context, id uuid.UUID, format payloads.VDIF
 		return fmt.Errorf("callback function cannot be nil")
 	}
 
-	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+	path := core.NewPathBuilder().Resource(vdiResourcePath).ID(id).Build()
 	endpoint := fmt.Sprintf("%s.%s", path, format)
 
 	resp, err := client.RawGet(ctx, s.client, endpoint)
@@ -171,7 +175,7 @@ func (s *Service) Import(
 		return fmt.Errorf("size must be greater than 0")
 	}
 
-	path := core.NewPathBuilder().Resource("vdis").ID(id).Build()
+	path := core.NewPathBuilder().Resource(vdiResourcePath).ID(id).Build()
 	endpoint := fmt.Sprintf("%s.%s", path, format)
 
 	resp, err := client.RawPut(ctx, s.client, endpoint, content, "application/octet-stream", size)
