@@ -74,3 +74,17 @@ const (
 	VDIOperationSnapshot          VDIOperation = "snapshot"
 	VDIOperationUpdate            VDIOperation = "update"
 )
+
+type VDICreateParams struct {
+	SRId            uuid.UUID         `json:"srId"`
+	VirtualSize     int64             `json:"virtual_size"`
+	NameDescription string            `json:"name_description,omitempty"`
+	NameLabel       string            `json:"name_label,omitempty"`
+	Tags            []string          `json:"tags,omitempty"`
+	VDIType         VDIType           `json:"type,omitempty"`
+	OtherConfig     map[string]string `json:"other_config,omitempty"`
+	ReadOnly        *bool             `json:"read_only,omitempty"`
+	Sharable        *bool             `json:"sharable,omitempty"`
+	XenstoreData    map[string]string `json:"xenstore_data,omitempty"`
+	SmConfig        map[string]any    `json:"sm_config,omitempty"`
+}

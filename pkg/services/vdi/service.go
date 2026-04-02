@@ -188,3 +188,17 @@ func (s *Service) Import(
 
 	return nil
 }
+
+func (s *Service) Create(ctx context.Context, params payloads.VDICreateParams) (uuid.UUID, error) {
+	path := core.NewPathBuilder().Resource(vdiResourcePath).Build()
+
+	var result payloads.CreateResponse
+
+	err := client.TypedPost(ctx, s.client, path, params, &result)
+	if err != nil {
+		s.log.Error("Failed to create VDI", zap.Any("params", params), zap.Error(err))
+		return uuid.Nil, err
+	}
+
+	return result.ID, nil
+}

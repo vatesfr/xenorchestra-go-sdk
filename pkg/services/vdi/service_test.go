@@ -212,6 +212,40 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 		}
 	})
 
+	// POST /rest/v0/vdis - Create a VDI
+	mux.HandleFunc("POST /rest/v0/vdis", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		var params payloads.VDICreateParams
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if params.SRId.String() != testSRID ||
+			params.NameLabel != testVDINameLabel1 ||
+			params.VirtualSize != testVDIVirtualSize {
+			errorMessage := fmt.Sprintf("invalid parameters,\n"+
+				"expected srId: %s, name: %s, virtualSize: %d,\n"+
+				"got srId: %s, name: %s, virtualSize: %d",
+				testSRID,
+				testVDINameLabel1,
+				testVDIVirtualSize,
+				params.SRId.String(),
+				params.NameLabel,
+				params.VirtualSize,
+			)
+			http.Error(w, errorMessage, http.StatusBadRequest)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(payloads.CreateResponse{
+			ID: uuid.Must(uuid.FromString(testVDIID1)),
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
 	// POST /rest/v0/vdis/{id}/actions/migrate - Migrate VDI
 	mux.HandleFunc("POST /rest/v0/vdis/{id}/actions/migrate", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -706,5 +740,63 @@ func TestImport(t *testing.T) {
 		err := service.Import(context.Background(), vdiID, payloads.VDIFormatVHD, content, int64(len(testContent)))
 
 		assert.NoError(t, err)
+	})
+}
+
+func TestCreate(t *testing.T) {
+	t.Run("successfully creates a VDI", func(t *testing.T) {
+		server, service, _ := setupTestServer(t)
+		defer server.Close()
+
+		params := payloads.VDICreateParams{
+			SRId:        uuid.Must(uuid.FromString(testSRID)),
+			VirtualSize: testVDIVirtualSize,
+			NameLabel:   testVDINameLabel1,
+		}
+
+		vdiID, err := service.Create(context.Background(), params)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, vdiID)
+	})
+
+	t.Run("returns error on http error", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		})
+		service, server, _ := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+
+		params := payloads.VDICreateParams{
+			SRId:        uuid.Must(uuid.FromString(testSRID)),
+			VirtualSize: testVDIVirtualSize,
+			NameLabel:   testVDINameLabel1,
+		}
+
+		vdiID, err := service.Create(context.Background(), params)
+
+		assert.Error(t, err)
+		assert.Empty(t, vdiID)
+	})
+
+	t.Run("returns error on invalid json response", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, err := w.Write([]byte("invalid json"))
+			assert.NoError(t, err)
+		})
+		service, server, _ := setupTestServerWithHandler(t, handler)
+		defer server.Close()
+
+		params := payloads.VDICreateParams{
+			SRId:        uuid.Must(uuid.FromString(testSRID)),
+			VirtualSize: testVDIVirtualSize,
+			NameLabel:   testVDINameLabel1,
+		}
+
+		vdiID, err := service.Create(context.Background(), params)
+
+		assert.Error(t, err)
+		assert.Empty(t, vdiID)
 	})
 }
