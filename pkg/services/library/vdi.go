@@ -21,8 +21,7 @@ type VDI interface {
 	//   - filter: filter string for VDI selection (empty for no filter)
 	// Returns all matching VDIs or an error if the operation fails.
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.VDI, error)
-	AddTag(ctx context.Context, id uuid.UUID, tag string) error
-	RemoveTag(ctx context.Context, id uuid.UUID, tag string) error
+
 	// Delete removes a VDI by its ID.
 	// Parameters:
 	//   - id: ID of the VDI to delete
@@ -49,6 +48,8 @@ type VDI interface {
 
 	// VDIActions is a group of actions that can be performed on a VDI.
 	VDIActions
+
+	Taggable
 }
 
 type VDIActions interface {

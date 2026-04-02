@@ -8,6 +8,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
@@ -18,6 +19,7 @@ type Service struct {
 	client      *client.Client
 	log         *logger.Logger
 	taskService library.Task
+	tagService  *tagger.Tagger
 }
 
 func New(client *client.Client, taskService library.Task, log *logger.Logger) library.VDI {
@@ -25,7 +27,16 @@ func New(client *client.Client, taskService library.Task, log *logger.Logger) li
 		client:      client,
 		log:         log,
 		taskService: taskService,
+		tagService:  tagger.New(client, log, payloads.ResourceTypeVDI),
 	}
+}
+
+func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Add(ctx, id, tag)
+}
+
+func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Remove(ctx, id, tag)
 }
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (*payloads.VDI, error) {
@@ -64,41 +75,6 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 		return nil, err
 	}
 	return result, nil
-}
-
-func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
-	if tag == "" {
-		return fmt.Errorf("tag cannot be empty")
-	}
-
-	path := core.NewPathBuilder().Resource("vdis").ID(id).Resource("tags").IDString(tag).Build()
-
-	var result struct{}
-
-	if err := client.TypedPut(ctx, s.client, path, core.EmptyParams, &result); err != nil {
-		s.log.Error("Failed to add tag to VDI", zap.String("vdiID", id.String()), zap.String("tag", tag), zap.Error(err))
-		return err
-	}
-
-	return nil
-}
-
-func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
-	if tag == "" {
-		return fmt.Errorf("tag cannot be empty")
-	}
-
-	path := core.NewPathBuilder().Resource("vdis").ID(id).Resource("tags").IDString(tag).Build()
-
-	var result struct{}
-
-	if err := client.TypedDelete(ctx, s.client, path, core.EmptyParams, &result); err != nil {
-		s.log.Error("Failed to remove tag from VDI", zap.String("vdiID", id.String()),
-			zap.String("tag", tag), zap.Error(err))
-		return err
-	}
-
-	return nil
 }
 
 func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {

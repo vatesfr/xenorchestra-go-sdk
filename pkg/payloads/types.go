@@ -13,3 +13,18 @@ const (
 	ResourceTypePBD  ResourceType = "PBD"
 	ResourceTypeSR   ResourceType = "SR"
 )
+
+var resourceTypePathMap = map[ResourceType]string{
+	ResourceTypeVBD:  "vbds",
+	ResourceTypeVDI:  "vdis",
+	ResourceTypePool: "pools",
+	ResourceTypeHost: "hosts",
+	ResourceTypeVM:   "vms",
+	ResourceTypePBD:  "pbds",
+	ResourceTypeSR:   "srs",
+}
+
+// Path returns the API path segment corresponding to the resource type.
+func (rt ResourceType) Path() string {
+	return resourceTypePathMap[rt]
+}

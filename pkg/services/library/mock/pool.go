@@ -42,6 +42,20 @@ func (m *MockPool) EXPECT() *MockPoolMockRecorder {
 	return m.recorder
 }
 
+// AddTag mocks base method.
+func (m *MockPool) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTag indicates an expected call of AddTag.
+func (mr *MockPoolMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockPool)(nil).AddTag), ctx, id, tag)
+}
+
 // CreateNetwork mocks base method.
 func (m *MockPool) CreateNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
 	m.ctrl.T.Helper()
@@ -114,6 +128,20 @@ func (m *MockPool) GetAll(ctx context.Context, limit int, filter string) ([]*pay
 func (mr *MockPoolMockRecorder) GetAll(ctx, limit, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockPool)(nil).GetAll), ctx, limit, filter)
+}
+
+// RemoveTag mocks base method.
+func (m *MockPool) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveTag indicates an expected call of RemoveTag.
+func (mr *MockPoolMockRecorder) RemoveTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockPool)(nil).RemoveTag), ctx, id, tag)
 }
 
 // RollingReboot mocks base method.

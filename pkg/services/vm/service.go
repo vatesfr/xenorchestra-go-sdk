@@ -8,6 +8,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
@@ -18,6 +19,7 @@ type Service struct {
 	// Needed by VM for the task related but not part of the VM interface
 	taskService library.Task
 	poolService library.Pool
+	tagService  *tagger.Tagger
 
 	client *client.Client
 	log    *logger.Logger
@@ -33,8 +35,17 @@ func New(
 		client:      client,
 		taskService: task,
 		poolService: pool,
+		tagService:  tagger.New(client, log, payloads.ResourceTypeVM),
 		log:         log,
 	}
+}
+
+func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Add(ctx, id, tag)
+}
+
+func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	return s.tagService.Remove(ctx, id, tag)
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*payloads.VM, error) {
