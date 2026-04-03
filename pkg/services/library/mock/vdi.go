@@ -57,6 +57,21 @@ func (mr *MockVDIMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockVDI)(nil).AddTag), ctx, id, tag)
 }
 
+// Create mocks base method.
+func (m *MockVDI) Create(arg0 context.Context, arg1 payloads.VDICreateParams) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", arg0, arg1)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockVDIMockRecorder) Create(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockVDI)(nil).Create), arg0, arg1)
+}
+
 // Delete mocks base method.
 func (m *MockVDI) Delete(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()
