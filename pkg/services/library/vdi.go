@@ -46,6 +46,9 @@ type VDI interface {
 	// Returns an error if the operation fails.
 	Import(ctx context.Context, id uuid.UUID, format payloads.VDIFormat, content io.Reader, size int64) error
 
+	// Create creates a new VDI with the specified parameters.
+	Create(context.Context, payloads.VDICreateParams) (uuid.UUID, error)
+
 	// VDIActions is a group of actions that can be performed on a VDI.
 	VDIActions
 
