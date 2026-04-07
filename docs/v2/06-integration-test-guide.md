@@ -86,11 +86,12 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_TOKEN` | Authentication token | `xxxxxxx` | If no credentials |
 | `XOA_POOL` | Test pool Name Label | `My Pool` | ✅ |
 | `XOA_STORAGE` | Test storage repository Name Label | `My SR` | ✅ |
-| `XOA_TEMPLATE` | Template Name Label | `Debian 12` | ✅ |
+| `XOA_TEMPLATE` | Template Name Label | `Alpine 3.10` | ✅ |
+| `XOA_NETWORK` | Network used for test | `My Network` | ✅ |
 | `XOA_DEVELOPMENT`| Enable debug logs | `true` | ❌ |
 | `XOA_TEST_PREFIX`| Custom resource prefix | `ci-` | ❌ |
 | `XOA_TEST_VLAN`  | VLAN for network tests | `1234` | ❌ |
-| `XOA_TEST_PBD_ID`| UUID of a PBD safe to plug/unplug (e.g. removable storage). Required for PBD plug/unplug tests; skipped when unset. | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | ❌ |
+| `XOA_TEST_PBD_ID`| UUID of a PBD safe to plug/unplug (e.g. removable storage). Required for PBD plug/unplug tests; uuid.Nil when unset. | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | ❌ |
 
 ### Test Template Guidance
 
@@ -102,7 +103,7 @@ Choose a test template that boots quickly and has the Xen Orchestra guest agent 
 export XOA_URL="https://xoa.lab.local"
 export XOA_TOKEN="token"
 export XOA_POOL="Pool A"
-export XOA_TEMPLATE="Debian 12"
+export XOA_TEMPLATE="Alpine 3.10"
 export XOA_STORAGE="storage repository name"
 
 make test-integration
