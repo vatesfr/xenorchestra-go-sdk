@@ -153,6 +153,14 @@ Located in `helpers_test.go`, it helps create multiple VMs for listing or batch 
 vmsIDs := createVMsForTest(t, ctx, client.Pool(), 3, prefix + "batch-")
 ```
 
+#### `createVDIForTest`
+Located in `helpers_test.go`, it creates a single VDI via the v2 client and registers automatic cleanup. Returns the new VDI's UUID.
+```go
+vdiID := createVDIForTest(t, ctx, client, prefix+"my-disk", 512*units.MB)
+```
+
+The VDI is placed on `intTests.testSR`. Cleanup is handled automatically by the test prefix mechanism.
+
 If you find yourself repeating setup logic in multiple test files, add a new helper function to `helpers_test.go`. Ensure it:
 1.  Uses `*testing.T` for assertions (`require.NoError`, etc.).
 2.  Accepts `context.Context` and the necessary clients.
