@@ -111,7 +111,7 @@ func TestVBDCreate(t *testing.T) {
 	})
 	require.NoError(t, err, "creating VM should succeed")
 
-	vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vbd-create-vdi", 512*units.MB)
+	vdiID := createVDIForTest(t, ctx, client, testPrefix+"vbd-create-vdi", 512*units.MB)
 
 	vbdID, err := client.VBD().Create(ctx, &payloads.CreateVBDParams{
 		VM:  vm.ID,
@@ -148,7 +148,7 @@ func TestVBDDelete(t *testing.T) {
 	})
 	require.NoError(t, err, "creating VM should succeed")
 
-	vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vbd-delete-vdi", 512*units.MB)
+	vdiID := createVDIForTest(t, ctx, client, testPrefix+"vbd-delete-vdi", 512*units.MB)
 	vbdID := createVBDForTest(t, ctx, client, vm.ID, vdiID)
 
 	err = client.VBD().Delete(ctx, vbdID)
@@ -183,7 +183,7 @@ func TestVBDConnectDisconnect(t *testing.T) {
 
 	// Create VDI and VBD while VM is running.
 	// XO auto-attaches VBDs created on running VMs when PV drivers are active.
-	vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vbd-connect-vdi", 512*units.MB)
+	vdiID := createVDIForTest(t, ctx, client, testPrefix+"vbd-connect-vdi", 512*units.MB)
 	vbdID := createVBDForTest(t, ctx, client, vm.ID, vdiID)
 
 	// Wait for XO auto-attach to complete.
@@ -236,7 +236,7 @@ func TestVBDGetTasks(t *testing.T) {
 
 	// Create VDI and VBD while VM is running.
 	// XO auto-attaches VBDs created on running VMs when PV drivers are active.
-	vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vbd-connect-vdi", 512*units.MB)
+	vdiID := createVDIForTest(t, ctx, client, testPrefix+"vbd-connect-vdi", 512*units.MB)
 	vbdID := createVBDForTest(t, ctx, client, vm.ID, vdiID)
 
 	// Wait for XO auto-attach to complete.

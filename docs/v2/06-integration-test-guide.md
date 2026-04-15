@@ -86,11 +86,12 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_TOKEN` | Authentication token | `xxxxxxx` | If no credentials |
 | `XOA_POOL` | Test pool Name Label | `My Pool` | ✅ |
 | `XOA_STORAGE` | Test storage repository Name Label | `My SR` | ✅ |
-| `XOA_TEMPLATE` | Template Name Label | `Debian 12` | ✅ |
+| `XOA_TEMPLATE` | Template Name Label | `Alpine 3.10` | ✅ |
+| `XOA_NETWORK` | Network used for test | `My Network` | ✅ |
 | `XOA_DEVELOPMENT`| Enable debug logs | `true` | ❌ |
 | `XOA_TEST_PREFIX`| Custom resource prefix | `ci-` | ❌ |
 | `XOA_TEST_VLAN`  | VLAN for network tests | `1234` | ❌ |
-| `XOA_TEST_PBD_ID`| UUID of a PBD safe to plug/unplug (e.g. removable storage). Required for PBD plug/unplug tests; skipped when unset. | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | ❌ |
+| `XOA_TEST_PBD_ID`| UUID of a PBD safe to plug/unplug (e.g. removable storage). Required for PBD plug/unplug tests; uuid.Nil when unset. | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | ❌ |
 
 ### Test Template Guidance
 
@@ -102,7 +103,7 @@ Choose a test template that boots quickly and has the Xen Orchestra guest agent 
 export XOA_URL="https://xoa.lab.local"
 export XOA_TOKEN="token"
 export XOA_POOL="Pool A"
-export XOA_TEMPLATE="Debian 12"
+export XOA_TEMPLATE="Alpine 3.10"
 export XOA_STORAGE="storage repository name"
 
 make test-integration
@@ -152,6 +153,14 @@ Located in `helpers_test.go`, it helps create multiple VMs for listing or batch 
 ```go
 vmsIDs := createVMsForTest(t, ctx, client.Pool(), 3, prefix + "batch-")
 ```
+
+#### `createVDIForTest`
+Located in `helpers_test.go`, it creates a single VDI via the v2 client and registers automatic cleanup. Returns the new VDI's UUID.
+```go
+vdiID := createVDIForTest(t, ctx, client, prefix+"my-disk", 512*units.MB)
+```
+
+The VDI is placed on `intTests.testSR`. Cleanup is handled automatically by the test prefix mechanism.
 
 If you find yourself repeating setup logic in multiple test files, add a new helper function to `helpers_test.go`. Ensure it:
 1.  Uses `*testing.T` for assertions (`require.NoError`, etc.).

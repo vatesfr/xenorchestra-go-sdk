@@ -20,8 +20,8 @@ func TestVDIGet(t *testing.T) {
 	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
-	vdiTestID1 := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi1", 512*units.MB)
-	vdiTestID2 := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi2", 512*units.MB)
+	vdiTestID1 := createVDIForTest(t, ctx, client, testPrefix+"vdi1", 512*units.MB)
+	vdiTestID2 := createVDIForTest(t, ctx, client, testPrefix+"vdi2", 512*units.MB)
 
 	t.Run("GetSingleVDI", func(t *testing.T) {
 		t.Parallel()
@@ -72,7 +72,7 @@ func TestVDITags(t *testing.T) {
 	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
-	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-tags", 512*units.MB)
+	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-tags", 512*units.MB)
 
 	t.Run("AddTag", func(t *testing.T) {
 		t.Parallel()
@@ -102,7 +102,7 @@ func TestVDIDeletion(t *testing.T) {
 	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
-	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-delete", 512*units.MB)
+	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-delete", 512*units.MB)
 	err := client.VDI().Delete(ctx, vdiTestID)
 	require.NoError(t, err, "deleting VDI should succeed")
 
@@ -114,7 +114,7 @@ func TestVDIMigration(t *testing.T) {
 	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
-	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-migrate", 512*units.MB)
+	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-migrate", 512*units.MB)
 	// We will migrate the VDI to the same SR, this is just to test the migration functionality without
 	// needing to create a new SR for the test.
 
@@ -148,7 +148,7 @@ func TestVDIGetTasks(t *testing.T) {
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	// Create and migrate the VDI multiple times to generate some tasks
-	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-tasks", 512*units.MB)
+	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-tasks", 512*units.MB)
 	taskID1, err := client.VDI().Migrate(ctx, vdiTestID, intTests.testSR.ID)
 	require.NoError(t, err, "1st migrating VDI should succeed")
 	task, err := client.Task().Wait(ctx, taskID1)
@@ -203,7 +203,7 @@ func TestVDIExport(t *testing.T) {
 	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
-	vdiTestID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-export-import", 10*units.MB)
+	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-export-import", 10*units.MB)
 
 	t.Run("export in raw", func(t *testing.T) {
 		t.Parallel()
@@ -238,7 +238,7 @@ func TestVDIImportExport(t *testing.T) {
 		t.Parallel()
 
 		// Create a VDI to import into
-		vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-import-raw", 10*units.MB)
+		vdiID := createVDIForTest(t, ctx, client, testPrefix+"vdi-import-raw", 10*units.MB)
 
 		// Create a test RAW disk image
 		diskPath := createTestDiskImage(t, "raw", 10*units.MB)
@@ -269,7 +269,7 @@ func TestVDIImportExport(t *testing.T) {
 		t.Parallel()
 
 		// Create a VDI to import into
-		vdiID := createVDIForTest(t, ctx, client.V1Client(), testPrefix+"vdi-import-vhd", 10*units.MB)
+		vdiID := createVDIForTest(t, ctx, client, testPrefix+"vdi-import-vhd", 10*units.MB)
 
 		// Create a test VHD disk image
 		diskPath := createTestDiskImage(t, "vpc", 10*units.MB)
@@ -294,5 +294,26 @@ func TestVDIImportExport(t *testing.T) {
 		assert.Equal(t, vdiID, vdi.ID, "VDI ID should match")
 		assert.Equal(t, testPrefix+"vdi-import-vhd", vdi.NameLabel, "VDI name should match")
 		assert.Greater(t, vdi.Size, int64(0), "VDI should have non-zero size")
+	})
+}
+
+func TestVDICreate(t *testing.T) {
+	t.Parallel()
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	t.Run("CreateVDIWithName", func(t *testing.T) {
+		t.Parallel()
+		vdiID := createVDIForTest(t, ctx, client, testPrefix+"vdi-create-name", 512*units.MB)
+		vdi, err := client.VDI().Get(ctx, vdiID)
+		require.NoError(t, err, "getting created VDI should succeed")
+		assert.Equal(t, testPrefix+"vdi-create-name", vdi.NameLabel, "VDI name label should match")
+	})
+
+	t.Run("CreateVDIWithoutName", func(t *testing.T) {
+		t.Parallel()
+		vdiID := createVDIForTest(t, ctx, client, "", 512*units.MB)
+		vdi, err := client.VDI().Get(ctx, vdiID)
+		require.NoError(t, err, "getting created VDI should succeed")
+		assert.Empty(t, vdi.NameLabel, "VDI name label should be empty when not provided")
 	})
 }

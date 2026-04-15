@@ -13,7 +13,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 )
@@ -89,22 +88,18 @@ func createVBDForTest(t *testing.T, ctx context.Context, client library.Library,
 	return vbdID
 }
 
-// createVDIForTest creates a VDI with the specified name and size using the v1 client and returns its ID
-// TODO: replace with v2 client once VDI creation is supported in v2
-func createVDIForTest(t *testing.T, ctx context.Context, client v1.XOClient, name string, size int64) uuid.UUID {
+// createVDIForTest creates a VDI with the specified name and size using the v2 client and returns its ID
+func createVDIForTest(t *testing.T, ctx context.Context, client library.Library, name string, size int64) uuid.UUID {
 	t.Helper()
 
-	var id string
-
-	if client, ok := intTests.v1Client.(*v1.Client); ok {
-		err := client.Call("disk.create", map[string]any{
-			"name": name,
-			"size": size,
-			"sr":   intTests.testSR.ID.String(),
-		}, &id)
-		require.NoError(t, err, "error while creating VDI %s in SR %s: %v", name, intTests.testSR.ID, err)
-	}
-	return uuid.FromStringOrNil(id)
+	vdiID, err := client.VDI().Create(ctx, payloads.VDICreateParams{
+		SRId:        intTests.testSR.ID,
+		NameLabel:   name,
+		VirtualSize: size,
+	})
+	require.NoError(t, err, "creating VDI should succeed")
+	require.NotEqual(t, uuid.Nil, vdiID, "created VDI ID should not be nil")
+	return vdiID
 }
 
 // verifyDiskFormat saves the exported content to a temporary file, runs qemu-img info to verify the format

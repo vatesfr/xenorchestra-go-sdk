@@ -87,7 +87,7 @@ Common setup logic is centralized in `helpers_test.go`:
 - `createVMsForTest(t, ctx, client.Pool(), count, prefix)`: Creates multiple VMs using the test template.
 - `waitForTask(t, ctx, client, taskID)`: Waits until the task with the given ID is no longer pending and returns the final task details.
 - `waitForVMReady(t, ctx, client, vmID)`: Waits until the VM is in the Running state and has a MainIpAddress assigned, indicating it's ready for use.
-- `createVDIForTest(t, ctx, client, name, size)`: Creates a VDI with the specified name and size using the v1 client and returns its ID.
+- `createVDIForTest(t, ctx, client, name, size)`: Creates a VDI with the specified name and size using the v2 client and returns its ID.
 - `createTestDiskImage(t, format, size)`: Creates a temporary disk image with qemu-img.
 - `verifyDiskFormat(t, exportedContent, expectedFormat)`: Saves the exported content to a temporary file, runs qemu-img info to verify the format.
 
