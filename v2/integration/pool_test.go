@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
@@ -51,6 +52,103 @@ func TestCreateVM(t *testing.T) {
 	if err != nil {
 		t.Errorf("error while deleting VM %s: %v", vmID, err)
 	}
+}
+
+func TestCreateVMWithVIFDevice(t *testing.T) {
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	// Use the existing test network instead of creating a new one to avoid VLAN conflicts
+	// The test network is already available in intTests.testNetwork
+	networkID := uuid.FromStringOrNil(intTests.testNetwork.Id)
+	if networkID == uuid.Nil {
+		t.Skip("No test network available, skipping VIF device test")
+	}
+
+	// Create VM with specific VIF device setting
+	vmName := "test-vm-vif-device"
+	deviceZero := payloads.StringifiedInt(0)
+
+	params := payloads.CreateVMParams{
+		NameLabel: testPrefix + vmName,
+		Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+		VIFs: []payloads.VIFParams{
+			{
+				Device:  &deviceZero,
+				Network: &networkID,
+			},
+		},
+	}
+
+	vmID, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
+	require.NoError(t, err, "error while creating VM with VIF device setting: %v", err)
+	require.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
+
+	// Verify the VM was created and get its details
+	vm, err := client.VM().GetByID(ctx, vmID)
+	require.NoError(t, err, "error while fetching VM details for %s: %v", vmID, err)
+	require.NotNil(t, vm, "VM details should not be nil")
+
+	// Get the VIFs for the VM using the v1 client
+	vmObj := &v1.Vm{Id: vmID.String()}
+	vifs, err := intTests.v1Client.GetVIFs(vmObj)
+	require.NoError(t, err, "error while getting VIFs for VM %s: %v", vmID, err)
+
+	// Verify we have exactly one VIF (the one we specified)
+	assert.Equal(t, 1, len(vifs), "VM should have exactly one VIF")
+
+	// Verify the VIF has the correct device setting and network
+	assert.Equal(t, "0", vifs[0].Device, "VIF device should be '0'")
+	assert.Equal(t, networkID.String(), vifs[0].Network, "VIF should be attached to the test network")
+}
+
+// This TC is meant to verify that when a VIF is set without a device,
+// it is added to the VIFs already present on the template and not replacing them.
+func TestCreateVMWithVIFNoDevice(t *testing.T) {
+	ctx, client, testPrefix := SetupTestContext(t)
+
+	networkID := uuid.FromStringOrNil(intTests.testNetwork.Id)
+	if networkID == uuid.Nil {
+		t.Skip("No test network available, skipping VIF device test")
+	}
+
+	// Create VM with specific VIF device setting
+	vmName := "test-vm-vif-device"
+	params := payloads.CreateVMParams{
+		NameLabel: testPrefix + vmName,
+		Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+		VIFs: []payloads.VIFParams{
+			{
+				Network: &networkID,
+			},
+		},
+	}
+
+	vmID, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
+	require.NoError(t, err, "error while creating VM with VIF device setting: %v", err)
+	require.NotEqual(t, uuid.Nil, vmID, "created VM ID should not be nil")
+
+	// Verify the VM was created and get its details
+	vm, err := client.VM().GetByID(ctx, vmID)
+	require.NoError(t, err, "error while fetching VM details for %s: %v", vmID, err)
+	require.NotNil(t, vm, "VM details should not be nil")
+
+	// Get the VIFs for the VM using the v1 client
+	vmObj := &v1.Vm{Id: vmID.String()}
+	vifs, err := intTests.v1Client.GetVIFs(vmObj)
+	require.NoError(t, err, "error while getting VIFs for VM %s: %v", vmID, err)
+
+	// Verify we have exactly one VIF (the one we specified)
+	assert.Equal(t, 2, len(vifs), "VM should have exactly one VIF")
+
+	// Verify that one of the VIFs has the network attached
+	var vifWithNetwork *v1.VIF
+	for i := range vifs {
+		if vifs[i].Network == networkID.String() {
+			vifWithNetwork = &vifs[i]
+			assert.NotEqual(t, "0", vifs[i].Device, "VIF device shouldn't be '0'")
+		}
+	}
+	assert.NotNil(t, vifWithNetwork, "One VIF should be attached to the test network")
 }
 
 func TestCreateVMInvalidTemplate(t *testing.T) {
