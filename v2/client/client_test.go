@@ -13,7 +13,10 @@ import (
 
 var ctx = context.Background()
 
-const restPath = "/rest/v0"
+const (
+	restPath       = "/rest/v0"
+	testTokenValue = "test-token"
+)
 
 func TestNew(t *testing.T) {
 	_, err := New(&config.Config{Url: "://invalid-url", Token: "abc"})
@@ -38,8 +41,11 @@ func TestAuthenticate(t *testing.T) {
 
 			if creds.Username == "testuser" && creds.Password == "testpass" {
 				http.SetCookie(w, &http.Cookie{
-					Name:  "authenticationToken",
-					Value: "test-token",
+					Name:     authCookieName,
+					HttpOnly: true,
+					SameSite: http.SameSiteStrictMode,
+					Secure:   true,
+					Value:    testTokenValue,
 				})
 				w.WriteHeader(http.StatusOK)
 				return
@@ -63,7 +69,7 @@ func TestAuthenticate(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	if client.AuthToken != "test-token" {
+	if client.AuthToken != testTokenValue {
 		t.Errorf("Expected token 'test-token', got '%s'", client.AuthToken)
 	}
 
@@ -80,8 +86,8 @@ func TestAuthenticate(t *testing.T) {
 
 func TestDo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("authenticationToken")
-		if err != nil || cookie.Value != "test-token" {
+		cookie, err := r.Cookie(authCookieName)
+		if err != nil || cookie.Value != testTokenValue {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -112,8 +118,8 @@ func TestDo(t *testing.T) {
 
 	client := &Client{
 		HttpClient: http.DefaultClient,
-		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: restPath},
-		AuthToken:  "test-token",
+		BaseURL:    &url.URL{Scheme: httpScheme, Host: server.URL[7:], Path: restPath},
+		AuthToken:  testTokenValue,
 	}
 
 	var getResult struct {
@@ -158,8 +164,8 @@ func TestTypedGet(t *testing.T) {
 
 	client := &Client{
 		HttpClient: http.DefaultClient,
-		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: restPath},
-		AuthToken:  "test-token",
+		BaseURL:    &url.URL{Scheme: httpScheme, Host: server.URL[7:], Path: restPath},
+		AuthToken:  testTokenValue,
 	}
 
 	// Define the request and response types

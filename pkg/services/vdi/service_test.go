@@ -32,6 +32,7 @@ const (
 	testVDINameLabel1  = "VDI 1"
 	testVDINameLabel2  = "VDI 2"
 	testVDIVirtualSize = int64(8589934592)
+	testTokenValue     = "test-token"
 )
 
 var mockVDIs = func() []*payloads.VDI {
@@ -87,7 +88,7 @@ func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Servic
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    baseURL,
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	ctrl := gomock.NewController(t)
@@ -161,38 +162,6 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-	})
-
-	// PUT /rest/v0/vdis/{id}/tags/{tag} - Add tag to vdi
-	mux.HandleFunc("PUT /rest/v0/vdis/{id}/tags/{tag}", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		vdiID := r.PathValue("id")
-
-		if vdiID != testVDIID1 && vdiID != testVDIID2 {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
-
-	// DELETE /rest/v0/vdis/{id}/tags/{tag} - Remove tag from vdi
-	mux.HandleFunc("DELETE /rest/v0/vdis/{id}/tags/{tag}", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		vdiID := r.PathValue("id")
-
-		if vdiID != testVDIID1 && vdiID != testVDIID2 {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
 
@@ -331,7 +300,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
@@ -348,7 +317,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 func TestNew(t *testing.T) {
 	cfg := &config.Config{
 		Url:   "http://localhost",
-		Token: "test-token",
+		Token: testTokenValue,
 	}
 	c, err := client.New(cfg)
 	assert.NoError(t, err)
@@ -365,7 +334,7 @@ func TestVDIService_Get_ConnectionError(t *testing.T) {
 	// This test mainly checks that the code compiles and imports are correct
 	cfg := &config.Config{
 		Url:   "http://localhost",
-		Token: "test-token",
+		Token: testTokenValue,
 	}
 	c, err := client.New(cfg)
 	assert.NoError(t, err)

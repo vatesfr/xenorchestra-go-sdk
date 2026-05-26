@@ -25,6 +25,8 @@ const (
 	testSRID2        = "a1b2c3d4-1111-2222-3333-000000000002"
 	testSRIDNotFound = "d44e5f60-4567-89ab-def0-444455556666"
 	testPoolID       = "b2c3d4e5-0000-0000-0000-000000000001"
+	testFakeTaskID   = "task-abc"
+	testTokenValue   = "test-token"
 )
 
 var mockSRs = func() []*payloads.StorageRepository {
@@ -81,7 +83,7 @@ func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Servic
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    baseURL,
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	ctrl := gomock.NewController(t)
@@ -154,7 +156,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 		switch r.PathValue("action") {
 		case "reclaim_space", "scan":
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: "task-abc"}); err != nil {
+			if err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: testFakeTaskID}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		default:
@@ -162,30 +164,12 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 		}
 	})
 
-	// PUT /rest/v0/srs/{id}/tags/{tag} - AddTag
-	mux.HandleFunc("PUT /rest/v0/srs/{id}/tags/{tag}", func(w http.ResponseWriter, r *http.Request) {
-		if _, err := uuid.FromString(r.PathValue("id")); err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// DELETE /rest/v0/srs/{id}/tags/{tag} - RemoveTag
-	mux.HandleFunc("DELETE /rest/v0/srs/{id}/tags/{tag}", func(w http.ResponseWriter, r *http.Request) {
-		if _, err := uuid.FromString(r.PathValue("id")); err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-
 	server := httptest.NewServer(mux)
 
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
@@ -201,7 +185,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 func TestNew(t *testing.T) {
 	cfg := &config.Config{
 		Url:   "http://localhost",
-		Token: "test-token",
+		Token: testTokenValue,
 	}
 	c, err := client.New(cfg)
 	assert.NoError(t, err)
@@ -394,13 +378,13 @@ func TestReclaimSpace(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
-			Return(&payloads.Task{ID: "task-abc"}, nil)
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
+			Return(&payloads.Task{ID: testFakeTaskID}, nil)
 
 		taskID, err := svc.ReclaimSpace(t.Context(), srID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "task-abc", taskID)
+		assert.Equal(t, testFakeTaskID, taskID)
 	})
 
 	t.Run("returns error on http error", func(t *testing.T) {
@@ -420,7 +404,7 @@ func TestReclaimSpace(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
 			Return(nil, fmt.Errorf("task failed"))
 
 		taskID, err := svc.ReclaimSpace(t.Context(), srID)
@@ -439,13 +423,13 @@ func TestScan(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
-			Return(&payloads.Task{ID: "task-abc"}, nil)
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
+			Return(&payloads.Task{ID: testFakeTaskID}, nil)
 
 		taskID, err := svc.Scan(t.Context(), srID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "task-abc", taskID)
+		assert.Equal(t, testFakeTaskID, taskID)
 	})
 
 	t.Run("returns error on http error", func(t *testing.T) {
@@ -465,7 +449,7 @@ func TestScan(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
 			Return(nil, fmt.Errorf("task failed"))
 
 		taskID, err := svc.Scan(t.Context(), srID)
