@@ -39,7 +39,7 @@ var mockVBDs = func() []*payloads.VBD {
 			Bootable:  true,
 			Device:    &device1,
 			IsCDDrive: false,
-			Position:  "0",
+			Position:  payloads.StringifiedInt(0),
 			ReadOnly:  false,
 			VM:        uuid.Must(uuid.FromString(testVMID)),
 		},
@@ -50,7 +50,7 @@ var mockVBDs = func() []*payloads.VBD {
 			Bootable:  false,
 			Device:    nil,
 			IsCDDrive: false,
-			Position:  "1",
+			Position:  payloads.StringifiedInt(1),
 			ReadOnly:  true,
 			VM:        uuid.Must(uuid.FromString(testVMID)),
 		},
@@ -319,14 +319,16 @@ func TestCreate(t *testing.T) {
 		svc, server, _ := setupTestServerWithHandler(t, makeSuccessHandler(&capturedBody))
 		defer server.Close()
 
+		bootable := true
+		userDevice := payloads.StringifiedInt(0)
 		unpluggable := true
 		id, err := svc.Create(t.Context(), &payloads.CreateVBDParams{
 			VM:          vmID,
 			VDI:         vdiID,
 			Type:        payloads.VBDTypeDisk,
 			Mode:        payloads.VBDModeRW,
-			Bootable:    true,
-			Userdevice:  "0",
+			Bootable:    &bootable,
+			Userdevice:  &userDevice,
 			Unpluggable: &unpluggable,
 		})
 
