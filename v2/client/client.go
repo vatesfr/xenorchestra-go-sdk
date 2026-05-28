@@ -26,8 +26,11 @@ func (t Token) String() string {
 }
 
 const (
-	WebSocketScheme       = "ws"
-	SecureWebSocketScheme = "wss"
+	webSocketScheme       = "ws"
+	secureWebSocketScheme = "wss"
+	httpScheme            = "http"
+	httpsScheme           = "https"
+	authCookieName        = "authenticationToken"
 )
 
 // Client handles communication with the Xen Orchestra REST API.
@@ -60,10 +63,10 @@ func New(config *config.Config) (*Client, error) {
 	}
 
 	switch baseURL.Scheme {
-	case WebSocketScheme:
-		baseURL.Scheme = "http"
-	case SecureWebSocketScheme:
-		baseURL.Scheme = "https"
+	case webSocketScheme:
+		baseURL.Scheme = httpScheme
+	case secureWebSocketScheme:
+		baseURL.Scheme = httpsScheme
 	}
 
 	baseURL.Path = path.Join(baseURL.Path, core.RestV0Path)
@@ -134,7 +137,7 @@ func (c *Client) authenticate(username, password string) (Token, error) {
 	}
 
 	for _, cookie := range resp.Cookies() {
-		if cookie.Name == "authenticationToken" {
+		if cookie.Name == authCookieName {
 			return Token(cookie.Value), nil
 		}
 	}
@@ -158,8 +161,9 @@ func (c *Client) buildURL(endpoint string) url.URL {
 // The caller is responsible for closing the response body when finished reading it.
 // For error responses (non-2xx), the body is read, closed, and included in the error message.
 func (c *Client) doRequest(req *http.Request) (*http.Response, error) {
+	// #nosec G124 -- Outbound request cookie for SDK auth; Secure/HttpOnly/SameSite do not apply here.
 	req.AddCookie(&http.Cookie{
-		Name:  "authenticationToken",
+		Name:  authCookieName,
 		Value: c.AuthToken.String(),
 	})
 

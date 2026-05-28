@@ -23,6 +23,11 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
+const (
+	testFakeTaskID    = "task-123"
+	testSuccessTaskID = "success-task-123"
+)
+
 func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (library.Task, *httptest.Server) {
 	server := httptest.NewServer(handler)
 	log, _ := logger.New(false, []string{"stdout"}, []string{"stderr"})
@@ -69,9 +74,9 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 			// Handle different task scenarios based on task ID
 			var task payloads.Task
 			switch taskID {
-			case "success-task-123":
+			case testSuccessTaskID:
 				task = payloads.Task{
-					ID:     "success-task-123",
+					ID:     testSuccessTaskID,
 					Status: payloads.Success,
 					Properties: payloads.Properties{
 						Name: "vm.create",
@@ -150,10 +155,10 @@ func TestGet(t *testing.T) {
 	defer server.Close()
 
 	t.Run("successful task", func(t *testing.T) {
-		task, err := service.Get(context.Background(), "success-task-123")
+		task, err := service.Get(context.Background(), testSuccessTaskID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "success-task-123", task.ID)
+		assert.Equal(t, testSuccessTaskID, task.ID)
 		assert.Equal(t, payloads.Success, task.Status)
 		assert.Equal(t, "vm.create", task.Properties.Name)
 		assert.Equal(t, uuid.Must(uuid.FromString("361f2903-2c09-486e-9eff-91debeeee304")), task.Result.ID)
@@ -163,7 +168,7 @@ func TestGet(t *testing.T) {
 		task, err := service.Get(context.Background(), "/rest/v0/tasks/success-task-123")
 
 		assert.NoError(t, err)
-		assert.Equal(t, "success-task-123", task.ID)
+		assert.Equal(t, testSuccessTaskID, task.ID)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
@@ -227,8 +232,8 @@ func TestGetAllTasks(t *testing.T) {
 
 	t.Run("successfully retrieves all tasks", func(t *testing.T) {
 		expectedTasks := []payloads.Task{
-			{ID: "0mhke8vi7", Status: "failure"},
-			{ID: "0mhknlx4j", Status: "success"},
+			{ID: "0mhke8vi7", Status: payloads.Failure},
+			{ID: "0mhknlx4j", Status: payloads.Success},
 		}
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -280,10 +285,10 @@ func TestWait(t *testing.T) {
 	defer server.Close()
 
 	t.Run("wait for completed task", func(t *testing.T) {
-		task, err := service.Wait(context.Background(), "success-task-123")
+		task, err := service.Wait(context.Background(), testSuccessTaskID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "success-task-123", task.ID)
+		assert.Equal(t, testSuccessTaskID, task.ID)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
@@ -341,21 +346,21 @@ func TestHandleTaskResponse(t *testing.T) {
 
 	t.Run("handle task URL without waiting", func(t *testing.T) {
 		task, err := service.HandleTaskResponse(context.Background(),
-			payloads.TaskIDResponse{TaskID: "success-task-123"}, false)
+			payloads.TaskIDResponse{TaskID: testSuccessTaskID}, false)
 
 		require.NoError(t, err)
 		require.NotNil(t, task)
-		assert.Equal(t, "success-task-123", task.ID)
+		assert.Equal(t, testSuccessTaskID, task.ID)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
 	t.Run("handle task URL with waiting", func(t *testing.T) {
 		task, err := service.HandleTaskResponse(context.Background(),
-			payloads.TaskIDResponse{TaskID: "success-task-123"}, true)
+			payloads.TaskIDResponse{TaskID: testSuccessTaskID}, true)
 
 		require.NoError(t, err)
 		require.NotNil(t, task)
-		assert.Equal(t, "success-task-123", task.ID)
+		assert.Equal(t, testSuccessTaskID, task.ID)
 		assert.Equal(t, payloads.Success, task.Status)
 	})
 
@@ -386,8 +391,8 @@ func TestCleanDuplicateV0Path(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"full task path", "/rest/v0/tasks/task-123", "task-123"},
-		{"task ID only", "task-123", "task-123"},
+		{"full task path", "/rest/v0/tasks/task-123", testFakeTaskID},
+		{"task ID only", testFakeTaskID, testFakeTaskID},
 		{"path without leading slash", "rest/v0/tasks/task-123", "rest/v0/tasks/task-123"},
 		{"empty string", "", ""},
 		{"just task prefix", "/rest/v0/tasks/", ""},

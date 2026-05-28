@@ -24,6 +24,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - ^client/
 formatters:
   enable:
     - gofmt

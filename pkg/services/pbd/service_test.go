@@ -26,6 +26,8 @@ const (
 	testPBDID1        = "b22c3d4e-2345-6789-bcde-222233334444"
 	testPBDID2        = "c33d4e5f-3456-789a-cdef-333344445555"
 	testPBDIDNotFound = "d44e5f60-4567-89ab-def0-444455556666"
+	testTokenValue    = "test-token"
+	testFakeTaskID    = "task-abc"
 )
 
 var mockPBDs = func() []*payloads.PBD {
@@ -68,7 +70,7 @@ func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Servic
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    baseURL,
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	ctrl := gomock.NewController(t)
@@ -125,7 +127,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 		switch r.PathValue("action") {
 		case "plug", "unplug":
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: "task-abc"}); err != nil {
+			if err := json.NewEncoder(w).Encode(payloads.TaskIDResponse{TaskID: testFakeTaskID}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		default:
@@ -138,7 +140,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
@@ -154,7 +156,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service, *mock.MockTask) 
 func TestNew(t *testing.T) {
 	cfg := &config.Config{
 		Url:   "http://localhost",
-		Token: "test-token",
+		Token: testTokenValue,
 	}
 	c, err := client.New(cfg)
 	assert.NoError(t, err)
@@ -273,13 +275,13 @@ func TestPlug(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
-			Return(&payloads.Task{ID: "task-abc"}, nil)
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
+			Return(&payloads.Task{ID: testFakeTaskID}, nil)
 
 		taskID, err := svc.Plug(t.Context(), pbdID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "task-abc", taskID)
+		assert.Equal(t, testFakeTaskID, taskID)
 	})
 
 	t.Run("returns error on http error", func(t *testing.T) {
@@ -299,7 +301,7 @@ func TestPlug(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
 			Return(nil, fmt.Errorf("task failed"))
 
 		taskID, err := svc.Plug(t.Context(), pbdID)
@@ -318,13 +320,13 @@ func TestUnplug(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
-			Return(&payloads.Task{ID: "task-abc"}, nil)
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
+			Return(&payloads.Task{ID: testFakeTaskID}, nil)
 
 		taskID, err := svc.Unplug(t.Context(), pbdID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, "task-abc", taskID)
+		assert.Equal(t, testFakeTaskID, taskID)
 	})
 
 	t.Run("returns error on http error", func(t *testing.T) {
@@ -344,7 +346,7 @@ func TestUnplug(t *testing.T) {
 		defer server.Close()
 
 		mockTask.EXPECT().
-			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: "task-abc"}, false).
+			HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, false).
 			Return(nil, fmt.Errorf("task failed"))
 
 		taskID, err := svc.Unplug(t.Context(), pbdID)

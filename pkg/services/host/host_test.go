@@ -19,11 +19,13 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
 )
 
+const testTokenValue = "test-token"
+
 // This is a basic test to ensure the service can be instantiated.
 func TestNew(t *testing.T) {
 	cfg := &config.Config{
 		Url:   "http://localhost",
-		Token: "test-token",
+		Token: testTokenValue,
 	}
 	c, err := client.New(cfg)
 	assert.NoError(t, err)
@@ -38,7 +40,7 @@ func TestHostService_Get_InvalidUUID(t *testing.T) {
 	// This test mainly checks that the code compiles and imports are correct
 	cfg := &config.Config{
 		Url:   "http://localhost",
-		Token: "test-token",
+		Token: testTokenValue,
 	}
 	c, err := client.New(cfg)
 	assert.NoError(t, err)
@@ -98,7 +100,7 @@ func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (library
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    baseURL,
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	mockService := New(restClient, log)
@@ -141,44 +143,12 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Host) {
 		}
 	})
 
-	// PUT /rest/v0/hosts/{id}/tags/{tag} - Add tag to host
-	mux.HandleFunc("PUT /rest/v0/hosts/{id}/tags/{tag}", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		hostID := r.PathValue("id")
-
-		if host := findHostByID(hostID); host == nil {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
-
-	// DELETE /rest/v0/hosts/{id}/tags/{tag} - Remove tag from host
-	mux.HandleFunc("DELETE /rest/v0/hosts/{id}/tags/{tag}", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		hostID := r.PathValue("id")
-
-		if host := findHostByID(hostID); host == nil {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		if err := json.NewEncoder(w).Encode(map[string]bool{"success": true}); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
-
 	server := httptest.NewServer(mux)
 
 	restClient := &client.Client{
 		HttpClient: http.DefaultClient,
 		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})

@@ -1,6 +1,8 @@
 package payloads
 
-import "github.com/gofrs/uuid"
+import (
+	"github.com/gofrs/uuid"
+)
 
 type PoolCPUs struct {
 	Cores   int `json:"cores"`
@@ -56,13 +58,15 @@ type VDIParams struct {
 }
 
 type VIFParams struct {
-	Destroy     *bool    `json:"destroy,omitempty"`
-	Device      *string  `json:"device,omitempty"`
-	IPV4Allowed []string `json:"ipv4_allowed,omitempty"`
-	IPV6Allowed []string `json:"ipv6_allowed,omitempty"`
-	MAC         *string  `json:"mac,omitempty"`
-	MTU         *int     `json:"mtu,omitempty"`
-	Network     *string  `json:"network,omitempty"`
+	Destroy *bool `json:"destroy,omitempty"`
+	// Order in which VIF backends are created by xapi.Guaranteed to be an unsigned decimal integer.
+	// Represented as a string in JSON but stored as an integer in Go.
+	Device      *StringifiedInt `json:"device,omitempty"`
+	IPV4Allowed []string        `json:"ipv4_allowed,omitempty"`
+	IPV6Allowed []string        `json:"ipv6_allowed,omitempty"`
+	MAC         *string         `json:"mac,omitempty"`
+	MTU         *int            `json:"mtu,omitempty"`
+	Network     *uuid.UUID      `json:"network,omitempty"`
 }
 
 type CreateVMParams struct {

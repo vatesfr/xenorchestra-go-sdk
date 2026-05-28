@@ -17,6 +17,7 @@ import (
 
 const (
 	testResourceID = "a1b2c3d4-1111-2222-3333-000000000001"
+	testTokenValue = "test-token"
 )
 
 func newTestLogger(t *testing.T) *logger.Logger {
@@ -61,7 +62,7 @@ func setupTestServer(t *testing.T, resourceType payloads.ResourceType) (*httptes
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	return server, New(restClient, newTestLogger(t), resourceType)
@@ -83,7 +84,7 @@ func setupTestServerWithHandler(
 	restClient := &client.Client{
 		HttpClient: server.Client(),
 		BaseURL:    baseURL,
-		AuthToken:  "test-token",
+		AuthToken:  testTokenValue,
 	}
 
 	return server, New(restClient, newTestLogger(t), resourceType)
@@ -93,7 +94,7 @@ func TestNew(t *testing.T) {
 	log := newTestLogger(t)
 	restClient := &client.Client{
 		BaseURL:   &url.URL{Scheme: "http", Host: "localhost"},
-		AuthToken: "test-token",
+		AuthToken: testTokenValue,
 	}
 
 	svc := New(restClient, log, payloads.ResourceTypeSR)

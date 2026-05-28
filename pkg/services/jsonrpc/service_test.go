@@ -134,7 +134,7 @@ func TestCall(t *testing.T) {
 	t.Run("error call", func(t *testing.T) {
 		var result string
 		err := jsonrpcSvc.Call("error.method", map[string]any{
-			"param1": "value1",
+			"param3": "value3",
 		}, &result)
 
 		assert.Error(t, err)
@@ -162,7 +162,7 @@ func TestCall(t *testing.T) {
 	t.Run("with log context", func(t *testing.T) {
 		var result string
 		err := jsonrpcSvc.Call("success.method", map[string]any{
-			"param1": "value1",
+			"param4": "value4",
 		}, &result, zap.String("context", "test-context"))
 
 		assert.NoError(t, err)

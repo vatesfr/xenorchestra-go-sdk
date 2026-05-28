@@ -16,11 +16,11 @@ type VBD struct {
 	Attached bool      `json:"attached"`
 	Bootable bool      `json:"bootable"`
 	// Device is the device name (e.g. "xvda"), null when not plugged in.
-	Device    *string    `json:"device"`
-	IsCDDrive bool       `json:"is_cd_drive"`
-	Position  string     `json:"position"`
-	ReadOnly  bool       `json:"read_only"`
-	VDI       *uuid.UUID `json:"VDI,omitempty"`
+	Device    *string        `json:"device"`
+	IsCDDrive bool           `json:"is_cd_drive"`
+	Position  StringifiedInt `json:"position"`
+	ReadOnly  bool           `json:"read_only"`
+	VDI       *uuid.UUID     `json:"VDI,omitempty"`
 	// VM is the ID of the VM this VBD is attached to.
 	VM uuid.UUID `json:"VM"`
 }
@@ -54,9 +54,9 @@ type CreateVBDParams struct {
 	// Mode is the access mode (RO, RW)
 	Mode VBDMode `json:"mode,omitempty"`
 	// Bootable indicates whether this VBD is bootable
-	Bootable bool `json:"bootable,omitempty"`
+	Bootable *bool `json:"bootable,omitempty"`
 	// Userdevice is the position/slot for the device
-	Userdevice string `json:"userdevice,omitempty"`
+	Userdevice *StringifiedInt `json:"userdevice,omitempty"`
 	// Unpluggable indicates whether the VBD can be hot-unplugged
 	Unpluggable *bool `json:"unpluggable,omitempty"`
 	// Empty indicates whether the CD drive is empty (only relevant for CD type)
