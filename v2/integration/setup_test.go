@@ -196,7 +196,7 @@ func findPoolForTests() payloads.Pool {
 // cleanupVMsWithPrefix removes all VMs that have the testing prefix in their name
 func cleanupVMsWithPrefix(t testing.TB, client library.Library, prefix string) error {
 	t.Helper()
-	vms, err := client.VM().GetAll(intTests.ctx, 0, "name_label:"+prefix)
+	vms, err := client.VM().GetAll(intTests.ctx, 0, "name_label:\""+prefix+"\"")
 	if err != nil {
 		return fmt.Errorf("failed to get VMs: %v", err)
 	}
