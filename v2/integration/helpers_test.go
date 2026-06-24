@@ -24,7 +24,7 @@ func createVMsForTest(t *testing.T, ctx context.Context, pool library.Pool, coun
 		vmName := name + uuid.Must(uuid.NewV4()).String()
 		params := payloads.CreateVMParams{
 			NameLabel: vmName,
-			Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+			Template:  uuid.FromStringOrNil(intTests.testTemplateID),
 		}
 
 		vmID, err := pool.CreateVM(ctx, intTests.testPool.ID, params)

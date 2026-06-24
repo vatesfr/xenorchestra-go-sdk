@@ -40,7 +40,7 @@ func TestCreateVM(t *testing.T) {
 		vmName := "test-vm"
 		params := payloads.CreateVMParams{
 			NameLabel: testPrefix + vmName,
-			Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+			Template:  uuid.FromStringOrNil(intTests.testTemplateID),
 		}
 
 		vmID, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
@@ -56,11 +56,14 @@ func TestCreateVM(t *testing.T) {
 
 	t.Run("WithVIFDevice", func(t *testing.T) {
 		t.Parallel()
+		if intTests.v1Disabled {
+			t.Skip("v1 client disabled, skipping VIF device test")
+		}
 		ctx, client, testPrefix := SetupTestContext(t)
 
 		// Use the existing test network instead of creating a new one to avoid VLAN conflicts
 		// The test network is already available in intTests.testNetwork
-		networkID := uuid.FromStringOrNil(intTests.testNetwork.Id)
+		networkID := uuid.FromStringOrNil(intTests.testNetworkID)
 		if networkID == uuid.Nil {
 			t.Skip("No test network available, skipping VIF device test")
 		}
@@ -71,7 +74,7 @@ func TestCreateVM(t *testing.T) {
 
 		params := payloads.CreateVMParams{
 			NameLabel: testPrefix + vmName,
-			Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+			Template:  uuid.FromStringOrNil(intTests.testTemplateID),
 			VIFs: []payloads.VIFParams{
 				{
 					Device:  &deviceZero,
@@ -106,9 +109,12 @@ func TestCreateVM(t *testing.T) {
 	// it is added to the VIFs already present on the template and not replacing them.
 	t.Run("WithVIFNoDevice", func(t *testing.T) {
 		t.Parallel()
+		if intTests.v1Disabled {
+			t.Skip("v1 client disabled, skipping VIF no-device test")
+		}
 		ctx, client, testPrefix := SetupTestContext(t)
 
-		networkID := uuid.FromStringOrNil(intTests.testNetwork.Id)
+		networkID := uuid.FromStringOrNil(intTests.testNetworkID)
 		if networkID == uuid.Nil {
 			t.Skip("No test network available, skipping VIF device test")
 		}
@@ -117,7 +123,7 @@ func TestCreateVM(t *testing.T) {
 		vmName := "test-vm-vif-device"
 		params := payloads.CreateVMParams{
 			NameLabel: testPrefix + vmName,
-			Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+			Template:  uuid.FromStringOrNil(intTests.testTemplateID),
 			VIFs: []payloads.VIFParams{
 				{
 					Network: &networkID,
@@ -172,6 +178,9 @@ func TestCreateVM(t *testing.T) {
 }
 
 func TestCreateNetwork(t *testing.T) {
+	if intTests.v1Disabled {
+		t.Skip("v1 client disabled, skipping network creation test")
+	}
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	networkName := "test-network"
@@ -184,9 +193,16 @@ func TestCreateNetwork(t *testing.T) {
 			t.Logf("Ignoring invalid XOA_TEST_VLAN=%s, using default %d", v, vlan)
 		}
 	}
+	// Resolve PIF from the test network via v1 client
+	testNetwork, err := intTests.v1Client.GetNetwork(v1.Network{
+		Id: intTests.testNetworkID,
+	})
+	require.NoError(t, err, "error fetching test network %s: %v", intTests.testNetworkID, err)
+	require.GreaterOrEqual(t, len(testNetwork.PIFs), 1, "test network should have at least one PIF")
+
 	params := payloads.CreateNetworkParams{
 		Name:        testPrefix + networkName,
-		Pif:         uuid.FromStringOrNil(intTests.testNetwork.PIFs[0]), // Use the first PIF, only one PIF is expected
+		Pif:         uuid.FromStringOrNil(testNetwork.PIFs[0]),
 		MTU:         &[]uint{1450}[0],
 		Description: "Test network created by xo-sdk-go",
 		Vlan:        vlan,

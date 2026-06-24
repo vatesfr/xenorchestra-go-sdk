@@ -28,8 +28,15 @@ export XOA_PASSWORD="password"
 export XOA_TOKEN="token"
 
 export XOA_POOL="pool-name"
-export XOA_TEMPLATE="template-name"
+export XOA_TEMPLATE_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export XOA_NETWORK_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 export XOA_STORAGE="storage-repository-name"
+```
+
+Legacy alternative (name-based, requires v1 client):
+```bash
+export XOA_TEMPLATE="template-name"
+export XOA_NETWORK="network-name"
 ```
 
 Optional:
@@ -67,7 +74,7 @@ func TestMyFeature(t *testing.T) {
 3. Key points:
    - Always `ctx, client, prefix := SetupTestContext(t)`
    - Prefix resources: `prefix + "my-vm"`
-   - Use: `client` (local), `intTests.testPool`, `intTests.testTemplate`, `intTests.testNetwork`
+   - Use: `client` (local), `intTests.testPool`, `intTests.testTemplateID`, `intTests.testNetworkID`
    - Unexpected errors: `require.NoError`
    - Verifications: `assert.Equal`
 
@@ -76,9 +83,10 @@ func TestMyFeature(t *testing.T) {
 Shared resources are available via the `intTests` global variable:
 
 - `intTests.testPool` (payloads.Pool) - Test pool
-- `intTests.testTemplate` (v1.Template) - VM template
-- `intTests.testNetwork` (v1.Network) - Pool network
-- `intTests.v1Client` (v1.XOClient) - v1 client for setup/teardown tasks
+- `intTests.testTemplateID` (string) - Test template UUID (from `XOA_TEMPLATE_ID` or v1 fallback)
+- `intTests.testNetworkID` (string) - Test network UUID (from `XOA_NETWORK_ID` or v1 fallback)
+- `intTests.testSR` (payloads.StorageRepository) - Storage repository for VDI tests
+- `intTests.v1Client` (v1.XOClient) - v1 client for setup/teardown tasks (nil if `XOA_DISABLE_V1=true`)
 
 ## Common Patterns
 
@@ -100,7 +108,7 @@ vms, _ := client.VM().GetAll(ctx, 0, "name_label:"+prefix)
 ```go
 params := payloads.CreateVMParams{
     NameLabel: prefix + "vm-name",
-    Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+    Template:  uuid.FromStringOrNil(intTests.testTemplateID),
 }
 vmID, _ := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
 ```

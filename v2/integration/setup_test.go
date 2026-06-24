@@ -31,15 +31,21 @@ type integrationTestContext struct {
 	// testSR holds a storage repository used for VDI-related tests
 	testSR payloads.StorageRepository
 
-	// TODO: replace v1 struct by payloads.STRUCT when available in v2
+	// testTemplateID holds the template UUID used for VM creation tests.
+	// Resolved from XOA_TEMPLATE_ID (direct) or v1 discovery (fallback).
+	testTemplateID string
 
-	// testTemplate holds a template used for VM creation tests
-	testTemplate v1.Template
-	// testNetwork holds a network used for network-related tests
-	testNetwork v1.Network
+	// testNetworkID holds the network UUID used for network-related tests.
+	// Resolved from XOA_NETWORK_ID (direct) or v1 discovery (fallback).
+	testNetworkID string
 
-	// v1Client is the XO client used for resources not yet available in v2
-	// Should not be used to perform the actual test but only to setup/teardown resources
+	// v1Disabled is true when XOA_DISABLE_V1=true.
+	// When true, v1Client is nil and v1-dependent tests are skipped.
+	v1Disabled bool
+
+	// v1Client is the XO client used for resources not yet available in v2.
+	// Should not be used to perform the actual test but only to setup/teardown resources.
+	// Nil when v1Disabled is true.
 	v1Client v1.XOClient
 
 	// testPBD is the UUID of a PBD that is safe to temporarily plug/unplug during tests.
@@ -73,13 +79,15 @@ func TestMain(m *testing.M) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, handlerOpt))
 	slog.SetDefault(logger)
 	slog.SetLogLoggerLevel(slog.LevelDebug)
-	// TODO: v1 helpers don't log errors with this logger (e.g. v1.FindTemplateForTests)
 
 	// XO client configuration via environment variables
 	// - XOA_URL: XO API URL (required)
 	// - XOA_USER and XOA_PASSWORD: Credentials (required if no token)
 	// - XOA_TOKEN: Authentication token (required if no credentials)
 	// - XOA_DEVELOPMENT: true to enable development logs
+	// - XOA_DISABLE_V1: true to disable v1 client (requires XOA_TEMPLATE_ID and XOA_NETWORK_ID)
+	// - XOA_TEMPLATE_ID: direct template UUID (takes precedence over v1 discovery)
+	// - XOA_NETWORK_ID: direct network UUID (takes precedence over v1 discovery)
 	intTests.testConfig, err = config.New()
 	if err != nil {
 		log.Fatalf("configuration failed: %v", err)
@@ -88,20 +96,56 @@ func TestMain(m *testing.M) {
 	// Force development mode for tests
 	intTests.testConfig.Development = devMode
 
-	// Initialize v1 client for setup/teardown tasks
-	intTests.v1Client, err = v1.NewClientWithLogger(v1.GetConfigFromEnv(), logger)
-	if err != nil {
-		integrationCancel()
-		log.Fatalf("error getting v1.client %s", err)
+	// Determine v1 status
+	intTests.v1Disabled, _ = strconv.ParseBool(os.Getenv("XOA_DISABLE_V1"))
+
+	// Resolve template ID: direct env var takes precedence, fallback to v1 discovery
+	if templateID, found := os.LookupEnv("XOA_TEMPLATE_ID"); found && templateID != "" {
+		intTests.testTemplateID = templateID
+	}
+
+	// Resolve network ID: direct env var takes precedence, fallback to v1 discovery
+	if networkID, found := os.LookupEnv("XOA_NETWORK_ID"); found && networkID != "" {
+		intTests.testNetworkID = networkID
+	}
+
+	// When v1 is disabled, both direct IDs must be provided
+	if intTests.v1Disabled {
+		if intTests.testTemplateID == "" {
+			integrationCancel()
+			log.Fatal("XOA_DISABLE_V1=true requires XOA_TEMPLATE_ID to be set")
+		}
+		if intTests.testNetworkID == "" {
+			integrationCancel()
+			log.Fatal("XOA_DISABLE_V1=true requires XOA_NETWORK_ID to be set")
+		}
 	}
 
 	// Get information for testing
 	intTests.testPool = findPoolForTests()
-	// TODO: Replace v1 method with v2 when available
-	v1.FindNetworkForTests(intTests.testPool.ID.String(), &intTests.testNetwork)
-	v1.FindTemplateForTests(&intTests.testTemplate, intTests.testPool.ID.String(), "XOA_TEMPLATE")
 	intTests.testSR = findStorageRepositoryForTests()
 	intTests.testPBD = findPBDForTests()
+
+	// Initialize v1 client only when needed for discovery or v1-dependent teardown
+	if !intTests.v1Disabled {
+		intTests.v1Client, err = v1.NewClientWithLogger(v1.GetConfigFromEnv(), logger)
+		if err != nil {
+			integrationCancel()
+			log.Fatalf("error getting v1.client %s", err)
+		}
+
+		// Fallback to v1 discovery when direct IDs are not provided
+		if intTests.testTemplateID == "" {
+			var tmpl v1.Template
+			v1.FindTemplateForTests(&tmpl, intTests.testPool.ID.String(), "XOA_TEMPLATE")
+			intTests.testTemplateID = tmpl.Id
+		}
+		if intTests.testNetworkID == "" {
+			var net v1.Network
+			v1.FindNetworkForTests(intTests.testPool.ID.String(), &net)
+			intTests.testNetworkID = net.Id
+		}
+	}
 
 	// Get resource test prefix from environment variable if set
 	if prefix, found := os.LookupEnv("XOA_TEST_PREFIX"); found {
@@ -145,20 +189,24 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 	}
 
 	// Make the V1Client use t.Logf
-	handler := slog.NewTextHandler(&testLogWriter{t}, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	})
-	if client, ok := intTests.v1Client.(*v1.Client); ok {
-		client.SetLogger(slog.New(handler))
+	if !intTests.v1Disabled {
+		handler := slog.NewTextHandler(&testLogWriter{t}, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})
+		if client, ok := intTests.v1Client.(*v1.Client); ok {
+			client.SetLogger(slog.New(handler))
+		}
 	}
 
 	// Register teardown function
 	t.Cleanup(func() {
 		cancel() // Cancel the test context
-		// Teardown: cleanup any leftover test VMs and networks
+		// Teardown: cleanup any leftover
 		_ = cleanupVMsWithPrefix(t, testClient, prefix)
-		_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)("")
-		_ = v1.RemoveVDIsWithPrefixForTests(prefix)("")
+		if !intTests.v1Disabled {
+			_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)("")
+			_ = v1.RemoveVDIsWithPrefixForTests(prefix)("")
+		}
 	})
 
 	return ctx, testClient, prefix

@@ -48,12 +48,13 @@ Shared resources are stored in the `intTests` global variable:
 
 ```go
 type integrationTestContext struct {
-    ctx          context.Context // Parent context
-    testConfig   *config.Config  // SDK configuration
-    testPool     payloads.Pool   // Pool used for testing (v2)
-    testTemplate v1.Template     // Template used for VM creation (v1)
-    testNetwork  v1.Network      // Network used for tests (v1)
-    v1Client     v1.XOClient     // Client for missing v2 features
+    ctx             context.Context // Parent context
+    testConfig      *config.Config  // SDK configuration
+    testPool        payloads.Pool   // Pool used for testing (v2)
+    testTemplateID  string          // Template UUID for VM creation
+    testNetworkID   string          // Network UUID for tests
+    v1Disabled      bool            // Whether v1 client is disabled
+    v1Client        v1.XOClient     // Client for missing v2 features (nil if disabled)
 }
 ```
 
@@ -86,12 +87,45 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_TOKEN` | Authentication token | `xxxxxxx` | If no credentials |
 | `XOA_POOL` | Test pool Name Label | `My Pool` | ✅ |
 | `XOA_STORAGE` | Test storage repository Name Label | `My SR` | ✅ |
-| `XOA_TEMPLATE` | Template Name Label | `Alpine 3.10` | ✅ |
-| `XOA_NETWORK` | Network used for test | `My Network` | ✅ |
+| `XOA_TEMPLATE` | Template Name Label (legacy) | `Alpine 3.10` | Legacy — use `XOA_TEMPLATE_ID` instead |
+| `XOA_NETWORK` | Network Name Label (legacy) | `My Network` | Legacy — use `XOA_NETWORK_ID` instead |
+| `XOA_TEMPLATE_ID` | Direct template UUID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Preferred over `XOA_TEMPLATE` |
+| `XOA_NETWORK_ID` | Direct network UUID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Preferred over `XOA_NETWORK` |
+| `XOA_DISABLE_V1` | Disable v1 client (v2-only mode) | `true` | ❌ |
 | `XOA_DEVELOPMENT`| Enable debug logs | `true` | ❌ |
 | `XOA_TEST_PREFIX`| Custom resource prefix | `ci-` | ❌ |
 | `XOA_TEST_VLAN`  | VLAN for network tests | `1234` | ❌ |
 | `XOA_TEST_PBD_ID`| UUID of a PBD safe to plug/unplug (e.g. removable storage). Required for PBD plug/unplug tests; uuid.Nil when unset. | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | ❌ |
+
+### Running Modes
+
+The integration test suite supports two modes:
+
+**Hybrid Mode (Default)**: Uses the v2 SDK for primary operations and falls back to the v1 client for resource discovery (templates, networks) and cleanup tasks not yet available in v2.
+
+**v2-Only Mode**: Set `XOA_DISABLE_V1=true` to disable the v1 client entirely. In this mode:
+- `XOA_TEMPLATE_ID` and `XOA_NETWORK_ID` are **required** (no fallback to name-based discovery).
+- Tests that depend on the v1 client (network creation, VIF device tests) are automatically skipped.
+- v2 cleanup paths (VMs, VDIs) remain active.
+
+### Running the Suite
+
+```bash
+# Hybrid mode (default)
+export XOA_URL="https://xoa.lab.local"
+export XOA_TOKEN="token"
+export XOA_POOL="Pool A"
+export XOA_TEMPLATE="Alpine 3.10"
+export XOA_STORAGE="storage repository name"
+
+make test-integration
+
+# v2-only mode
+export XOA_TEMPLATE_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export XOA_NETWORK_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export XOA_DISABLE_V1=true
+make test-integration
+```
 
 ### Test Template Guidance
 
@@ -131,7 +165,7 @@ func TestCreateVM(t *testing.T) {
     vmName := prefix + "my-vm"
     params := &payloads.CreateVMParams{
         NameLabel: vmName,
-        Template:  uuid.FromStringOrNil(intTests.testTemplate.Id),
+        Template:  uuid.FromStringOrNil(intTests.testTemplateID),
     }
 
     // 3. Execute v2 operation
