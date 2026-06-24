@@ -155,12 +155,14 @@ func TestVDIGetTasks(t *testing.T) {
 	require.NoError(t, err, "migration task should complete successfully")
 	require.NotNil(t, task, "migration task result should not be nil")
 	require.Equal(t, payloads.Success, task.Status, "migration task should complete successfully")
+	vdiTestID = task.Result.ID // Update vdiTestID to the new VDI ID after migration
 	taskID2, err := client.VDI().Migrate(ctx, vdiTestID, intTests.testSR.ID)
 	require.NoError(t, err, "2nd migrating VDI should succeed")
 	task, err = client.Task().Wait(ctx, taskID2)
 	require.NoError(t, err, "migration task should complete successfully")
 	require.NotNil(t, task, "migration task result should not be nil")
 	require.Equal(t, payloads.Success, task.Status, "migration task should complete successfully")
+	vdiTestID = task.Result.ID // Update vdiTestID to the new VDI ID after migration
 
 	t.Run("GetTasksSuccess", func(t *testing.T) {
 		t.Parallel()

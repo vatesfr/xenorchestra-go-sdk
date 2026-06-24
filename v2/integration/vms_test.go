@@ -324,7 +324,7 @@ func testVMListWithNoLimit(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, vms)
 	// Adjust expectation - we now create only 5 VMs, but there might be other VMs in the system
-	assert.Greater(t, len(vms), 5, "expected more than 5 VMs in total")
+	assert.GreaterOrEqual(t, len(vms), 5, "expected at least 5 VMs in total")
 }
 
 func testVMListWithFilter(t *testing.T) {

@@ -291,7 +291,7 @@ func findStorageRepositoryForTests() payloads.StorageRepository {
 		log.Fatalf("XOA_STORAGE environment variable must be set")
 	}
 
-	srs, err := client.SR().GetAll(intTests.ctx, 0, "name_label:"+srName+" $pool:"+intTests.testPool.ID.String())
+	srs, err := client.SR().GetAll(intTests.ctx, 0, "name_label:\""+srName+"\" $pool:"+intTests.testPool.ID.String())
 	if err != nil {
 		log.Fatalf("failed to get storage repository with name: %s, with err: %v", srName, err)
 	}
