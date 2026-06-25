@@ -13,6 +13,9 @@ import (
 // TestV1ClientLazyInitializationWithRealConnection tests that the v1 client is
 // initialized lazily when accessed, and that it works with a real connection
 func TestV1ClientLazyInitializationWithRealConnection(t *testing.T) {
+	if intTests.v1Disabled {
+		t.Skip("v1 client disabled, skipping v1 lazy initialization test")
+	}
 
 	// Create a new client
 	cfg, err := config.New()

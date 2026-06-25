@@ -1,0 +1,102 @@
+name: tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - v*
+      - feature*
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-test:
+    name: Unit Tests (v2-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run Unit Tests # Run only on v2 pkg
+        run: go test -json ./v2 ./v2/client ./pkg/... ./internal/... > unit-testresults.json
+
+      - uses: actions/upload-artifact@v7 # upload test results
+        if: ${{ !cancelled() }} # run this step even if previous step failed
+        with:
+          name: test-results
+          path: unit-testresults.json
+
+  sanity-test:
+    name: Sanity Tests (v2-only integration tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      xo-api-sim:
+        image: ghcr.io/vatesfr/xo-api-sim:latest
+        ports:
+          - 3001:3001
+        options: >-
+          --health-cmd="curl -f http://localhost:3001/ping || exit 1" --health-interval=10s --health-timeout=3s --health-retries=5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install qemu-img
+        run: sudo apt-get update && sudo apt-get install -y qemu-utils
+
+      - name: Run Integration Tests (v2-only mode)
+        env:
+          XOA_URL: http://localhost:3001
+          XOA_TOKEN: no-token
+          XOA_POOL: "pool-01"
+          XOA_STORAGE: "NFS Default"
+          XOA_NETWORK_ID: "5a163f97-1111-2222-3333-444444444403"
+          XOA_TEMPLATE_ID: "653f9237-3612-b08e-fd43-5302cf2d537b"
+          XOA_DISABLE_V1: "true"
+          XOA_DEVELOPMENT: "true"
+          XOA_TEST_PREFIX: "ci-sanity-"
+          XOA_TEST_VLAN: "1001"
+          XOA_TEST_PBD_ID: "01393140-26fb-eddc-98b4-66bfe85daf17"
+        run: go test -json ./v2/integration > int-testresults.json
+
+      - uses: actions/upload-artifact@v7 # upload test results
+        if: ${{ !cancelled() }} # run this step even if previous step failed
+        with:
+          name: test-results
+          path: int-testresults.json
+
+  test-report:
+    name: Test Report
+    needs: [unit-test, sanity-test]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/test-reporter@v3
+        with:
+          artifact: test-results
+          name: Golang Tests
+          path: '*.json'
+          reporter: golang-json

@@ -20,14 +20,13 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
       - name: Install go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          # The versions of golangci-lint and setup-go here cross-depend and need to update together.
-          go-version: '1.24'
+          go-version-file: 'go.mod'
           # Either this action or golangci-lint needs to disable the cache
           cache: false
       - name: Install mockgen
-        run: go install github.com/golang/mock/mockgen@v1.6.0
+        run: go install go.uber.org/mock/mockgen@v0.6.0
       - name: Generate mocks
         run: go generate ./...
       - run: go mod tidy
