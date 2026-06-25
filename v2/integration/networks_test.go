@@ -13,48 +13,63 @@ import (
 )
 
 func TestNetworkGetAll(t *testing.T) {
-	ctx, client, _ := SetupTestContext(t)
+	t.Parallel()
+	ctx, client, prefix := SetupTestContext(t)
 
-	networks, err := client.Network().GetAll(ctx, 0, "")
-	require.NoError(t, err)
-	require.NotEmpty(t, networks, "GetAll should return at least one network in the test environment")
+	networkID1 := createNetworkForTest(t, ctx, client, prefix+"test-network-1")
+	createNetworkForTest(t, ctx, client, prefix+"test-network-2")
 
-	network := networks[0]
-	assert.NotEqual(t, uuid.Nil, network.ID, "network ID should be set")
-	assert.NotEmpty(t, network.NameLabel, "network name label should be set")
-	assert.NotEmpty(t, network.Bridge, "network bridge should be set")
-	assert.Greater(t, network.MTU, 0, "network MTU should be positive")
-}
+	t.Run("NoLimit", func(t *testing.T) {
+		t.Parallel()
+		networks, err := client.Network().GetAll(ctx, 0, "")
+		require.NoError(t, err)
+		require.NotNil(t, networks)
+		assert.GreaterOrEqual(t, len(networks), 2, "GetAll should return at least two networks in the test environment")
 
-func TestNetworkGetAllWithLimit(t *testing.T) {
-	ctx, client, _ := SetupTestContext(t)
+		network := networks[0]
+		assert.NotEqual(t, uuid.Nil, network.ID, "network ID should be set")
+		assert.NotEmpty(t, network.NameLabel, "network name label should be set")
+		assert.NotEmpty(t, network.Bridge, "network bridge should be set")
+		assert.Greater(t, network.MTU, 0, "network MTU should be positive")
+	})
 
-	networks, err := client.Network().GetAll(ctx, 1, "")
-	require.NoError(t, err)
-	assert.Len(t, networks, 1, "GetAll with limit=1 should return exactly one network")
+	t.Run("WithLimit", func(t *testing.T) {
+		t.Parallel()
+		networks, err := client.Network().GetAll(ctx, 1, "")
+		require.NoError(t, err)
+		assert.Len(t, networks, 1, "GetAll with limit=1 should return exactly one network")
+	})
+
+	t.Run("WithFilter", func(t *testing.T) {
+		t.Parallel()
+		filter := "name_label:" + prefix + "test-network-1"
+		networks, err := client.Network().GetAll(ctx, 0, filter)
+		require.NoError(t, err)
+		require.NotNil(t, networks)
+		assert.Len(t, networks, 1, "GetAll with filter should return exactly one network")
+		assert.Equal(t, networkID1, networks[0].ID, "filtered network ID should match the expected ID")
+	})
 }
 
 func TestNetworkGet(t *testing.T) {
-	ctx, client, _ := SetupTestContext(t)
+	ctx, client, prefix := SetupTestContext(t)
 
-	// Discover an existing network via GetAll
-	networks, err := client.Network().GetAll(ctx, 1, "")
-	require.NoError(t, err)
-	require.NotEmpty(t, networks, "expected at least one network")
+	networkID := createNetworkForTest(t, ctx, client, prefix+"test-network-1")
 
-	networkID := networks[0].ID
-	network, err := client.Network().Get(ctx, networkID)
-	require.NoErrorf(t, err, "failed to get network %s", networkID)
-	assert.Equal(t, networkID, network.ID, "network ID should match")
-	assert.NotEmpty(t, network.NameLabel, "network name label should be populated")
-	assert.NotEmpty(t, network.Bridge, "network bridge should be populated")
-}
+	t.Run("with valid ID", func(t *testing.T) {
+		t.Parallel()
+		network, err := client.Network().Get(ctx, networkID)
+		require.NoErrorf(t, err, "failed to get network %s", networkID)
+		assert.Equal(t, networkID, network.ID, "network ID should match")
+		assert.NotEmpty(t, network.NameLabel, "network name label should be populated")
+		assert.NotEmpty(t, network.Bridge, "network bridge should be populated")
+	})
 
-func TestNetworkGetInvalidID(t *testing.T) {
-	ctx, client, _ := SetupTestContext(t)
+	t.Run("with invalid ID", func(t *testing.T) {
+		_, err := client.Network().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		require.Error(t, err, "expected error when fetching network with invalid ID")
+	})
 
-	_, err := client.Network().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
-	require.Error(t, err, "expected error when fetching network with invalid ID")
 }
 
 func networkTagExists(ctx context.Context, client library.Library, networkID uuid.UUID, tag string) bool {
@@ -68,16 +83,8 @@ func networkTagExists(ctx context.Context, client library.Library, networkID uui
 func TestNetworkAddTag(t *testing.T) {
 	ctx, client, prefix := SetupTestContext(t)
 
-	networks, err := client.Network().GetAll(ctx, 1, "")
-	require.NoError(t, err)
-	require.NotEmpty(t, networks, "expected at least one network")
-
-	networkID := networks[0].ID
+	networkID := createNetworkForTest(t, ctx, client, prefix+"test-network-1")
 	tag := prefix + "tag"
-
-	t.Cleanup(func() {
-		_ = client.Network().RemoveTag(ctx, networkID, tag)
-	})
 
 	require.NoError(t, client.Network().AddTag(ctx, networkID, tag), "adding tag should succeed")
 
@@ -93,11 +100,8 @@ func TestNetworkAddTag(t *testing.T) {
 func TestNetworkRemoveTag(t *testing.T) {
 	ctx, client, prefix := SetupTestContext(t)
 
-	networks, err := client.Network().GetAll(ctx, 1, "")
-	require.NoError(t, err)
-	require.NotEmpty(t, networks, "expected at least one network")
+	networkID := createNetworkForTest(t, ctx, client, prefix+"test-network-1")
 
-	networkID := networks[0].ID
 	tag := prefix + "remove-tag"
 
 	require.NoError(t, client.Network().AddTag(ctx, networkID, tag), "setup tag addition should succeed")
@@ -115,4 +119,46 @@ func TestNetworkRemoveTag(t *testing.T) {
 	refreshed, err := client.Network().Get(ctx, networkID)
 	require.NoError(t, err)
 	assert.NotContains(t, refreshed.Tags, tag, "network tags should not contain the removed tag")
+}
+
+func TestNetworkGetTasks(t *testing.T) {
+	ctx, client, prefix := SetupTestContext(t)
+
+	networkID := createNetworkForTest(t, ctx, client, prefix+"test-network-1")
+
+	t.Run("with valid network ID", func(t *testing.T) {
+		t.Parallel()
+		tasks, err := client.Network().GetTasks(ctx, networkID, 0, "")
+		require.NoError(t, err)
+		require.NotNil(t, tasks)
+		assert.GreaterOrEqual(t, len(tasks), 0, "GetTasks should return zero or more tasks for the network")
+	})
+
+	t.Run("with invalid network ID", func(t *testing.T) {
+		t.Parallel()
+		_, err := client.Network().GetTasks(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"), 0, "")
+		require.Error(t, err, "expected error when fetching tasks with invalid network ID")
+	})
+}
+
+func TestNetworkDelete(t *testing.T) {
+	ctx, client, prefix := SetupTestContext(t)
+
+	networkID := createNetworkForTest(t, ctx, client, prefix+"test-network-to-delete")
+
+	t.Run("with valid network ID", func(t *testing.T) {
+		t.Parallel()
+		err := client.Network().Delete(ctx, networkID)
+		require.NoError(t, err, "deleting network should succeed")
+
+		// Verify that the network no longer exists
+		_, err = client.Network().Get(ctx, networkID)
+		require.Error(t, err, "expected error when fetching deleted network")
+	})
+
+	t.Run("with invalid network ID", func(t *testing.T) {
+		t.Parallel()
+		err := client.Network().Delete(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		require.Error(t, err, "expected error when deleting network with invalid ID")
+	})
 }
