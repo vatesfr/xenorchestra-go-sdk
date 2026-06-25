@@ -79,7 +79,8 @@ func (s *NetworkService) RemoveTag(ctx context.Context, id uuid.UUID, tag string
 	return s.tagService.Remove(ctx, id, tag)
 }
 
-func (s *NetworkService) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
+func (s *NetworkService) GetTasks(
+	ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
 	path := core.NewPathBuilder().Resource(payloads.ResourceTypeNetwork.Path()).ID(id).Resource("tasks").Build()
 
 	params := make(map[string]any)

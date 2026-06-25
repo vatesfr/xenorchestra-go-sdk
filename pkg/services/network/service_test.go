@@ -61,7 +61,8 @@ func findNetworkByID(networkID uuid.UUID) *payloads.Network {
 	return nil
 }
 
-func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (library.Network, *httptest.Server, *mock.MockTask) {
+func setupTestServerWithHandler(
+	t *testing.T, handler http.HandlerFunc) (library.Network, *httptest.Server, *mock.MockTask) {
 	t.Helper()
 	server := httptest.NewServer(handler)
 
