@@ -101,7 +101,7 @@ func New(config *config.Config) (library.Library, error) {
 	vbdService := vbd.New(client, taskService, log)
 	pbdService := pbd.New(client, taskService, log)
 	srService := sr.New(client, taskService, log)
-	networkService := network.New(client, log)
+	networkService := network.New(client, taskService, log)
 
 	xoClient := &XOClient{
 		vmService:      vm.New(client, taskService, poolService, log),
@@ -175,7 +175,6 @@ func (c *XOClient) SR() library.SR {
 
 func (c *XOClient) Network() library.Network {
 	return c.networkService
-}
 }
 
 func (c *XOClient) V1Client() v1.XOClient {
