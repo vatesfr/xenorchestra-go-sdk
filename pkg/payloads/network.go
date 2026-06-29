@@ -13,7 +13,7 @@ type Network struct {
 	Pool              uuid.UUID                   `json:"$pool"`
 	XAPIRef           string                      `json:"_xapiRef"`
 	UUID              string                      `json:"uuid"`
-	MTU               int                         `json:"MTU"`
+	MTU               uint                        `json:"MTU"`
 	PIFs              []uuid.UUID                 `json:"PIFs,omitempty"`
 	VIFs              []uuid.UUID                 `json:"VIFs,omitempty"`
 	Automatic         bool                        `json:"automatic"`

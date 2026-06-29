@@ -36,5 +36,13 @@ type Network interface {
 	// Returns an error if the operation fails.
 	Delete(ctx context.Context, id uuid.UUID) error
 
+	// CreateNetwork creates a new Network within a specified Pool.
+	// This is an alias of Pool.CreateNetwork, but it is provided here for convenience.
+	// Parameters:
+	//   - poolID: ID of the Pool where the Network will be created
+	//   - params: parameters for creating the Network
+	// Returns the ID of the newly created Network or an error if the operation fails.
+	Create(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error)
+
 	Taggable
 }

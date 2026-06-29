@@ -82,7 +82,7 @@ func setupTestServerWithHandler(
 	ctrl := gomock.NewController(t)
 	mockTask := mock.NewMockTask(ctrl)
 
-	mockService := New(restClient, mockTask, log)
+	mockService := New(restClient, mockTask, nil, log)
 	return mockService, server, mockTask
 }
 
@@ -165,7 +165,7 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Network, *mock.Moc
 	}
 	ctrl := gomock.NewController(t)
 	mockTask := mock.NewMockTask(ctrl)
-	return server, New(restClient, mockTask, log), mockTask
+	return server, New(restClient, mockTask, nil, log), mockTask
 }
 
 func TestNew(t *testing.T) {
@@ -179,7 +179,7 @@ func TestNew(t *testing.T) {
 	log, _ := logger.New(true, nil, nil)
 	ctrl := gomock.NewController(t)
 	mockTask := mock.NewMockTask(ctrl)
-	svc := New(c, mockTask, log)
+	svc := New(c, mockTask, nil, log)
 
 	assert.NotNil(t, svc)
 }
@@ -364,4 +364,30 @@ func TestGetTasks(t *testing.T) {
 		assert.Equal(t, "task-002", tasks[1].ID)
 		assert.Equal(t, payloads.Failure, tasks[1].Status)
 	})
+}
+
+func TestCreate(t *testing.T) {
+	cfg := &config.Config{
+		Url:   "http://localhost",
+		Token: testTokenValue,
+	}
+	c, err := client.New(cfg)
+	assert.NoError(t, err)
+
+	log, _ := logger.New(true, nil, nil)
+	ctrl := gomock.NewController(t)
+	mockTask := mock.NewMockTask(ctrl)
+	mockPool := mock.NewMockPool(ctrl)
+	mockPool.EXPECT().CreateNetwork(
+		gomock.Any(), gomock.Any(), gomock.Any()).Return(uuid.Must(uuid.FromString(testNetworkID1)), nil).Times(1)
+	svc := New(c, mockTask, mockPool, log)
+
+	require.NotNil(t, svc)
+
+	_, err = svc.Create(t.Context(), uuid.Must(uuid.NewV4()), payloads.CreateNetworkParams{
+		Name: "Test network",
+		Vlan: 0,
+		Pif:  uuid.Must(uuid.NewV4()),
+	})
+	assert.NoError(t, err)
 }

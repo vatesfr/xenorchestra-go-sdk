@@ -18,14 +18,16 @@ type NetworkService struct {
 	log         *logger.Logger
 	taskService library.Task
 	tagService  *tagger.Tagger
+	poolService library.Pool
 }
 
-func New(client *client.Client, taskService library.Task, log *logger.Logger) library.Network {
+func New(client *client.Client, taskService library.Task, poolService library.Pool, log *logger.Logger) library.Network {
 	return &NetworkService{
 		client:      client,
 		log:         log,
 		taskService: taskService,
 		tagService:  tagger.New(client, log, payloads.ResourceTypeNetwork),
+		poolService: poolService,
 	}
 }
 
@@ -101,4 +103,8 @@ func (s *NetworkService) GetTasks(
 	}
 
 	return result, nil
+}
+
+func (s *NetworkService) Create(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
+	return s.poolService.CreateNetwork(ctx, poolID, params)
 }
