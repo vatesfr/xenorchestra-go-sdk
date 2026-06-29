@@ -185,6 +185,8 @@ func createTestDiskImage(t *testing.T, format string, size int64) string {
 func createNetworkForTest(t *testing.T, ctx context.Context, client library.Library, name string) uuid.UUID {
 	t.Helper()
 	if intTests.v1Disabled {
+		// For the tests we only need an internal network.
+		// The current v2 does not support creating internal network.
 		t.Skip("v1 client disabled, skipping v1 lazy initialization test")
 	}
 	network, err := client.V1Client().CreateNetwork(v1.CreateNetworkRequest{
