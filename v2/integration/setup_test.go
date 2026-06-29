@@ -37,7 +37,7 @@ type integrationTestContext struct {
 
 	// testNetworkID holds the network UUID used for network-related tests.
 	// Resolved from XOA_NETWORK_ID (direct) or v1 discovery (fallback).
-	testNetworkID string
+	testNetworkID uuid.UUID
 
 	// v1Disabled is true when XOA_DISABLE_V1=true.
 	// When true, v1Client is nil and v1-dependent tests are skipped.
@@ -106,7 +106,7 @@ func TestMain(m *testing.M) {
 
 	// Resolve network ID: direct env var takes precedence, fallback to v1 discovery
 	if networkID, found := os.LookupEnv("XOA_NETWORK_ID"); found && networkID != "" {
-		intTests.testNetworkID = networkID
+		intTests.testNetworkID = uuid.Must(uuid.FromString(networkID))
 	}
 
 	// When v1 is disabled, both direct IDs must be provided
@@ -115,7 +115,7 @@ func TestMain(m *testing.M) {
 			integrationCancel()
 			log.Fatal("XOA_DISABLE_V1=true requires XOA_TEMPLATE_ID to be set")
 		}
-		if intTests.testNetworkID == "" {
+		if intTests.testNetworkID == uuid.Nil {
 			integrationCancel()
 			log.Fatal("XOA_DISABLE_V1=true requires XOA_NETWORK_ID to be set")
 		}
@@ -140,10 +140,10 @@ func TestMain(m *testing.M) {
 			v1.FindTemplateForTests(&tmpl, intTests.testPool.ID.String(), "XOA_TEMPLATE")
 			intTests.testTemplateID = tmpl.Id
 		}
-		if intTests.testNetworkID == "" {
+		if intTests.testNetworkID == uuid.Nil {
 			var net v1.Network
 			v1.FindNetworkForTests(intTests.testPool.ID.String(), &net)
-			intTests.testNetworkID = net.Id
+			intTests.testNetworkID = uuid.Must(uuid.FromString(net.Id))
 		}
 	}
 
@@ -203,8 +203,8 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 		cancel() // Cancel the test context
 		// Teardown: cleanup any leftover
 		_ = cleanupVMsWithPrefix(t, testClient, prefix)
+		_ = cleanupNetworksWithPrefix(t, testClient, prefix)
 		if !intTests.v1Disabled {
-			_ = v1.RemoveNetworksWithNamePrefixForTests(prefix)("")
 			_ = v1.RemoveVDIsWithPrefixForTests(prefix)("")
 		}
 	})
@@ -259,6 +259,27 @@ func cleanupVMsWithPrefix(t testing.TB, client library.Library, prefix string) e
 					t.Logf("failed to delete VM NameLabel=%s error=%v", vm.NameLabel, err)
 					return fmt.Errorf("failed to delete VM %s: %v", vm.NameLabel, err)
 				}
+			}
+		}
+	}
+	return nil
+}
+
+func cleanupNetworksWithPrefix(t testing.TB, client library.Library, prefix string) error {
+	t.Helper()
+	networks, err := client.Network().GetAll(intTests.ctx, 0, "name_label:\""+prefix+"\"")
+	if err != nil {
+		return fmt.Errorf("failed to get networks: %v", err)
+	}
+
+	for _, network := range networks {
+		// Check that network name starts with the test prefix
+		if len(network.NameLabel) >= len(prefix) && (network.NameLabel)[:len(prefix)] == prefix {
+			// t.Logf("Found remaining test Network, Deleting test... NameLabel=%s ID=%s", network.NameLabel, network.ID)
+			err := client.Network().Delete(intTests.ctx, network.ID)
+			if err != nil {
+				t.Logf("failed to delete Network NameLabel=%s error=%v", network.NameLabel, err)
+				return fmt.Errorf("failed to delete Network %s: %v", network.NameLabel, err)
 			}
 		}
 	}

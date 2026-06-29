@@ -90,14 +90,16 @@ type CreateVMParams struct {
 }
 
 type CreateNetworkParams struct {
-	// Network name
+	// Network name (required)
 	Name string `json:"name"`
-	// Network description
+	// Network description (optional)
 	Description string `json:"description,omitempty"`
-	// UUID of the PIF (device) to select
+	// UUID of the PIF (device) to select (required)
 	Pif uuid.UUID `json:"pif"`
-	// Network MTU - Default: 1500
+	// Network MTU (optional) - Default: 1500
 	MTU *uint `json:"mtu,omitempty"`
-	// Network VLAN - Minimum: 0, Maximum: 4094
+	// Network VLAN (required) - Minimum: 0, Maximum: 4094
 	Vlan uint `json:"vlan"`
+	// Network NDB (optional)
+	NDB *bool `json:"ndb,omitempty"`
 }

@@ -63,7 +63,7 @@ func TestCreateVM(t *testing.T) {
 
 		// Use the existing test network instead of creating a new one to avoid VLAN conflicts
 		// The test network is already available in intTests.testNetwork
-		networkID := uuid.FromStringOrNil(intTests.testNetworkID)
+		networkID := intTests.testNetworkID
 		if networkID == uuid.Nil {
 			t.Skip("No test network available, skipping VIF device test")
 		}
@@ -114,7 +114,7 @@ func TestCreateVM(t *testing.T) {
 		}
 		ctx, client, testPrefix := SetupTestContext(t)
 
-		networkID := uuid.FromStringOrNil(intTests.testNetworkID)
+		networkID := intTests.testNetworkID
 		if networkID == uuid.Nil {
 			t.Skip("No test network available, skipping VIF device test")
 		}
@@ -178,9 +178,6 @@ func TestCreateVM(t *testing.T) {
 }
 
 func TestCreateNetwork(t *testing.T) {
-	if intTests.v1Disabled {
-		t.Skip("v1 client disabled, skipping network creation test")
-	}
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	networkName := "test-network"
@@ -194,15 +191,13 @@ func TestCreateNetwork(t *testing.T) {
 		}
 	}
 	// Resolve PIF from the test network via v1 client
-	testNetwork, err := intTests.v1Client.GetNetwork(v1.Network{
-		Id: intTests.testNetworkID,
-	})
+	testNetwork, err := client.Network().Get(ctx, intTests.testNetworkID)
 	require.NoError(t, err, "error fetching test network %s: %v", intTests.testNetworkID, err)
 	require.GreaterOrEqual(t, len(testNetwork.PIFs), 1, "test network should have at least one PIF")
 
 	params := payloads.CreateNetworkParams{
 		Name:        testPrefix + networkName,
-		Pif:         uuid.FromStringOrNil(testNetwork.PIFs[0]),
+		Pif:         testNetwork.PIFs[0],
 		MTU:         &[]uint{1450}[0],
 		Description: "Test network created by xo-sdk-go",
 		Vlan:        vlan,
@@ -211,26 +206,16 @@ func TestCreateNetwork(t *testing.T) {
 	require.NoError(t, err, "error while creating network in pool %s: %v", intTests.testPool.ID, err)
 	assert.NotEqual(t, uuid.Nil, networkID, "created network ID should not be nil")
 
-	// Get network using v1 client to verify creation
-	// TODO use v2 Network service when available
-	createdNetwork, err := intTests.v1Client.GetNetwork(v1.Network{
-		Id: networkID.String(),
-	})
+	createdNetwork, err := client.Network().Get(ctx, networkID)
 	require.NoError(t, err, "error fetching created network %s: %v", networkID, err)
 	assert.Equal(t, params.Name, createdNetwork.NameLabel, "created network name should match")
-	assert.Equal(t, intTests.testPool.ID.String(), createdNetwork.PoolId, "created network PoolID should match")
+	assert.Equal(t, intTests.testPool.ID, createdNetwork.Pool, "created network PoolID should match")
 
-	// Overflow check before uint conversion
-	if createdNetwork.MTU < 0 {
-		t.Errorf("Invalid MTU value: %d (negative value not allowed)", createdNetwork.MTU)
-	} else {
-		assert.Equal(t, *params.MTU, uint(createdNetwork.MTU), "created network MTU should match")
-	}
+	assert.Equal(t, *params.MTU, createdNetwork.MTU, "created network MTU should match")
 	assert.Equal(t, params.Description, createdNetwork.NameDescription, "created network description should match")
 
 	// Cleanup
-	// For now, we use v1 client to delete the network
 	t.Log("Cleaning up network:", networkID)
-	err = intTests.v1Client.DeleteNetwork(networkID.String())
+	err = client.Network().Delete(ctx, networkID)
 	require.NoError(t, err, "error deleting network %s: %v", networkID, err)
 }
