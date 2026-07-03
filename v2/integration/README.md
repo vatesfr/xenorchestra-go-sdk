@@ -29,15 +29,18 @@ export XOA_TOKEN="token"
 
 export XOA_POOL="pool-name"
 export XOA_TEMPLATE_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-export XOA_NETWORK_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export XOA_NETWORK_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" # Must be a non-VLAN network
 export XOA_STORAGE="storage-repository-name"
 ```
 
 Legacy alternative (name-based, requires v1 client):
 ```bash
 export XOA_TEMPLATE="template-name"
-export XOA_NETWORK="network-name"
+export XOA_NETWORK="network-name" # Must be a non-VLAN network
 ```
+
+Important:
+- The test network must be a non-VLAN network, whether you configure it by UUID (`XOA_NETWORK_ID`) or by name (`XOA_NETWORK`).
 
 Optional:
 ```bash
@@ -84,7 +87,7 @@ Shared resources are available via the `intTests` global variable:
 
 - `intTests.testPool` (payloads.Pool) - Test pool
 - `intTests.testTemplateID` (string) - Test template UUID (from `XOA_TEMPLATE_ID` or v1 fallback)
-- `intTests.testNetworkID` (string) - Test network UUID (from `XOA_NETWORK_ID` or v1 fallback)
+- `intTests.testNetworkID` (string) - Test network UUID (from `XOA_NETWORK_ID` or v1 fallback, and must refer to a non-VLAN network)
 - `intTests.testSR` (payloads.StorageRepository) - Storage repository for VDI tests
 - `intTests.v1Client` (v1.XOClient) - v1 client for setup/teardown tasks (nil if `XOA_DISABLE_V1=true`)
 

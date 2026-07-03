@@ -178,44 +178,84 @@ func TestCreateVM(t *testing.T) {
 }
 
 func TestCreateNetwork(t *testing.T) {
-	ctx, client, testPrefix := SetupTestContext(t)
 
-	networkName := "test-network"
-	// Choose VLAN from env var if provided to avoid collisions in lab
-	var vlan uint = 1234
-	if v := os.Getenv("XOA_TEST_VLAN"); v != "" {
-		if parsed, err := strconv.ParseUint(v, 10, 0); err == nil && parsed <= 4094 {
-			vlan = uint(parsed)
-		} else {
-			t.Logf("Ignoring invalid XOA_TEST_VLAN=%s, using default %d", v, vlan)
+	t.Run("with vlan", func(t *testing.T) {
+		ctx, client, testPrefix := SetupTestContext(t)
+
+		networkName := "test-network"
+		// Choose VLAN from env var if provided to avoid collisions in lab
+		var vlan uint = 1234
+		if v := os.Getenv("XOA_TEST_VLAN"); v != "" {
+			if parsed, err := strconv.ParseUint(v, 10, 0); err == nil && parsed <= 4094 {
+				vlan = uint(parsed)
+			} else {
+				t.Logf("Ignoring invalid XOA_TEST_VLAN=%s, using default %d", v, vlan)
+			}
 		}
-	}
-	// Resolve PIF from the test network via v1 client
-	testNetwork, err := client.Network().Get(ctx, intTests.testNetworkID)
-	require.NoError(t, err, "error fetching test network %s: %v", intTests.testNetworkID, err)
-	require.GreaterOrEqual(t, len(testNetwork.PIFs), 1, "test network should have at least one PIF")
+		// Resolve PIF from the test network via v1 client
+		testNetwork, err := client.Network().Get(ctx, intTests.testNetworkID)
+		require.NoError(t, err, "error fetching test network %s: %v", intTests.testNetworkID, err)
+		require.GreaterOrEqual(t, len(testNetwork.PIFs), 1, "test network should have at least one PIF")
 
-	params := payloads.CreateNetworkParams{
-		Name:        testPrefix + networkName,
-		Pif:         testNetwork.PIFs[0],
-		MTU:         &[]uint{1450}[0],
-		Description: "Test network created by xo-sdk-go",
-		Vlan:        vlan,
-	}
-	networkID, err := client.Pool().CreateNetwork(ctx, intTests.testPool.ID, params)
-	require.NoError(t, err, "error while creating network in pool %s: %v", intTests.testPool.ID, err)
-	assert.NotEqual(t, uuid.Nil, networkID, "created network ID should not be nil")
+		params := payloads.CreateNetworkParams{
+			Name:        testPrefix + networkName,
+			Pif:         testNetwork.PIFs[0],
+			MTU:         &[]int{1450}[0],
+			Description: "Test network created by xo-sdk-go",
+			Vlan:        vlan,
+		}
+		networkID, err := client.Pool().CreateNetwork(ctx, intTests.testPool.ID, params)
+		require.NoError(t, err, "error while creating network in pool %s: %v", intTests.testPool.ID, err)
+		assert.NotEqual(t, uuid.Nil, networkID, "created network ID should not be nil")
 
-	createdNetwork, err := client.Network().Get(ctx, networkID)
-	require.NoError(t, err, "error fetching created network %s: %v", networkID, err)
-	assert.Equal(t, params.Name, createdNetwork.NameLabel, "created network name should match")
-	assert.Equal(t, intTests.testPool.ID, createdNetwork.Pool, "created network PoolID should match")
+		createdNetwork, err := client.Network().Get(ctx, networkID)
+		require.NoError(t, err, "error fetching created network %s: %v", networkID, err)
+		assert.Equal(t, params.Name, createdNetwork.NameLabel, "created network name should match")
+		assert.Equal(t, intTests.testPool.ID, createdNetwork.Pool, "created network PoolID should match")
 
-	assert.Equal(t, *params.MTU, createdNetwork.MTU, "created network MTU should match")
-	assert.Equal(t, params.Description, createdNetwork.NameDescription, "created network description should match")
+		assert.Equal(t, *params.MTU, createdNetwork.MTU, "created network MTU should match")
+		assert.Equal(t, params.Description, createdNetwork.NameDescription, "created network description should match")
 
-	// Cleanup
-	t.Log("Cleaning up network:", networkID)
-	err = client.Network().Delete(ctx, networkID)
-	require.NoError(t, err, "error deleting network %s: %v", networkID, err)
+		// Cleanup
+		t.Log("Cleaning up network:", networkID)
+		err = client.Network().Delete(ctx, networkID)
+		require.NoError(t, err, "error deleting network %s: %v", networkID, err)
+	})
+
+	t.Run("with internal network", func(t *testing.T) {
+		ctx, client, testPrefix := SetupTestContext(t)
+
+		networkName := "test-internal-network"
+		mtu := 1450
+		nbd := true
+
+		params := payloads.CreateInternalNetworkParams{
+			Name:        testPrefix + networkName,
+			Description: "Test internal network created by xo-sdk-go",
+			MTU:         &mtu,
+			NBD:         &nbd,
+		}
+
+		networkID, err := client.Pool().CreateInternalNetwork(ctx, intTests.testPool.ID, params)
+		require.NoError(t, err, "error while creating internal network in pool %s: %v", intTests.testPool.ID, err)
+		require.NotEqual(t, uuid.Nil, networkID, "created internal network ID should not be nil")
+
+		createdNetwork, err := client.Network().Get(ctx, networkID)
+		require.NoError(t, err, "error fetching created internal network %s: %v", networkID, err)
+
+		assert.Equal(t, params.Name, createdNetwork.NameLabel, "created internal network name should match")
+		assert.Equal(t, intTests.testPool.ID, createdNetwork.Pool, "created internal network PoolID should match")
+		assert.Equal(
+			t, params.Description, createdNetwork.NameDescription, "created internal network description should match")
+		assert.Equal(t, *params.MTU, createdNetwork.MTU, "created internal network MTU should match")
+
+		if createdNetwork.NBD != nil {
+			assert.Equal(t, *params.NBD, *createdNetwork.NBD, "created internal network NBD should match")
+		}
+
+		// Cleanup
+		t.Log("Cleaning up internal network:", networkID)
+		err = client.Network().Delete(ctx, networkID)
+		require.NoError(t, err, "error deleting internal network %s: %v", networkID, err)
+	})
 }

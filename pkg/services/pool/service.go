@@ -197,3 +197,14 @@ func (s *Service) CreateNetwork(
 
 	return s.createResource(ctx, poolID, "network", params)
 }
+
+func (s *Service) CreateInternalNetwork(
+	ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error) {
+	if params.Name == "" {
+		s.log.Error("CreateInternalNetwork failed: name cannot be empty",
+			zap.String("Name", params.Name))
+		return uuid.Nil, fmt.Errorf("network name cannot be empty")
+	}
+
+	return s.createResource(ctx, poolID, "internal_network", params)
+}

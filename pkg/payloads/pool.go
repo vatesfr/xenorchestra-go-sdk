@@ -97,9 +97,20 @@ type CreateNetworkParams struct {
 	// UUID of the PIF (device) to select (required)
 	Pif uuid.UUID `json:"pif"`
 	// Network MTU (optional) - Default: 1500
-	MTU *uint `json:"mtu,omitempty"`
+	MTU *int `json:"mtu,omitempty"`
 	// Network VLAN (required) - Minimum: 0, Maximum: 4094
 	Vlan uint `json:"vlan"`
 	// Network NDB (optional)
 	NDB *bool `json:"ndb,omitempty"`
+}
+
+type CreateInternalNetworkParams struct {
+	// Network name (required)
+	Name string `json:"name"`
+	// Network description (optional)
+	Description string `json:"description,omitempty"`
+	// Network MTU (optional) - Default: 1500
+	MTU *int `json:"mtu,omitempty"`
+	// Network NBD (optional)
+	NBD *bool `json:"nbd,omitempty"`
 }
