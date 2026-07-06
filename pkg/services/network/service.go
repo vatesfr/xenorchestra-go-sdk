@@ -110,10 +110,18 @@ func (s *NetworkService) GetTasks(
 	return result, nil
 }
 
-func (s *NetworkService) Create(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
+func (s *NetworkService) Create(
+	ctx context.Context,
+	poolID uuid.UUID,
+	params payloads.CreateNetworkParams,
+) (uuid.UUID, error) {
 	return s.poolService.CreateNetwork(ctx, poolID, params)
 }
 
-func (s *NetworkService) CreateInternal(ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error) {
+func (s *NetworkService) CreateInternal(
+	ctx context.Context,
+	poolID uuid.UUID,
+	params payloads.CreateInternalNetworkParams,
+) (uuid.UUID, error) {
 	return s.poolService.CreateInternalNetwork(ctx, poolID, params)
 }

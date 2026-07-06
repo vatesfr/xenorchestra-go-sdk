@@ -395,9 +395,12 @@ func TestCreateInternalNetworkParams(t *testing.T) {
 		poolService, server := setupTestServer(t, handler)
 		defer server.Close()
 
-		gotID, err := poolService.CreateInternalNetwork(context.Background(), uuid.Must(uuid.NewV4()), payloads.CreateInternalNetworkParams{
-			Name: "",
-		})
+		gotID, err := poolService.CreateInternalNetwork(
+			context.Background(),
+			uuid.Must(uuid.NewV4()),
+			payloads.CreateInternalNetworkParams{
+				Name: "",
+			})
 		assert.Error(t, err)
 		assert.Equal(t, uuid.Nil, gotID)
 	})

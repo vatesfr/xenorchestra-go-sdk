@@ -20,7 +20,11 @@ type Pool interface {
 type PoolAction interface {
 	CreateVM(ctx context.Context, poolID uuid.UUID, params payloads.CreateVMParams) (uuid.UUID, error)
 	CreateNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error)
-	CreateInternalNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error)
+	CreateInternalNetwork(
+		ctx context.Context,
+		poolID uuid.UUID,
+		params payloads.CreateInternalNetworkParams,
+	) (uuid.UUID, error)
 	EmergencyShutdown(ctx context.Context, poolID uuid.UUID) error
 	RollingReboot(ctx context.Context, poolID uuid.UUID) error
 	RollingUpdate(ctx context.Context, poolID uuid.UUID) error
