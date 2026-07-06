@@ -36,7 +36,14 @@ type Network interface {
 	// Returns an error if the operation fails.
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	// CreateNetwork creates a new Network within a specified Pool.
+	NetworkActions
+
+	Taggable
+}
+
+type NetworkActions interface {
+
+	// Create creates a new Network within a specified Pool.
 	// This is an alias of Pool.CreateNetwork, but it is provided here for convenience.
 	// Parameters:
 	//   - poolID: ID of the Pool where the Network will be created
@@ -44,5 +51,11 @@ type Network interface {
 	// Returns the ID of the newly created Network or an error if the operation fails.
 	Create(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error)
 
-	Taggable
+	// CreateInternal creates a new internal Network within a specified Pool.
+	// This is an alias of Pool.CreateInternalNetwork, but it is provided here for convenience.
+	// Parameters:
+	//   - poolID: ID of the Pool where the internal Network will be created
+	//   - params: parameters for creating the internal Network
+	// Returns the ID of the newly created internal Network or an error if the operation fails.
+	CreateInternal(ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error)
 }

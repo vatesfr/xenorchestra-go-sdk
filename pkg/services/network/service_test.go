@@ -381,6 +381,8 @@ func TestCreate(t *testing.T) {
 	mockPool.EXPECT().CreateNetwork(
 		gomock.Any(), gomock.Any(), gomock.Any()).Return(uuid.Must(uuid.FromString(testNetworkID1)), nil).Times(1)
 	svc := New(c, mockTask, mockPool, log)
+	mockPool.EXPECT().CreateInternalNetwork(
+		gomock.Any(), gomock.Any(), gomock.Any()).Return(uuid.Must(uuid.FromString(testNetworkID2)), nil).Times(1)
 
 	require.NotNil(t, svc)
 
@@ -388,6 +390,11 @@ func TestCreate(t *testing.T) {
 		Name: "Test network",
 		Vlan: 0,
 		Pif:  uuid.Must(uuid.NewV4()),
+	})
+	assert.NoError(t, err)
+
+	_, err = svc.CreateInternal(t.Context(), uuid.Must(uuid.NewV4()), payloads.CreateInternalNetworkParams{
+		Name: "Test internal network",
 	})
 	assert.NoError(t, err)
 }

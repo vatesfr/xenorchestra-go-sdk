@@ -21,7 +21,12 @@ type NetworkService struct {
 	poolService library.Pool
 }
 
-func New(client *client.Client, taskService library.Task, poolService library.Pool, log *logger.Logger) library.Network {
+func New(
+	client *client.Client,
+	taskService library.Task,
+	poolService library.Pool,
+	log *logger.Logger,
+) library.Network {
 	return &NetworkService{
 		client:      client,
 		log:         log,
@@ -107,4 +112,8 @@ func (s *NetworkService) GetTasks(
 
 func (s *NetworkService) Create(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
 	return s.poolService.CreateNetwork(ctx, poolID, params)
+}
+
+func (s *NetworkService) CreateInternal(ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error) {
+	return s.poolService.CreateInternalNetwork(ctx, poolID, params)
 }
