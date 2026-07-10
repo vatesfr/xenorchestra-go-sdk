@@ -5,7 +5,9 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
+	"github.com/cenkalti/backoff/v3"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -257,5 +259,67 @@ func TestCreateNetwork(t *testing.T) {
 		t.Log("Cleaning up internal network:", networkID)
 		err = client.Network().Delete(ctx, networkID)
 		require.NoError(t, err, "error deleting internal network %s: %v", networkID, err)
+	})
+
+	t.Run("with bonded network", func(t *testing.T) {
+		// It requires at least two PIFs of the same host. If possible avoid to use the management interface of the host,
+		//  as it may cause network issues.  If you want to run this test, please make sure to have a proper lab environment
+		//  and uncomment the following lines.
+		t.Skip("This test must be run carefully and manually to avoid any issue with the lab environment.")
+		ctx, client, testPrefix := SetupTestContext(t)
+
+		networkName := "test-bonded-network"
+		mtu := 1450
+		nbd := true
+		// Replace with a valid PIF ID from your environment
+		pifID1 := uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000")
+		pifID2 := uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440001")
+
+		// Resolve PIF from the test network via v1 client
+		testNetwork, err := client.Network().Get(ctx, intTests.testNetworkID)
+		require.NoError(t, err, "error fetching test network %s: %v", intTests.testNetworkID, err)
+		require.GreaterOrEqual(t, len(testNetwork.PIFs), 2, "test network should have at least two PIFs for bonding")
+
+		params := payloads.CreateBondedNetworkParams{
+			Name:        testPrefix + networkName,
+			Description: "Test bonded network created by xo-sdk-go",
+			MTU:         &mtu,
+			NBD:         &nbd,
+			BondMode:    payloads.NetworkBondModeBalanceSLB,
+			PifIds:      []uuid.UUID{pifID1, pifID2},
+		}
+
+		networkID, err := client.Pool().CreateBondedNetwork(ctx, intTests.testPool.ID, params)
+		require.NoError(t, err, "error while creating bonded network in pool %s: %v", intTests.testPool.ID, err)
+		require.NotEqual(t, uuid.Nil, networkID, "created bonded network ID should not be nil")
+
+		// Retry fetching the network until it is available, as bonded networks may take some time to be fully created
+		var createdNetwork *payloads.Network
+		bo := backoff.NewExponentialBackOff()
+		bo.MaxElapsedTime = 5 * time.Minute
+		err = backoff.Retry(func() error {
+			var err error
+			createdNetwork, err = client.Network().Get(ctx, networkID)
+			return err
+		}, backoff.WithContext(bo, ctx))
+		require.NoError(t, err, "error fetching created bonded network %s after retries: %v", networkID, err)
+
+		assert.Equal(t, params.Name, createdNetwork.NameLabel, "created bonded network name should match")
+		assert.Equal(t, intTests.testPool.ID, createdNetwork.Pool, "created bonded network PoolID should match")
+		assert.Equal(
+			t, params.Description, createdNetwork.NameDescription, "created bonded network description should match")
+		assert.Equal(t, *params.MTU, createdNetwork.MTU, "created bonded network MTU should match")
+
+		if createdNetwork.NBD != nil {
+			assert.Equal(t, *params.NBD, *createdNetwork.NBD, "created bonded network NBD should match")
+		}
+
+		assert.True(t, createdNetwork.IsBonded, "created bonded network should be marked as bonded")
+		assert.ElementsMatch(t, params.PifIds, createdNetwork.PIFs, "created bonded network PIFs should match")
+
+		// Cleanup
+		t.Log("Cleaning up bonded network:", networkID)
+		err = client.Network().Delete(ctx, networkID)
+		require.NoError(t, err, "error deleting bonded network %s: %v", networkID, err)
 	})
 }

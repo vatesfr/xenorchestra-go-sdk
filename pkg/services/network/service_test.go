@@ -25,6 +25,7 @@ import (
 const (
 	testNetworkID1        = "550e8400-e29b-41d4-a716-446655440010"
 	testNetworkID2        = "550e8400-e29b-41d4-a716-446655440011"
+	testNetworkID3        = "550e8400-e29b-41d4-a716-446655440012"
 	testNetworkIDNotFound = "550e8400-e29b-41d4-a716-446655440099"
 	testTokenValue        = "test-token"
 )
@@ -380,10 +381,12 @@ func TestCreate(t *testing.T) {
 	mockPool := mock.NewMockPool(ctrl)
 	mockPool.EXPECT().CreateNetwork(
 		gomock.Any(), gomock.Any(), gomock.Any()).Return(uuid.Must(uuid.FromString(testNetworkID1)), nil).Times(1)
-	svc := New(c, mockTask, mockPool, log)
 	mockPool.EXPECT().CreateInternalNetwork(
 		gomock.Any(), gomock.Any(), gomock.Any()).Return(uuid.Must(uuid.FromString(testNetworkID2)), nil).Times(1)
+	mockPool.EXPECT().CreateBondedNetwork(
+		gomock.Any(), gomock.Any(), gomock.Any()).Return(uuid.Must(uuid.FromString(testNetworkID3)), nil).Times(1)
 
+	svc := New(c, mockTask, mockPool, log)
 	require.NotNil(t, svc)
 
 	_, err = svc.Create(t.Context(), uuid.Must(uuid.NewV4()), payloads.CreateNetworkParams{
@@ -395,6 +398,11 @@ func TestCreate(t *testing.T) {
 
 	_, err = svc.CreateInternal(t.Context(), uuid.Must(uuid.NewV4()), payloads.CreateInternalNetworkParams{
 		Name: "Test internal network",
+	})
+	assert.NoError(t, err)
+
+	_, err = svc.CreateBonded(t.Context(), uuid.Must(uuid.NewV4()), payloads.CreateBondedNetworkParams{
+		Name: "Test bonded network",
 	})
 	assert.NoError(t, err)
 }

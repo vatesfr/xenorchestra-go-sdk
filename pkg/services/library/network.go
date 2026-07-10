@@ -58,4 +58,12 @@ type NetworkActions interface {
 	//   - params: parameters for creating the internal Network
 	// Returns the ID of the newly created internal Network or an error if the operation fails.
 	CreateInternal(ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error)
+
+	// CreateBonded creates a new bonded Network within a specified Pool.
+	// This is an alias of Pool.CreateBondedNetwork, but it is provided here for convenience.
+	// Parameters:
+	//   - poolID: ID of the Pool where the bonded Network will be created
+	//   - params: parameters for creating the bonded Network
+	// Returns the ID of the newly created bonded Network or an error if the operation fails.
+	CreateBonded(ctx context.Context, poolID uuid.UUID, params payloads.CreateBondedNetworkParams) (uuid.UUID, error)
 }

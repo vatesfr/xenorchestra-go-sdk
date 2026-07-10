@@ -56,6 +56,51 @@ func (mr *MockNetworkMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockNetwork)(nil).AddTag), ctx, id, tag)
 }
 
+// Create mocks base method.
+func (m *MockNetwork) Create(ctx context.Context, poolID uuid.UUID, params payloads.CreateNetworkParams) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, poolID, params)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockNetworkMockRecorder) Create(ctx, poolID, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockNetwork)(nil).Create), ctx, poolID, params)
+}
+
+// CreateBonded mocks base method.
+func (m *MockNetwork) CreateBonded(ctx context.Context, poolID uuid.UUID, params payloads.CreateBondedNetworkParams) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateBonded", ctx, poolID, params)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateBonded indicates an expected call of CreateBonded.
+func (mr *MockNetworkMockRecorder) CreateBonded(ctx, poolID, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBonded", reflect.TypeOf((*MockNetwork)(nil).CreateBonded), ctx, poolID, params)
+}
+
+// CreateInternal mocks base method.
+func (m *MockNetwork) CreateInternal(ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateInternal", ctx, poolID, params)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateInternal indicates an expected call of CreateInternal.
+func (mr *MockNetworkMockRecorder) CreateInternal(ctx, poolID, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInternal", reflect.TypeOf((*MockNetwork)(nil).CreateInternal), ctx, poolID, params)
+}
+
 // Delete mocks base method.
 func (m *MockNetwork) Delete(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()

@@ -453,6 +453,78 @@ func TestCreateInternalNetworkParams(t *testing.T) {
 	})
 }
 
+func TestCreateBondedNetworkParams(t *testing.T) {
+	t.Run("validation: empty name", func(t *testing.T) {
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("should not call API when validation fails")
+		})
+		poolService, server := setupTestServer(t, handler)
+		defer server.Close()
+
+		gotID, err := poolService.CreateBondedNetwork(
+			context.Background(),
+			uuid.Must(uuid.NewV4()),
+			payloads.CreateBondedNetworkParams{
+				Name: "",
+			})
+		assert.Error(t, err)
+		assert.Equal(t, uuid.Nil, gotID)
+	})
+
+	t.Run("forwards params in POST body", func(t *testing.T) {
+		poolID := uuid.Must(uuid.NewV4())
+		expectedID := uuid.Must(uuid.NewV4())
+		expectedPIF := uuid.Must(uuid.NewV4())
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockTask := mock.NewMockTask(ctrl)
+		mockTask.EXPECT().HandleTaskResponse(gomock.Any(), payloads.TaskIDResponse{TaskID: testFakeTaskID}, true).
+			Return(&payloads.Task{
+				Status: payloads.Success,
+				Result: payloads.Result{ID: expectedID},
+			}, nil)
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPost, r.Method)
+			assert.True(t, strings.HasSuffix(r.URL.Path, "/pools/"+poolID.String()+"/actions/create_bonded_network"))
+
+			var body payloads.CreateBondedNetworkParams
+			err := json.NewDecoder(r.Body).Decode(&body)
+			assert.NoError(t, err)
+			assert.Equal(t, "internal-net", body.Name)
+			assert.Equal(t, "internal network", body.Description)
+			assert.NotNil(t, body.MTU)
+			assert.Equal(t, 1500, *body.MTU)
+			assert.NotNil(t, body.NBD)
+			assert.True(t, *body.NBD)
+			assert.Equal(t, payloads.NetworkBondModeBalanceSLB, body.BondMode)
+			assert.Len(t, body.PifIds, 1)
+			assert.Equal(t, expectedPIF, body.PifIds[0])
+
+			_, _ = w.Write([]byte("{\"taskId\":\"" + testFakeTaskID + "\"}"))
+		})
+
+		poolService, server := setupTestServer(t, handler)
+		defer server.Close()
+		s := poolService.(*Service)
+		s.taskService = mockTask
+
+		mtu := 1500
+		ndb := true
+		gotID, err := s.CreateBondedNetwork(context.Background(), poolID, payloads.CreateBondedNetworkParams{
+			Name:        "internal-net",
+			Description: "internal network",
+			MTU:         &mtu,
+			NBD:         &ndb,
+			BondMode:    payloads.NetworkBondModeBalanceSLB,
+			PifIds:      []uuid.UUID{expectedPIF},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, expectedID, gotID)
+	})
+}
+
 func TestPerformPoolAction(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		poolID := uuid.Must(uuid.NewV4())

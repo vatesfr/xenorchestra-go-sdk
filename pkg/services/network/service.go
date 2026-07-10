@@ -125,3 +125,11 @@ func (s *NetworkService) CreateInternal(
 ) (uuid.UUID, error) {
 	return s.poolService.CreateInternalNetwork(ctx, poolID, params)
 }
+
+func (s *NetworkService) CreateBonded(
+	ctx context.Context,
+	poolID uuid.UUID,
+	params payloads.CreateBondedNetworkParams,
+) (uuid.UUID, error) {
+	return s.poolService.CreateBondedNetwork(ctx, poolID, params)
+}

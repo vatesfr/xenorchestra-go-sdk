@@ -100,8 +100,8 @@ type CreateNetworkParams struct {
 	MTU *int `json:"mtu,omitempty"`
 	// Network VLAN (required) - Minimum: 0, Maximum: 4094
 	Vlan uint `json:"vlan"`
-	// Network NDB (optional)
-	NDB *bool `json:"ndb,omitempty"`
+	// Network NBD (optional)
+	NBD *bool `json:"nbd,omitempty"`
 }
 
 type CreateInternalNetworkParams struct {
@@ -113,4 +113,27 @@ type CreateInternalNetworkParams struct {
 	MTU *int `json:"mtu,omitempty"`
 	// Network NBD (optional)
 	NBD *bool `json:"nbd,omitempty"`
+}
+
+type NetworkBondMode string
+
+const (
+	NetworkBondModeActiveBackup NetworkBondMode = "active-backup"
+	NetworkBondModeBalanceSLB   NetworkBondMode = "balance-slb"
+	NetworkBondModeLACP         NetworkBondMode = "lacp"
+)
+
+type CreateBondedNetworkParams struct {
+	// Network name (required)
+	Name string `json:"name"`
+	// Network description (optional)
+	Description string `json:"description,omitempty"`
+	// Network MTU (optional) - Default: 1500
+	MTU *int `json:"mtu,omitempty"`
+	// Network NBD (optional)
+	NBD *bool `json:"nbd,omitempty"`
+	// List of PIF IDs to bond (required)
+	PifIds []uuid.UUID `json:"pifIds"`
+	// Bond mode (required)
+	BondMode NetworkBondMode `json:"bondMode"`
 }

@@ -25,6 +25,11 @@ type PoolAction interface {
 		poolID uuid.UUID,
 		params payloads.CreateInternalNetworkParams,
 	) (uuid.UUID, error)
+	CreateBondedNetwork(
+		ctx context.Context,
+		poolID uuid.UUID,
+		params payloads.CreateBondedNetworkParams,
+	) (uuid.UUID, error)
 	EmergencyShutdown(ctx context.Context, poolID uuid.UUID) error
 	RollingReboot(ctx context.Context, poolID uuid.UUID) error
 	RollingUpdate(ctx context.Context, poolID uuid.UUID) error

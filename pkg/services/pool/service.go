@@ -208,3 +208,22 @@ func (s *Service) CreateInternalNetwork(
 
 	return s.createResource(ctx, poolID, "internal_network", params)
 }
+
+func (s *Service) CreateBondedNetwork(
+	ctx context.Context, poolID uuid.UUID, params payloads.CreateBondedNetworkParams) (uuid.UUID, error) {
+	if params.Name == "" {
+		s.log.Error("CreateBondedNetwork failed: name cannot be empty",
+			zap.String("Name", params.Name))
+		return uuid.Nil, fmt.Errorf("network name cannot be empty")
+	}
+	if len(params.PifIds) == 0 {
+		s.log.Error("CreateBondedNetwork failed: pifIds must not be empty")
+		return uuid.Nil, fmt.Errorf("pifIds must not be empty")
+	}
+	if params.BondMode == "" {
+		s.log.Error("CreateBondedNetwork failed: bondMode cannot be empty")
+		return uuid.Nil, fmt.Errorf("bondMode cannot be empty")
+	}
+
+	return s.createResource(ctx, poolID, "bonded_network", params)
+}

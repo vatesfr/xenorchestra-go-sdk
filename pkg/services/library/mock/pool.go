@@ -56,6 +56,21 @@ func (mr *MockPoolMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockPool)(nil).AddTag), ctx, id, tag)
 }
 
+// CreateBondedNetwork mocks base method.
+func (m *MockPool) CreateBondedNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateBondedNetworkParams) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateBondedNetwork", ctx, poolID, params)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateBondedNetwork indicates an expected call of CreateBondedNetwork.
+func (mr *MockPoolMockRecorder) CreateBondedNetwork(ctx, poolID, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBondedNetwork", reflect.TypeOf((*MockPool)(nil).CreateBondedNetwork), ctx, poolID, params)
+}
+
 // CreateInternalNetwork mocks base method.
 func (m *MockPool) CreateInternalNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateInternalNetworkParams) (uuid.UUID, error) {
 	m.ctrl.T.Helper()
@@ -209,6 +224,21 @@ func NewMockPoolAction(ctrl *gomock.Controller) *MockPoolAction {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPoolAction) EXPECT() *MockPoolActionMockRecorder {
 	return m.recorder
+}
+
+// CreateBondedNetwork mocks base method.
+func (m *MockPoolAction) CreateBondedNetwork(ctx context.Context, poolID uuid.UUID, params payloads.CreateBondedNetworkParams) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateBondedNetwork", ctx, poolID, params)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateBondedNetwork indicates an expected call of CreateBondedNetwork.
+func (mr *MockPoolActionMockRecorder) CreateBondedNetwork(ctx, poolID, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBondedNetwork", reflect.TypeOf((*MockPoolAction)(nil).CreateBondedNetwork), ctx, poolID, params)
 }
 
 // CreateInternalNetwork mocks base method.
