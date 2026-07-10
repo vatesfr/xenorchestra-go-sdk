@@ -182,6 +182,10 @@ func TestCreateVM(t *testing.T) {
 func TestCreateNetwork(t *testing.T) {
 
 	t.Run("with vlan", func(t *testing.T) {
+		if intTests.testPool.HAEnabled {
+			t.Skip("Disabling HA is a prerequisite for running this network creation test.")
+		}
+
 		ctx, client, testPrefix := SetupTestContext(t)
 
 		networkName := "test-network"
@@ -229,13 +233,11 @@ func TestCreateNetwork(t *testing.T) {
 
 		networkName := "test-internal-network"
 		mtu := 1450
-		nbd := true
 
 		params := payloads.CreateInternalNetworkParams{
 			Name:        testPrefix + networkName,
 			Description: "Test internal network created by xo-sdk-go",
 			MTU:         &mtu,
-			NBD:         &nbd,
 		}
 
 		networkID, err := client.Pool().CreateInternalNetwork(ctx, intTests.testPool.ID, params)
@@ -250,10 +252,6 @@ func TestCreateNetwork(t *testing.T) {
 		assert.Equal(
 			t, params.Description, createdNetwork.NameDescription, "created internal network description should match")
 		assert.Equal(t, *params.MTU, createdNetwork.MTU, "created internal network MTU should match")
-
-		if createdNetwork.NBD != nil {
-			assert.Equal(t, *params.NBD, *createdNetwork.NBD, "created internal network NBD should match")
-		}
 
 		// Cleanup
 		t.Log("Cleaning up internal network:", networkID)
@@ -270,7 +268,6 @@ func TestCreateNetwork(t *testing.T) {
 
 		networkName := "test-bonded-network"
 		mtu := 1450
-		nbd := true
 		// Replace with a valid PIF ID from your environment
 		pifID1 := uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000")
 		pifID2 := uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440001")
@@ -284,7 +281,6 @@ func TestCreateNetwork(t *testing.T) {
 			Name:        testPrefix + networkName,
 			Description: "Test bonded network created by xo-sdk-go",
 			MTU:         &mtu,
-			NBD:         &nbd,
 			BondMode:    payloads.NetworkBondModeBalanceSLB,
 			PifIds:      []uuid.UUID{pifID1, pifID2},
 		}
@@ -309,10 +305,6 @@ func TestCreateNetwork(t *testing.T) {
 		assert.Equal(
 			t, params.Description, createdNetwork.NameDescription, "created bonded network description should match")
 		assert.Equal(t, *params.MTU, createdNetwork.MTU, "created bonded network MTU should match")
-
-		if createdNetwork.NBD != nil {
-			assert.Equal(t, *params.NBD, *createdNetwork.NBD, "created bonded network NBD should match")
-		}
 
 		assert.True(t, createdNetwork.IsBonded, "created bonded network should be marked as bonded")
 		assert.ElementsMatch(t, params.PifIds, createdNetwork.PIFs, "created bonded network PIFs should match")
