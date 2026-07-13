@@ -19,6 +19,13 @@ func TestVBDGet(t *testing.T) {
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-get-vm",
 		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		VDIs: []payloads.VDIParams{
+			{
+				NameLabel: ptr(testPrefix + "vbd-get-vdi"),
+				Size:      ptr(int64(512 * units.MB)),
+				SR:        ptr(intTests.testSR.ID),
+			},
+		},
 	})
 	require.NoError(t, err, "creating VM should succeed")
 	require.NotEmpty(t, vm.VBDs, "VM should have at least one VBD")
@@ -54,10 +61,12 @@ func TestVBDGetAll(t *testing.T) {
 			{
 				NameLabel: ptr(testPrefix + "vbd-getall-vdi-1"),
 				Size:      ptr(int64(512 * units.MB)),
+				SR:        ptr(intTests.testSR.ID),
 			},
 			{
 				NameLabel: ptr(testPrefix + "vbd-getall-vdi-2"),
 				Size:      ptr(int64(512 * units.MB)),
+				SR:        ptr(intTests.testSR.ID),
 			},
 		},
 	})
@@ -108,6 +117,7 @@ func TestVBDCreate(t *testing.T) {
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-create-vm",
 		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		VDIs:      []payloads.VDIParams{},
 	})
 	require.NoError(t, err, "creating VM should succeed")
 
@@ -145,6 +155,13 @@ func TestVBDDelete(t *testing.T) {
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-delete-vm",
 		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		VDIs: []payloads.VDIParams{
+			{
+				NameLabel: ptr(testPrefix + "vbd-delete-vdi"),
+				Size:      ptr(int64(512 * units.MB)),
+				SR:        ptr(intTests.testSR.ID),
+			},
+		},
 	})
 	require.NoError(t, err, "creating VM should succeed")
 
@@ -174,6 +191,13 @@ func TestVBDConnectDisconnect(t *testing.T) {
 		NameLabel: testPrefix + "vbd-connect-vm",
 		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
 		Boot:      ptr(true),
+		VDIs: []payloads.VDIParams{
+			{
+				NameLabel: ptr(testPrefix + "vbd-connect-vdi-os"),
+				Size:      ptr(int64(4 * units.GB)),
+				SR:        ptr(intTests.testSR.ID),
+			},
+		},
 	})
 	require.NoError(t, err, "creating VM should succeed")
 	require.Equal(t, vm.PowerState, payloads.PowerStateRunning, "VM should be running after creation with Boot=true")
@@ -227,6 +251,13 @@ func TestVBDGetTasks(t *testing.T) {
 		NameLabel: testPrefix + "vbd-connect-vm",
 		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
 		Boot:      ptr(true),
+		VDIs: []payloads.VDIParams{
+			{
+				NameLabel: ptr(testPrefix + "vbd-connect-vdi-os"),
+				Size:      ptr(int64(4 * units.GB)),
+				SR:        ptr(intTests.testSR.ID),
+			},
+		},
 	})
 	require.NoError(t, err, "creating VM should succeed")
 	require.Equal(t, vm.PowerState, payloads.PowerStateRunning, "VM should be running after creation with Boot=true")

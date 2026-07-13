@@ -88,9 +88,9 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_POOL` | Test pool Name Label | `My Pool` | ✅ |
 | `XOA_STORAGE` | Test storage repository Name Label | `My SR` | ✅ |
 | `XOA_TEMPLATE` | Template Name Label (legacy) | `Alpine 3.10` | Legacy — use `XOA_TEMPLATE_ID` instead |
-| `XOA_NETWORK` | Network Name Label (legacy) | `My Network` | Legacy — use `XOA_NETWORK_ID` instead |
+| `XOA_NETWORK` | Network Name Label (legacy, must refer to a non-VLAN network) | `My Network` | Legacy — use `XOA_NETWORK_ID` instead |
 | `XOA_TEMPLATE_ID` | Direct template UUID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Preferred over `XOA_TEMPLATE` |
-| `XOA_NETWORK_ID` | Direct network UUID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Preferred over `XOA_NETWORK` |
+| `XOA_NETWORK_ID` | Direct network UUID (must refer to a non-VLAN network) | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Preferred over `XOA_NETWORK` |
 | `XOA_DISABLE_V1` | Disable v1 client (v2-only mode) | `true` | ❌ |
 | `XOA_DEVELOPMENT`| Enable debug logs | `true` | ❌ |
 | `XOA_TEST_PREFIX`| Custom resource prefix | `ci-` | ❌ |
@@ -130,6 +130,12 @@ make test-integration
 ### Test Template Guidance
 
 Choose a test template that boots quickly and has the Xen Orchestra guest agent installed so the VM becomes reachable before the 5-minute test timeout. Integration tests read the VM's main IP address from the guest agent, so templates without it risk timing out or returning no address.
+
+### Test Network Guidance
+
+The integration test network must be a non-VLAN network, whether selected by UUID (`XOA_NETWORK_ID`) or by name (`XOA_NETWORK`).
+
+Do not point `XOA_NETWORK_ID` or `XOA_NETWORK` to a VLAN-backed network. Some network tests create additional VLAN networks and rely on a regular network as the base reference.
 
 ### Running the Suite
 
