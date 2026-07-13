@@ -67,6 +67,38 @@ type VM struct {
 	Container          uuid.UUID         `json:"$container,omitempty"`
 	Snapshots          []uuid.UUID       `json:"snapshots,omitempty"`
 	Type               ResourceType      `json:"type"`
+	Creation           Creation          `json:"creation,omitempty"`
+}
+
+type Creation struct {
+	Date     string                 `json:"date,omitempty"`
+	Template uuid.UUID              `json:"template,omitempty"`
+	User     string                 `json:"user,omitempty"`
+	Raw      map[string]interface{} `json:"-"`
+}
+
+func (c *Creation) UnmarshalJSON(data []byte) error {
+	type creationAlias Creation
+
+	if err := json.Unmarshal(data, (*creationAlias)(c)); err != nil {
+		return err
+	}
+
+	return json.Unmarshal(data, &c.Raw)
+}
+
+func (v *VM) UnmarshalJSON(data []byte) error {
+	type vmAlias VM
+
+	if err := json.Unmarshal(data, (*vmAlias)(v)); err != nil {
+		return err
+	}
+
+	if v.Template == uuid.Nil {
+		v.Template = v.Creation.Template
+	}
+
+	return nil
 }
 
 type Memory struct {
