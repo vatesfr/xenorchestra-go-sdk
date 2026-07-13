@@ -46,6 +46,10 @@ var disklessTestTemplate Template
 var accVm Vm
 
 func TestMain(m *testing.M) {
+	if !hasIntegrationTestEnv() {
+		os.Exit(m.Run())
+	}
+
 	FindPoolForTests(&accTestPool)
 	FindTemplateForTests(&testTemplate, accTestPool.Id, "XOA_TEMPLATE")
 	FindTemplateForTests(&disklessTestTemplate, accTestPool.Id, "XOA_DISKLESS_TEMPLATE")
@@ -61,4 +65,25 @@ func TestMain(m *testing.M) {
 	_ = RemoveNetworksWithNamePrefixForTests(integrationTestPrefix)("")
 
 	os.Exit(code)
+}
+
+func hasIntegrationTestEnv() bool {
+	_, hasToken := os.LookupEnv("XOA_TOKEN")
+	_, hasUser := os.LookupEnv("XOA_USER")
+	_, hasPassword := os.LookupEnv("XOA_PASSWORD")
+
+	required := []string{
+		"XOA_URL",
+		"XOA_POOL",
+		"XOA_TEMPLATE",
+		"XOA_DISKLESS_TEMPLATE",
+	}
+
+	for _, name := range required {
+		if _, found := os.LookupEnv(name); !found {
+			return false
+		}
+	}
+
+	return hasToken || (hasUser && hasPassword)
 }
