@@ -126,7 +126,8 @@ type Vm struct {
 	VBDs               []string               `json:"$VBDs"`
 	VirtualizationMode string                 `json:"virtualizationMode"`
 	PoolId             string                 `json:"$poolId"`
-	Template           string                 `json:"template"`
+	Template           string                 `json:"template,omitempty"`
+	Creation           Creation               `json:"creation,omitempty"`
 	AutoPoweron        bool                   `json:"auto_poweron"`
 	HA                 string                 `json:"high_availability"`
 	CloudConfig        string                 `json:"cloudConfig"`
@@ -158,6 +159,37 @@ type Vm struct {
 type Installation struct {
 	Method     string `json:"-"`
 	Repository string `json:"-"`
+}
+
+type Creation struct {
+	Date     string                 `json:"date,omitempty"`
+	Template string                 `json:"template,omitempty"`
+	User     string                 `json:"user,omitempty"`
+	Raw      map[string]interface{} `json:"-"`
+}
+
+func (c *Creation) UnmarshalJSON(data []byte) error {
+	type creationAlias Creation
+
+	if err := json.Unmarshal(data, (*creationAlias)(c)); err != nil {
+		return err
+	}
+
+	return json.Unmarshal(data, &c.Raw)
+}
+
+func (v *Vm) UnmarshalJSON(data []byte) error {
+	type vmAlias Vm // create an alias to avoid infinite recursion
+
+	if err := json.Unmarshal(data, (*vmAlias)(v)); err != nil {
+		return err
+	}
+
+	if v.Template == "" {
+		v.Template = v.Creation.Template
+	}
+
+	return nil
 }
 
 func (v Vm) Compare(obj interface{}) bool {
