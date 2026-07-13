@@ -12,7 +12,6 @@ import (
 )
 
 func TestVmCreation(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "creation-test-" + uuid.Must(uuid.NewV4()).String()
@@ -27,7 +26,6 @@ func TestVmCreation(t *testing.T) {
 }
 
 func TestVmDeletion(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "deletion-test-" + uuid.Must(uuid.NewV4()).String()
@@ -49,7 +47,6 @@ func TestVmDeletion(t *testing.T) {
 }
 
 func TestVmStart(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "start-test-" + uuid.Must(uuid.NewV4()).String()
@@ -76,7 +73,6 @@ func TestVmStart(t *testing.T) {
 }
 
 func TestVmHardShutdown(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "hard-shutdown-test-" + uuid.Must(uuid.NewV4()).String()
@@ -101,7 +97,6 @@ func TestVmHardShutdown(t *testing.T) {
 }
 
 func TestVmCleanShutdown(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "clean-shutdown-test-" + uuid.Must(uuid.NewV4()).String()
@@ -129,7 +124,6 @@ func TestVmCleanShutdown(t *testing.T) {
 }
 
 func TestVmCleanReboot(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "clean-reboot-test-" + uuid.Must(uuid.NewV4()).String()
@@ -157,7 +151,6 @@ func TestVmCleanReboot(t *testing.T) {
 }
 
 func TestVmHardReboot(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "hard-reboot-test-" + uuid.Must(uuid.NewV4()).String()
@@ -182,7 +175,6 @@ func TestVmHardReboot(t *testing.T) {
 }
 
 func TestVmPauseUnpause(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "pause-test-" + uuid.Must(uuid.NewV4()).String()
@@ -217,7 +209,6 @@ func TestVmPauseUnpause(t *testing.T) {
 }
 
 func TestVmSuspendResume(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "suspend-test-" + uuid.Must(uuid.NewV4()).String()
@@ -254,7 +245,6 @@ func TestVmSuspendResume(t *testing.T) {
 }
 
 func TestVmSnapshot(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vmName := testPrefix + "snapshot-test-" + uuid.Must(uuid.NewV4()).String()
@@ -353,10 +343,12 @@ func TestVMGetVDIs(t *testing.T) {
 			{
 				NameLabel: ptr(testPrefix + "vm-vdi-1"),
 				Size:      ptr(int64(1 * units.GB)),
+				SR:        ptr(intTests.testSR.ID),
 			},
 			{
 				NameLabel: ptr(testPrefix + "vm-vdi-2"),
 				Size:      ptr(int64(512 * units.MB)),
+				SR:        ptr(intTests.testSR.ID),
 			},
 		},
 	}

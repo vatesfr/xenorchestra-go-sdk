@@ -17,7 +17,6 @@ import (
 )
 
 func TestVDIGet(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vdiTestID1 := createVDIForTest(t, ctx, client, testPrefix+"vdi1", 512*units.MB)
@@ -69,7 +68,6 @@ func vdiTagExists(ctx context.Context, client library.Library, vdiID uuid.UUID, 
 }
 
 func TestVDITags(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-tags", 512*units.MB)
@@ -99,7 +97,6 @@ func TestVDITags(t *testing.T) {
 }
 
 func TestVDIDeletion(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-delete", 512*units.MB)
@@ -111,7 +108,6 @@ func TestVDIDeletion(t *testing.T) {
 }
 
 func TestVDIMigration(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-migrate", 512*units.MB)
@@ -144,7 +140,6 @@ func TestVDIMigration(t *testing.T) {
 }
 
 func TestVDIGetTasks(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	// Create and migrate the VDI multiple times to generate some tasks
@@ -202,13 +197,11 @@ func TestVDIGetTasks(t *testing.T) {
 }
 
 func TestVDIExport(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	vdiTestID := createVDIForTest(t, ctx, client, testPrefix+"vdi-export-import", 10*units.MB)
 
 	t.Run("export in raw", func(t *testing.T) {
-		t.Parallel()
 
 		err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatRaw, func(reader io.Reader) error {
 			// Verify the exported content is in raw format using qemu-img
@@ -219,7 +212,6 @@ func TestVDIExport(t *testing.T) {
 	})
 
 	t.Run("export in vhd", func(t *testing.T) {
-		t.Parallel()
 
 		err := client.VDI().Export(ctx, vdiTestID, payloads.VDIFormatVHD, func(reader io.Reader) error {
 			// Verify the exported content is in VHD format using qemu-img
@@ -233,11 +225,9 @@ func TestVDIExport(t *testing.T) {
 }
 
 func TestVDIImportExport(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	t.Run("with raw disk", func(t *testing.T) {
-		t.Parallel()
 
 		// Create a VDI to import into
 		vdiID := createVDIForTest(t, ctx, client, testPrefix+"vdi-import-raw", 10*units.MB)
@@ -268,7 +258,6 @@ func TestVDIImportExport(t *testing.T) {
 	})
 
 	t.Run("with vhd disk", func(t *testing.T) {
-		t.Parallel()
 
 		// Create a VDI to import into
 		vdiID := createVDIForTest(t, ctx, client, testPrefix+"vdi-import-vhd", 10*units.MB)
@@ -300,7 +289,6 @@ func TestVDIImportExport(t *testing.T) {
 }
 
 func TestVDICreate(t *testing.T) {
-	t.Parallel()
 	ctx, client, testPrefix := SetupTestContext(t)
 
 	t.Run("CreateVDIWithName", func(t *testing.T) {

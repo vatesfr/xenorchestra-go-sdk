@@ -204,9 +204,7 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 		// Teardown: cleanup any leftover
 		_ = cleanupVMsWithPrefix(t, testClient, prefix)
 		_ = cleanupNetworksWithPrefix(t, testClient, prefix)
-		if !intTests.v1Disabled {
-			_ = v1.RemoveVDIsWithPrefixForTests(prefix)("")
-		}
+		_ = cleanupVDIWithPrefix(t, testClient, prefix)
 	})
 
 	return ctx, testClient, prefix
@@ -280,6 +278,27 @@ func cleanupNetworksWithPrefix(t testing.TB, client library.Library, prefix stri
 			if err != nil {
 				t.Logf("failed to delete Network NameLabel=%s error=%v", network.NameLabel, err)
 				return fmt.Errorf("failed to delete Network %s: %v", network.NameLabel, err)
+			}
+		}
+	}
+	return nil
+}
+
+func cleanupVDIWithPrefix(t testing.TB, client library.Library, prefix string) error {
+	t.Helper()
+	vdis, err := client.VDI().GetAll(intTests.ctx, 0, "name_label:\""+prefix+"\"")
+	if err != nil {
+		return fmt.Errorf("failed to get VDIs: %v", err)
+	}
+
+	for _, vdi := range vdis {
+		// Check that VDI name starts with the test prefix
+		if len(vdi.NameLabel) >= len(prefix) && (vdi.NameLabel)[:len(prefix)] == prefix {
+			// t.Logf("Found remaining test VDI, Deleting test... NameLabel=%s ID=%s", vdi.NameLabel, vdi.ID)
+			err := client.VDI().Delete(intTests.ctx, vdi.ID)
+			if err != nil {
+				t.Logf("failed to delete VDI NameLabel=%s error=%v", vdi.NameLabel, err)
+				return fmt.Errorf("failed to delete VDI %s: %v", vdi.NameLabel, err)
 			}
 		}
 	}

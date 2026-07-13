@@ -121,11 +121,9 @@ func TestSRScan(t *testing.T) {
 		// The POST succeeds (200) and returns a task ID even for a non-existent SR.
 		// The task then fails asynchronously with result.message="no such object {id}".
 		taskID, err := client.SR().Scan(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
-		require.NoError(t, err, "Scan should return a task ID even for a non-existent SR")
-		require.NotEmpty(t, taskID, "Scan should return a non-empty task ID")
-
-		task := waitForTask(t, ctx, client, taskID)
-		assert.Equal(t, payloads.Failure, task.Status, "Scan task for a non-existent SR should fail")
+		require.Error(t, err, "Scan should return a 404 error for a non-existent SR")
+		require.Empty(t, taskID, "Scan should return an empty task ID")
+		assert.Contains(t, err.Error(), "API error: 404 Not Found", "error message should indicate 404 Not Found")
 	})
 }
 
@@ -149,11 +147,9 @@ func TestSRReclaimSpace(t *testing.T) {
 		// The POST succeeds (200) and returns a task ID even for a non-existent SR.
 		// The task then fails asynchronously with result.message="no such object {id}".
 		taskID, err := client.SR().ReclaimSpace(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
-		require.NoError(t, err, "ReclaimSpace should return a task ID even for a non-existent SR")
-		require.NotEmpty(t, taskID, "ReclaimSpace should return a non-empty task ID")
-
-		task := waitForTask(t, ctx, client, taskID)
-		assert.Equal(t, payloads.Failure, task.Status, "ReclaimSpace task for a non-existent SR should fail")
+		require.Error(t, err, "ReclaimSpace should return a 404 error for a non-existent SR")
+		assert.Contains(t, err.Error(), "API error: 404 Not Found", "error message should indicate 404 Not Found")
+		require.Empty(t, taskID, "ReclaimSpace should return an empty task ID")
 	})
 }
 

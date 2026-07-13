@@ -13,7 +13,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 )
@@ -184,16 +183,11 @@ func createTestDiskImage(t *testing.T, format string, size int64) string {
 
 func createNetworkForTest(t *testing.T, ctx context.Context, client library.Library, name string) uuid.UUID {
 	t.Helper()
-	if intTests.v1Disabled {
-		// For the tests we only need an internal network.
-		// The current v2 does not support creating internal network.
-		t.Skip("v1 client disabled, skipping v1 lazy initialization test")
-	}
-	network, err := client.V1Client().CreateNetwork(v1.CreateNetworkRequest{
-		Name:        name,
-		Pool:        intTests.testPool.ID.String(),
-		Description: "Temporary network for integration test",
-	})
+	networkID, err := client.Pool().CreateInternalNetwork(
+		ctx, intTests.testPool.PoolID, payloads.CreateInternalNetworkParams{
+			Name: name,
+		})
 	require.NoError(t, err, "creating network should succeed")
-	return uuid.FromStringOrNil(network.Id)
+	require.NotEqual(t, uuid.Nil, networkID, "returned networkID should not be nil")
+	return networkID
 }

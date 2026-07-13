@@ -49,12 +49,12 @@ type InstallParams struct {
 }
 
 type VDIParams struct {
-	Destroy         *bool   `json:"destroy,omitempty"`
-	UserDevice      *string `json:"userdevice,omitempty"`
-	Size            *int64  `json:"size,omitempty"` // Using int64 for size as it can be large
-	SR              *string `json:"sr,omitempty"`
-	NameDescription *string `json:"name_description,omitempty"`
-	NameLabel       *string `json:"name_label,omitempty"`
+	Destroy         *bool      `json:"destroy,omitempty"`
+	UserDevice      *string    `json:"userdevice,omitempty"`
+	Size            *int64     `json:"size,omitempty"` // Using int64 for size as it can be large
+	SR              *uuid.UUID `json:"sr,omitempty"`
+	NameDescription *string    `json:"name_description,omitempty"`
+	NameLabel       *string    `json:"name_label,omitempty"`
 }
 
 type VIFParams struct {
