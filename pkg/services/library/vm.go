@@ -36,6 +36,7 @@ type VM interface {
 	VMActions
 
 	Taggable
+	Taskable
 }
 
 type VMActions interface {

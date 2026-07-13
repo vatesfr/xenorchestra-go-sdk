@@ -22,15 +22,9 @@ type SR interface {
 	// Returns all matching SRs or an error if the operation fails.
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.StorageRepository, error)
 
-	// GetTasks retrieves tasks associated with an SR, with optional limit and filtering.
-	// Parameters:
-	//   - id: ID of the SR whose tasks to retrieve
-	//   - limit: maximum number of tasks to return (0 for no limit)
-	//   - filter: filter string for task selection (empty for no filter)
-	// Returns all matching tasks or an error if the operation fails.
-	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
-
 	Taggable
+
+	Taskable
 
 	SRActions
 }

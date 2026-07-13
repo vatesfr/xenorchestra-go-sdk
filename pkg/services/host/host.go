@@ -7,6 +7,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/tasker"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
@@ -65,4 +66,8 @@ func (s *HostService) GetAll(ctx context.Context, limit int, filter string) ([]*
 		return nil, err
 	}
 	return result, nil
+}
+
+func (s *HostService) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
+	return tasker.GetTasks(ctx, s.client, s.log, payloads.ResourceTypeHost, id, limit, filter)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
+	"github.com/vatesfr/xenorchestra-go-sdk/internal/tasker"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	"github.com/vatesfr/xenorchestra-go-sdk/v2/client"
@@ -88,26 +89,7 @@ func (s *NetworkService) RemoveTag(ctx context.Context, id uuid.UUID, tag string
 
 func (s *NetworkService) GetTasks(
 	ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
-	path := core.NewPathBuilder().Resource(payloads.ResourceTypeNetwork.Path()).ID(id).Resource("tasks").Build()
-
-	params := make(map[string]any)
-	params["fields"] = "*"
-	if limit > 0 {
-		params["limit"] = limit
-	}
-	if filter != "" {
-		params["filter"] = filter
-	}
-
-	var result []*payloads.Task
-
-	err := client.TypedGet(ctx, s.client, path, params, &result)
-	if err != nil {
-		s.log.Error("Failed to get tasks for Network", zap.String("networkID", id.String()), zap.Error(err))
-		return nil, err
-	}
-
-	return result, nil
+	return tasker.GetTasks(ctx, s.client, s.log, payloads.ResourceTypeNetwork, id, limit, filter)
 }
 
 func (s *NetworkService) Create(

@@ -13,6 +13,7 @@ type Pool interface {
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Pool, error)
 
 	Taggable
+	Taskable
 
 	PoolAction
 }

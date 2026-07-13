@@ -136,22 +136,6 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Network, *mock.Moc
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	// GET /rest/v0/networks/{id}/tasks - Get tasks for a network
-	mux.HandleFunc("GET /rest/v0/networks/{id}/tasks", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if _, err := uuid.FromString(r.PathValue("id")); err != nil {
-			http.NotFound(w, r)
-			return
-		}
-		tasks := []*payloads.Task{
-			{ID: "task-001", Status: payloads.Success},
-			{ID: "task-002", Status: payloads.Failure},
-		}
-		if err := json.NewEncoder(w).Encode(tasks); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
-
 	server := httptest.NewServer(mux)
 
 	restClient := &client.Client{
@@ -289,81 +273,6 @@ func TestDelete(t *testing.T) {
 		err := service.Delete(context.Background(), networkID)
 
 		assert.Error(t, err)
-	})
-}
-
-func TestGetTasks(t *testing.T) {
-	t.Run("passes limit and filter parameters", func(t *testing.T) {
-		limit := 5
-		filter := "status:failure"
-		called := false
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			called = true
-			assert.Equal(t, http.MethodGet, r.Method)
-			values := r.URL.Query()
-			assert.Equal(t, fmt.Sprintf("%d", limit), values.Get("limit"))
-			assert.Equal(t, filter, values.Get("filter"))
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode([]*payloads.Task{}); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		})
-		service, server, _ := setupTestServerWithHandler(t, handler)
-		defer server.Close()
-
-		networkID := uuid.Must(uuid.FromString(testNetworkID1))
-		tasks, err := service.GetTasks(context.Background(), networkID, limit, filter)
-
-		assert.NoError(t, err)
-		assert.NotNil(t, tasks)
-		assert.True(t, called)
-	})
-
-	t.Run("does not send limit param when zero", func(t *testing.T) {
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			values := r.URL.Query()
-			assert.Empty(t, values.Get("limit"))
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode([]*payloads.Task{}); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		})
-		service, server, _ := setupTestServerWithHandler(t, handler)
-		defer server.Close()
-
-		networkID := uuid.Must(uuid.FromString(testNetworkID1))
-		_, err := service.GetTasks(context.Background(), networkID, 0, "")
-		assert.NoError(t, err)
-	})
-
-	t.Run("returns error on http error", func(t *testing.T) {
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "not found", http.StatusNotFound)
-		})
-		service, server, _ := setupTestServerWithHandler(t, handler)
-		defer server.Close()
-
-		networkID := uuid.Must(uuid.FromString(testNetworkID1))
-		tasks, err := service.GetTasks(context.Background(), networkID, 0, "")
-
-		assert.Error(t, err)
-		assert.Nil(t, tasks)
-	})
-
-	t.Run("successfully retrieves tasks for a network", func(t *testing.T) {
-		server, service, _ := setupTestServer(t)
-		defer server.Close()
-
-		networkID := uuid.Must(uuid.FromString(testNetworkID1))
-		tasks, err := service.GetTasks(context.Background(), networkID, 0, "")
-
-		assert.NoError(t, err)
-		require.NotNil(t, tasks)
-		assert.Len(t, tasks, 2)
-		assert.Equal(t, "task-001", tasks[0].ID)
-		assert.Equal(t, payloads.Success, tasks[0].Status)
-		assert.Equal(t, "task-002", tasks[1].ID)
-		assert.Equal(t, payloads.Failure, tasks[1].Status)
 	})
 }
 

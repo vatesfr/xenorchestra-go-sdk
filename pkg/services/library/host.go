@@ -13,4 +13,5 @@ type Host interface {
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Host, error)
 
 	Taggable
+	Taskable
 }
