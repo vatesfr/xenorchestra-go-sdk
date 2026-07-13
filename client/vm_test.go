@@ -8,6 +8,9 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var vmObjectData string = `
@@ -393,4 +396,63 @@ func Test_warnOnInvalidCloudConfigRecognizesMultipartMIME(t *testing.T) {
 	if strings.Contains(logBuf.String(), "WARN") {
 		t.Errorf("multipart MIME archives should be recognized as valid cloud config")
 	}
+}
+
+func TestUnmarshalJSONVM(t *testing.T) {
+	testParams := []struct {
+		name          string
+		templateValue string
+		creationValue string
+		expectedValue string
+	}{
+		{"both empty", "", "", ""},
+		{"only creation", "", "template-from-creation", "template-from-creation"},
+		{"only template", "template-from-field", "", "template-from-field"},
+		{"both set", "template-from-field", "template-from-creation", "template-from-field"},
+	}
+
+	for _, p := range testParams {
+		t.Run(p.name, func(t *testing.T) {
+			data := fmt.Appendf(nil, `{
+				"id": "vm-id",
+				"name_label": "vm-name",
+				"type": "VM",
+				"template": %q,
+				"creation": {
+					"template": %q
+				}
+			}`, p.templateValue, p.creationValue)
+
+			var unmarshaledVm Vm
+			err := json.Unmarshal(data, &unmarshaledVm)
+
+			require.NoError(t, err, "failed to unmarshal vm")
+			assert.Equal(t, p.expectedValue, unmarshaledVm.Template, "expected template to be '%s', got '%s'", p.expectedValue, unmarshaledVm.Template)
+		})
+	}
+}
+
+func TestCreationUnmarshalJSONRaw(t *testing.T) {
+	const date = "2026-07-15"
+	const template = "template-id"
+	const user = "user-id"
+	customKey := map[string]interface{}{"enabled": true}
+
+	data := fmt.Appendf(nil, `{
+		"date": %q,
+		"template": %q,
+		"user": %q,
+		"customKey": {"enabled": true}
+	}`, date, template, user)
+
+	var creation Creation
+	require.NoError(t, json.Unmarshal(data, &creation))
+
+	assert.Equal(t, date, creation.Date)
+	assert.Equal(t, template, creation.Template)
+	assert.Equal(t, user, creation.User)
+	assert.Equal(t, date, creation.Raw["date"])
+	assert.Equal(t, template, creation.Raw["template"])
+	assert.Equal(t, user, creation.Raw["user"])
+	assert.Equal(t, customKey, creation.Raw["customKey"])
 }
