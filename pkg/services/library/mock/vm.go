@@ -145,6 +145,21 @@ func (mr *MockVMMockRecorder) GetByID(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockVM)(nil).GetByID), ctx, id)
 }
 
+// GetTasks mocks base method.
+func (m *MockVM) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTasks", ctx, id, limit, filter)
+	ret0, _ := ret[0].([]*payloads.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTasks indicates an expected call of GetTasks.
+func (mr *MockVMMockRecorder) GetTasks(ctx, id, limit, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTasks", reflect.TypeOf((*MockVM)(nil).GetTasks), ctx, id, limit, filter)
+}
+
 // GetVDIs mocks base method.
 func (m *MockVM) GetVDIs(ctx context.Context, vmID uuid.UUID, limit int, filter string) ([]*payloads.VDI, error) {
 	m.ctrl.T.Helper()

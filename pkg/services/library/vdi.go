@@ -27,8 +27,7 @@ type VDI interface {
 	//   - id: ID of the VDI to delete
 	// Returns an error if the operation fails.
 	Delete(ctx context.Context, id uuid.UUID) error
-	// GetTasks retrieves tasks associated with a VDI, with optional limit and filtering.
-	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
+
 	// Export streams the VDI content in the given format.
 	// Parameters:
 	// - id: ID of the VDI to export
@@ -53,6 +52,8 @@ type VDI interface {
 	VDIActions
 
 	Taggable
+
+	Taskable
 }
 
 type VDIActions interface {

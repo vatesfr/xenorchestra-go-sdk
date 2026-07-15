@@ -160,6 +160,21 @@ func (mr *MockPoolMockRecorder) GetAll(ctx, limit, filter any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockPool)(nil).GetAll), ctx, limit, filter)
 }
 
+// GetTasks mocks base method.
+func (m *MockPool) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTasks", ctx, id, limit, filter)
+	ret0, _ := ret[0].([]*payloads.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTasks indicates an expected call of GetTasks.
+func (mr *MockPoolMockRecorder) GetTasks(ctx, id, limit, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTasks", reflect.TypeOf((*MockPool)(nil).GetTasks), ctx, id, limit, filter)
+}
+
 // RemoveTag mocks base method.
 func (m *MockPool) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
 	m.ctrl.T.Helper()

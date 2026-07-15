@@ -22,14 +22,6 @@ type Network interface {
 	// Returns a list of Networks or an error if the operation fails.
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Network, error)
 
-	// GetTasks retrieves tasks associated with a Network, with optional limit and filtering.
-	// Parameters:
-	//   - id: ID of the Network whose tasks to retrieve
-	//   - limit: maximum number of tasks to return (0 for no limit)
-	//   - filter: filter string for task selection (empty for no filter)
-	// Returns all matching tasks or an error if the operation fails.
-	GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error)
-
 	// Delete removes a Network by its ID.
 	// Parameters:
 	//   - id: ID of the Network to delete
@@ -39,6 +31,8 @@ type Network interface {
 	NetworkActions
 
 	Taggable
+
+	Taskable
 }
 
 type NetworkActions interface {
