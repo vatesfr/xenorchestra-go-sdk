@@ -20,6 +20,8 @@ type Config struct {
 	Development  bool
 	RetryMode    core.RetryMode
 	RetryMaxTime time.Duration
+	// ClientTimeout is the HTTP client timeout. Defaults to 30 seconds.
+	ClientTimeout time.Duration
 	// OutputPaths and ErrorOutputPaths for the logger.
 	LogOutputPaths      []string
 	LogErrorOutputPaths []string
@@ -54,6 +56,7 @@ const (
 // - XOA_DEVELOPMENT: whether to enable development mode.
 // - XOA_RETRY_MODE: the retry mode to use. Defaults to "none". Valid values are "none", "backoff".
 // - XOA_RETRY_MAX_TIME: the maximum time to wait between retries. Defaults to 5 minutes.
+// - XOA_CLIENT_TIMEOUT: the HTTP client timeout. Defaults to 30 seconds.
 //
 // If any of the required environment variables are not set, New will return an error.
 func New() (*Config, error) {
@@ -89,6 +92,16 @@ func New() (*Config, error) {
 		}
 	}
 
+	clientTimeout := 30 * time.Second
+	if v := os.Getenv("XOA_CLIENT_TIMEOUT"); v != "" {
+		duration, err := time.ParseDuration(v)
+		if err == nil {
+			clientTimeout = duration
+		} else {
+			fmt.Println("[ERROR] failed to parse XOA_CLIENT_TIMEOUT, using default 30s")
+		}
+	}
+
 	insecureStr := os.Getenv("XOA_INSECURE")
 	insecure := false
 	if insecureStr != "" {
@@ -109,6 +122,7 @@ func New() (*Config, error) {
 		Development:         development,
 		RetryMode:           retryMode,
 		RetryMaxTime:        retryMaxTime,
+		ClientTimeout:       clientTimeout,
 		LogOutputPaths:      []string{"stdout"},
 		LogErrorOutputPaths: []string{"stderr"},
 	}, nil
@@ -134,6 +148,11 @@ func NewWithValues(config *Config) (*Config, error) {
 		return nil, errors.New(errMissingAuthInfo)
 	}
 
+	clientTimeout := config.ClientTimeout
+	if clientTimeout == 0 {
+		clientTimeout = 30 * time.Second
+	}
+
 	return &Config{
 		Url:                 config.Url,
 		Username:            config.Username,
@@ -142,6 +161,7 @@ func NewWithValues(config *Config) (*Config, error) {
 		InsecureSkipVerify:  config.InsecureSkipVerify,
 		RetryMode:           config.RetryMode,
 		RetryMaxTime:        config.RetryMaxTime,
+		ClientTimeout:       clientTimeout,
 		Development:         config.Development,
 		LogOutputPaths:      config.LogOutputPaths,
 		LogErrorOutputPaths: config.LogErrorOutputPaths,

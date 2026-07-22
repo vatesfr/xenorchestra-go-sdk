@@ -78,6 +78,7 @@ The SDK uses the following environment variables for configuration:
 - `XOA_DEVELOPMENT`: Set to "true" to enable development mode with additional logging
 - `XOA_RETRY_MODE`: Retry strategy ("none" or "backoff")
 - `XOA_RETRY_MAX_TIME`: Maximum time to wait between retries (default: 5 minutes)
+- `XOA_CLIENT_TIMEOUT`: HTTP client timeout (default: 30 seconds)
 
 
 ### Custom Logging Sinks

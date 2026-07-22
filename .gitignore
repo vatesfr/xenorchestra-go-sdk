@@ -48,3 +48,6 @@ integration_tests.log
 logs
 
 vscode/
+
+# Auto-generated Swagger spec
+swagger.json
