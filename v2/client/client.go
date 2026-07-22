@@ -77,9 +77,14 @@ func New(config *config.Config) (*Client, error) {
 		InsecureSkipVerify: config.InsecureSkipVerify,
 	}
 
+	clientTimeout := config.ClientTimeout
+	if clientTimeout == 0 {
+		clientTimeout = 30 * time.Second
+	}
+
 	httpClient := &http.Client{
 		Transport: transport,
-		Timeout:   30 * time.Second,
+		Timeout:   clientTimeout,
 	}
 
 	client := &Client{
