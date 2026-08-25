@@ -132,6 +132,7 @@ type Vm struct {
 	HA                 string                 `json:"high_availability"`
 	CloudConfig        string                 `json:"cloudConfig"`
 	ResourceSet        *FlatResourceSet       `json:"resourceSet"`
+	Share              *bool                  `json:"share,omitempty"`
 	SecureBoot         bool                   `json:"secureBoot,omitempty"`
 	Tags               []string               `json:"tags"`
 	Videoram           Videoram               `json:"videoram,omitempty"`
@@ -440,6 +441,10 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		params["resourceSet"] = resourceSet
 	}
 
+	if vmReq.Share != nil {
+		params["share"] = *vmReq.Share
+	}
+
 	cloudNetworkConfig := vmReq.CloudNetworkConfig
 	if cloudNetworkConfig != "" {
 		params["networkConfig"] = cloudNetworkConfig
@@ -530,9 +535,6 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 		// https://github.com/xapi-project/xen-api/blob/889b83c47d46c4df65fe58b01caed284dab8dc93
 		// /ocaml/idl/datamodel_vm.ml#L1168
 
-		// share relates to resource sets. This can be accomplished with the resource set resource so
-		// supporting it isn't necessary
-
 		// cpusMask, cpuWeight and cpuCap can be changed at runtime to an integer value or null
 		// coresPerSocket is null or a number of cores per socket. Putting an invalid value doesn't seem to cause an error :(
 	}
@@ -564,6 +566,10 @@ func (c *Client) UpdateVm(vmReq Vm) (*Vm, error) {
 
 	if vmReq.ResourceSet != nil {
 		params["resourceSet"] = vmReq.ResourceSet
+	}
+
+	if vmReq.Share != nil {
+		params["share"] = *vmReq.Share
 	}
 
 	if len(vmReq.XenstoreData) > 0 {
