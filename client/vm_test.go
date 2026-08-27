@@ -248,6 +248,54 @@ func TestFlatResourceSetUnmarshalling(t *testing.T) {
 	}
 }
 
+func TestShareFieldMarshalling(t *testing.T) {
+	// Unmarshal a VM with share=true
+	var vmObj Vm
+	if err := json.Unmarshal([]byte(`{"type": "VM", "share": true}`), &vmObj); err != nil {
+		t.Fatalf("failed to unmarshal vm with share: %v", err)
+	}
+	if vmObj.Share == nil || *vmObj.Share != true {
+		t.Fatalf("expected Share to be true, got %v", vmObj.Share)
+	}
+
+	// share=false must round-trip as an explicit false, not be dropped
+	var vmFalse Vm
+	if err := json.Unmarshal([]byte(`{"type": "VM", "share": false}`), &vmFalse); err != nil {
+		t.Fatalf("failed to unmarshal vm with share=false: %v", err)
+	}
+	if vmFalse.Share == nil || *vmFalse.Share != false {
+		t.Fatalf("expected Share to be false, got %v", vmFalse.Share)
+	}
+
+	// A VM without a share attribute keeps Share nil
+	var vmNoShare Vm
+	if err := json.Unmarshal([]byte(`{"type": "VM"}`), &vmNoShare); err != nil {
+		t.Fatalf("failed to unmarshal vm without share: %v", err)
+	}
+	if vmNoShare.Share != nil {
+		t.Fatalf("expected Share to be nil, got %v", *vmNoShare.Share)
+	}
+
+	// A nil pointer is omitted from marshalled output (omitempty)
+	b, err := json.Marshal(Vm{Share: nil})
+	if err != nil {
+		t.Fatalf("failed to marshal vm without share: %v", err)
+	}
+	if strings.Contains(string(b), `"share"`) {
+		t.Errorf("expected no `share` field in %s", b)
+	}
+
+	// A set pointer marshals to the underlying boolean
+	truth := true
+	b, err = json.Marshal(Vm{Share: &truth})
+	if err != nil {
+		t.Fatalf("failed to marshal vm with share: %v", err)
+	}
+	if !strings.Contains(string(b), `"share":true`) {
+		t.Errorf("expected `share: true` in %s", b)
+	}
+}
+
 func TestUpdateVmWithUpdatesThatRequireHalt(t *testing.T) {
 	c, err := NewClient(GetConfigFromEnv())
 	if err != nil {
