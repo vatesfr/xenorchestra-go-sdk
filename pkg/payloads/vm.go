@@ -185,3 +185,26 @@ const (
 	VMOperationUnpause                  VMOperation = "unpause"
 	VMOperationUpdateAllowedOperations  VMOperation = "update_allowed_operations"
 )
+
+func (v *VM) hasOperation(ops ...VMOperation) bool {
+	for _, op := range v.CurrentOperations {
+		for _, want := range ops {
+			if op == want {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (v *VM) IsShuttingDown() bool {
+	return v.hasOperation(VMOperationSuspend, VMOperationCleanShutdown, VMOperationHardShutdown)
+}
+
+func (v *VM) IsStarting() bool {
+	return v.hasOperation(VMOperationStart, VMOperationStartOn, VMOperationResume, VMOperationResumeOn, VMOperationUnpause)
+}
+
+func (v *VM) IsRebooting() bool {
+	return v.hasOperation(VMOperationCleanReboot, VMOperationHardReboot)
+}
