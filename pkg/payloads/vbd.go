@@ -16,11 +16,16 @@ type VBD struct {
 	Attached bool      `json:"attached"`
 	Bootable bool      `json:"bootable"`
 	// Device is the device name (e.g. "xvda"), null when not plugged in.
-	Device    *string        `json:"device"`
-	IsCDDrive bool           `json:"is_cd_drive"`
-	Position  StringifiedInt `json:"position"`
-	ReadOnly  bool           `json:"read_only"`
-	VDI       *uuid.UUID     `json:"VDI,omitempty"`
+	Device    *string `json:"device"`
+	IsCDDrive bool    `json:"is_cd_drive"`
+	// Position is the XAPI "userdevice" of the VBD, as exposed by the REST API
+	// under the "position" key. The API returns it as a string and the content
+	// is data dependent (a numeric index such as "0" on some stacks, or a
+	// device name such as "xvdb" or "cd0" on others), so it must be a string
+	// rather than a number.
+	Position string     `json:"position"`
+	ReadOnly bool       `json:"read_only"`
+	VDI      *uuid.UUID `json:"VDI,omitempty"`
 	// VM is the ID of the VM this VBD is attached to.
 	VM uuid.UUID `json:"VM"`
 }
