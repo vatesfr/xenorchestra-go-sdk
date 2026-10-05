@@ -127,7 +127,7 @@ func (s *Service) Wait(ctx context.Context, id string) (task *payloads.Task, err
 				continue
 			}
 
-			if task.Status == payloads.Success || task.Status == payloads.Failure {
+			if task.Status == payloads.Success || task.Status == payloads.Failure || task.Status == payloads.Interrupted {
 				s.log.Debug("Task completed",
 					zap.String("taskID", taskID),
 					zap.String("status", string(task.Status)))
