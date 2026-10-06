@@ -67,7 +67,30 @@ var mockTemplates = func() []*payloads.Template {
 	}
 }
 
-func setupTestServer(t *testing.T) (*httptest.Server, *Service) {
+func newTestClient(t *testing.T, server *httptest.Server) (*client.Client, *logger.Logger) {
+	t.Helper()
+	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
+
+	return &client.Client{
+		HttpClient: server.Client(),
+		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
+		AuthToken:  testTokenValue,
+	}, log
+}
+
+// setupTestServerWithHandler returns a Service pointed at a test server that
+// replies with the given handler for every request.
+func setupTestServerWithHandler(t *testing.T, handler http.HandlerFunc) (*Service, *httptest.Server) {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	restClient, log := newTestClient(t, server)
+	return New(restClient, log).(*Service), server
+}
+
+func setupTestServer(t *testing.T) (*Service, *httptest.Server) {
 	t.Helper()
 	mux := http.NewServeMux()
 
@@ -101,24 +124,13 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Service) {
 	})
 
 	server := httptest.NewServer(mux)
-
-	restClient := &client.Client{
-		HttpClient: server.Client(),
-		BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-		AuthToken:  testTokenValue,
-	}
-
-	log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-
-	return server, New(restClient, log).(*Service)
+	restClient, log := newTestClient(t, server)
+	return New(restClient, log).(*Service), server
 }
 
 func TestGet(t *testing.T) {
 	t.Run("get existing template by composite ID", func(t *testing.T) {
-		server, svc := setupTestServer(t)
+		svc, server := setupTestServer(t)
 		defer server.Close()
 
 		tmpl, err := svc.Get(context.Background(), testTemplateID1)
@@ -133,7 +145,7 @@ func TestGet(t *testing.T) {
 	})
 
 	t.Run("get non-existent template by ID", func(t *testing.T) {
-		server, svc := setupTestServer(t)
+		svc, server := setupTestServer(t)
 		defer server.Close()
 
 		tmpl, err := svc.Get(context.Background(), testTemplateIDNotFound)
@@ -144,7 +156,7 @@ func TestGet(t *testing.T) {
 
 func TestGetAll(t *testing.T) {
 	t.Run("successfully retrieves all templates", func(t *testing.T) {
-		server, svc := setupTestServer(t)
+		svc, server := setupTestServer(t)
 		defer server.Close()
 
 		templates, err := svc.GetAll(context.Background(), 0, "")
@@ -159,26 +171,16 @@ func TestGetAll(t *testing.T) {
 		filter := "name_label:Oracle"
 
 		var receivedQuery url.Values
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		svc, server := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
 			receivedQuery = r.URL.Query()
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode([]*payloads.Template{}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		})
-		server := httptest.NewServer(handler)
 		defer server.Close()
 
-		restClient := &client.Client{
-			HttpClient: server.Client(),
-			BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-			AuthToken:  testTokenValue,
-		}
-		log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
-		require.NoError(t, err)
-		svc := New(restClient, log).(*Service)
-
-		_, err = svc.GetAll(context.Background(), limit, filter)
+		_, err := svc.GetAll(context.Background(), limit, filter)
 		require.NoError(t, err)
 
 		assert.Equal(t, fmt.Sprintf("%d", limit), receivedQuery.Get("limit"))
@@ -188,26 +190,16 @@ func TestGetAll(t *testing.T) {
 
 	t.Run("does not send limit param when zero", func(t *testing.T) {
 		var receivedQuery url.Values
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		svc, server := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
 			receivedQuery = r.URL.Query()
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode([]*payloads.Template{}); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		})
-		server := httptest.NewServer(handler)
 		defer server.Close()
 
-		restClient := &client.Client{
-			HttpClient: server.Client(),
-			BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-			AuthToken:  testTokenValue,
-		}
-		log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
-		require.NoError(t, err)
-		svc := New(restClient, log).(*Service)
-
-		_, err = svc.GetAll(context.Background(), 0, "")
+		_, err := svc.GetAll(context.Background(), 0, "")
 		require.NoError(t, err)
 
 		assert.Empty(t, receivedQuery.Get("limit"))
@@ -216,22 +208,12 @@ func TestGetAll(t *testing.T) {
 	})
 
 	t.Run("returns error on http error", func(t *testing.T) {
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		svc, server := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 		})
-		server := httptest.NewServer(handler)
 		defer server.Close()
 
-		restClient := &client.Client{
-			HttpClient: server.Client(),
-			BaseURL:    &url.URL{Scheme: "http", Host: server.URL[7:], Path: "/rest/v0"},
-			AuthToken:  testTokenValue,
-		}
-		log, err := logger.New(false, []string{"stdout"}, []string{"stderr"})
-		require.NoError(t, err)
-		svc := New(restClient, log).(*Service)
-
-		_, err = svc.GetAll(context.Background(), 0, "")
+		_, err := svc.GetAll(context.Background(), 0, "")
 		assert.Error(t, err)
 	})
 }
