@@ -19,6 +19,7 @@ import (
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/pool"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/sr"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/task"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/template"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vbd"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vdi"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/vm"
@@ -27,15 +28,16 @@ import (
 )
 
 type XOClient struct {
-	vmService      library.VM
-	taskService    library.Task
-	poolService    library.Pool
-	hostService    library.Host
-	vdiService     library.VDI
-	vbdService     library.VBD
-	pbdService     library.PBD
-	srService      library.SR
-	networkService library.Network
+	vmService       library.VM
+	taskService     library.Task
+	poolService     library.Pool
+	hostService     library.Host
+	vdiService      library.VDI
+	vbdService      library.VBD
+	pbdService      library.PBD
+	srService       library.SR
+	networkService  library.Network
+	templateService library.Template
 	// We can provide access to the v1 client directly, allowing users to:
 	// 1. Access v1 functionality without initializing a separate client
 	// 2. Use v2 features while maintaining backward compatibility
@@ -102,19 +104,21 @@ func New(config *config.Config) (library.Library, error) {
 	pbdService := pbd.New(client, taskService, log)
 	srService := sr.New(client, taskService, log)
 	networkService := network.New(client, taskService, poolService, log)
+	templateService := template.New(client, log)
 
 	xoClient := &XOClient{
-		vmService:      vm.New(client, taskService, poolService, log),
-		taskService:    taskService,
-		poolService:    poolService,
-		hostService:    hostService,
-		vdiService:     vdiService,
-		vbdService:     vbdService,
-		pbdService:     pbdService,
-		srService:      srService,
-		networkService: networkService,
-		v1Config:       v1Config,
-		log:            log,
+		vmService:       vm.New(client, taskService, poolService, log),
+		taskService:     taskService,
+		poolService:     poolService,
+		hostService:     hostService,
+		vdiService:      vdiService,
+		vbdService:      vbdService,
+		pbdService:      pbdService,
+		srService:       srService,
+		networkService:  networkService,
+		templateService: templateService,
+		v1Config:        v1Config,
+		log:             log,
 	}
 
 	// Create a lazy JSONRPC service that will trigger v1Client creation on first call
@@ -175,6 +179,10 @@ func (c *XOClient) SR() library.SR {
 
 func (c *XOClient) Network() library.Network {
 	return c.networkService
+}
+
+func (c *XOClient) Template() library.Template {
+	return c.templateService
 }
 
 func (c *XOClient) V1Client() v1.XOClient {
