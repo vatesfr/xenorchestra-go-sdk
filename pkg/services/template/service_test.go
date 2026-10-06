@@ -23,6 +23,9 @@ const (
 	testTemplateID2   = "b7569d99-30f8-178a-7d94-801de3e29b5b-a3d70e4d-c5ac-4dfb-999b-30a0a7efe546"
 	testTokenValue    = "test-token"
 	testTemplateUUID1 = "f873abe0-b138-4995-8f6f-498b423d234d"
+	// testTemplateIDNotFound is a well-formed composite id that the mock
+	// server does not know about.
+	testTemplateIDNotFound = testPoolID + "-00000000-0000-0000-0000-000000000000"
 )
 
 var mockTemplates = func() []*payloads.Template {
@@ -133,7 +136,7 @@ func TestGet(t *testing.T) {
 		server, svc := setupTestServer(t)
 		defer server.Close()
 
-		tmpl, err := svc.Get(context.Background(), "b7569d99-30f8-178a-7d94-801de3e29b5b-00000000-0000-0000-0000-000000000000")
+		tmpl, err := svc.Get(context.Background(), testTemplateIDNotFound)
 		assert.Error(t, err)
 		assert.Nil(t, tmpl)
 	})
