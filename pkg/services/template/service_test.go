@@ -23,6 +23,7 @@ const (
 	testTemplateID2   = "b7569d99-30f8-178a-7d94-801de3e29b5b-a3d70e4d-c5ac-4dfb-999b-30a0a7efe546"
 	testTokenValue    = "test-token"
 	testTemplateUUID1 = "f873abe0-b138-4995-8f6f-498b423d234d"
+	testTemplateUUID2 = "a3d70e4d-c5ac-4dfb-999b-30a0a7efe546"
 	// testTemplateIDNotFound is a well-formed composite id that the mock
 	// server does not know about.
 	testTemplateIDNotFound = testPoolID + "-00000000-0000-0000-0000-000000000000"
@@ -31,19 +32,17 @@ const (
 var mockTemplates = func() []*payloads.Template {
 	return []*payloads.Template{
 		{
-			ID:              testTemplateID1,
-			UUID:            uuid.Must(uuid.FromString(testTemplateUUID1)),
-			Type:            payloads.ResourceTypeVMTemplate,
-			Pool:            uuid.Must(uuid.FromString(testPoolID)),
-			PoolID:          uuid.Must(uuid.FromString(testPoolID)),
-			Container:       uuid.Must(uuid.FromString(testPoolID)),
-			NameLabel:       "Oracle Linux 7",
-			NameDescription: "Test template 1",
-			PowerState:      "Halted",
-			IsDefault:       true,
-			Memory:          payloads.Memory{Size: 4294967296},
-			CPUs:            payloads.CPUs{Number: 1, Max: 1},
-			Tags:            []string{},
+			ID:                testTemplateID1,
+			UUID:              uuid.Must(uuid.FromString(testTemplateUUID1)),
+			Type:              payloads.ResourceTypeVMTemplate,
+			Pool:              uuid.Must(uuid.FromString(testPoolID)),
+			Container:         uuid.Must(uuid.FromString(testPoolID)),
+			NameLabel:         "Oracle Linux 7",
+			NameDescription:   "Test template 1",
+			PowerState:        payloads.PowerStateHalted,
+			IsDefaultTemplate: true,
+			Memory:            payloads.Memory{Size: 4294967296},
+			CPUs:              payloads.CPUs{Number: 1, Max: 1},
 			TemplateInfo: payloads.TemplateInfo{
 				Arch:           "x86_64",
 				InstallMethods: []string{"cdrom", "http"},
@@ -53,16 +52,16 @@ var mockTemplates = func() []*payloads.Template {
 			},
 		},
 		{
-			ID:         testTemplateID2,
-			UUID:       uuid.Must(uuid.FromString("a3d70e4d-c5ac-4dfb-999b-30a0a7efe546")),
-			Type:       payloads.ResourceTypeVMTemplate,
-			Pool:       uuid.Must(uuid.FromString(testPoolID)),
-			PoolID:     uuid.Must(uuid.FromString(testPoolID)),
-			Container:  uuid.Must(uuid.FromString(testPoolID)),
-			NameLabel:  "CentOS Stream 9",
-			PowerState: "Halted",
-			Memory:     payloads.Memory{Size: 2147483648},
-			CPUs:       payloads.CPUs{Number: 1, Max: 1},
+			ID:                testTemplateID2,
+			UUID:              uuid.Must(uuid.FromString(testTemplateUUID2)),
+			Type:              payloads.ResourceTypeVMTemplate,
+			Pool:              uuid.Must(uuid.FromString(testPoolID)),
+			Container:         uuid.Must(uuid.FromString(testPoolID)),
+			NameLabel:         "CentOS Stream 9",
+			PowerState:        payloads.PowerStateHalted,
+			IsDefaultTemplate: true,
+			Memory:            payloads.Memory{Size: 2147483648},
+			CPUs:              payloads.CPUs{Number: 1, Max: 1},
 		},
 	}
 }
@@ -139,9 +138,9 @@ func TestGet(t *testing.T) {
 		assert.Equal(t, testTemplateID1, tmpl.ID)
 		assert.Equal(t, testTemplateUUID1, tmpl.UUID.String())
 		assert.Equal(t, "Oracle Linux 7", tmpl.NameLabel)
-		assert.True(t, tmpl.IsDefault)
+		assert.True(t, tmpl.IsDefaultTemplate)
 		assert.Equal(t, payloads.ResourceTypeVMTemplate, tmpl.Type)
-		assert.Equal(t, testPoolID, tmpl.PoolID.String())
+		assert.Equal(t, testPoolID, tmpl.Pool.String())
 	})
 
 	t.Run("get non-existent template by ID", func(t *testing.T) {
@@ -216,4 +215,43 @@ func TestGetAll(t *testing.T) {
 		_, err := svc.GetAll(context.Background(), 0, "")
 		assert.Error(t, err)
 	})
+}
+
+func TestAddTag(t *testing.T) {
+	svc, server := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/rest/v0/vm-templates/"+testTemplateUUID1+"/tags/foo", r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	defer server.Close()
+
+	require.NoError(t, svc.AddTag(context.Background(), uuid.Must(uuid.FromString(testTemplateUUID1)), "foo"))
+}
+
+func TestRemoveTag(t *testing.T) {
+	svc, server := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/rest/v0/vm-templates/"+testTemplateUUID1+"/tags/foo", r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	defer server.Close()
+
+	require.NoError(t, svc.RemoveTag(context.Background(), uuid.Must(uuid.FromString(testTemplateUUID1)), "foo"))
+}
+
+func TestGetTasks(t *testing.T) {
+	svc, server := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/rest/v0/vm-templates/"+testTemplateUUID1+"/tasks", r.URL.Path)
+		assert.Equal(t, "*", r.URL.Query().Get("fields"))
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode([]*payloads.Task{}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	defer server.Close()
+
+	tasks, err := svc.GetTasks(context.Background(), uuid.Must(uuid.FromString(testTemplateUUID1)), 0, "")
+	require.NoError(t, err)
+	assert.Empty(t, tasks)
 }

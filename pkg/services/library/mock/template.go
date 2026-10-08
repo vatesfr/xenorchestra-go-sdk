@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -39,6 +40,20 @@ func NewMockTemplate(ctrl *gomock.Controller) *MockTemplate {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockTemplate) EXPECT() *MockTemplateMockRecorder {
 	return m.recorder
+}
+
+// AddTag mocks base method.
+func (m *MockTemplate) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddTag indicates an expected call of AddTag.
+func (mr *MockTemplateMockRecorder) AddTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTag", reflect.TypeOf((*MockTemplate)(nil).AddTag), ctx, id, tag)
 }
 
 // Get mocks base method.
@@ -69,4 +84,33 @@ func (m *MockTemplate) GetAll(ctx context.Context, limit int, filter string) ([]
 func (mr *MockTemplateMockRecorder) GetAll(ctx, limit, filter any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockTemplate)(nil).GetAll), ctx, limit, filter)
+}
+
+// GetTasks mocks base method.
+func (m *MockTemplate) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTasks", ctx, id, limit, filter)
+	ret0, _ := ret[0].([]*payloads.Task)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTasks indicates an expected call of GetTasks.
+func (mr *MockTemplateMockRecorder) GetTasks(ctx, id, limit, filter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTasks", reflect.TypeOf((*MockTemplate)(nil).GetTasks), ctx, id, limit, filter)
+}
+
+// RemoveTag mocks base method.
+func (m *MockTemplate) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveTag indicates an expected call of RemoveTag.
+func (mr *MockTemplateMockRecorder) RemoveTag(ctx, id, tag any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveTag", reflect.TypeOf((*MockTemplate)(nil).RemoveTag), ctx, id, tag)
 }
