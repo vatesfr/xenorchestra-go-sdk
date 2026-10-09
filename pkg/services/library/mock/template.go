@@ -13,7 +13,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	uuid "github.com/gofrs/uuid"
 	payloads "github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -43,7 +42,7 @@ func (m *MockTemplate) EXPECT() *MockTemplateMockRecorder {
 }
 
 // AddTag mocks base method.
-func (m *MockTemplate) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
+func (m *MockTemplate) AddTag(ctx context.Context, id, tag string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddTag", ctx, id, tag)
 	ret0, _ := ret[0].(error)
@@ -87,7 +86,7 @@ func (mr *MockTemplateMockRecorder) GetAll(ctx, limit, filter any) *gomock.Call 
 }
 
 // GetTasks mocks base method.
-func (m *MockTemplate) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
+func (m *MockTemplate) GetTasks(ctx context.Context, id string, limit int, filter string) ([]*payloads.Task, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTasks", ctx, id, limit, filter)
 	ret0, _ := ret[0].([]*payloads.Task)
@@ -102,7 +101,7 @@ func (mr *MockTemplateMockRecorder) GetTasks(ctx, id, limit, filter any) *gomock
 }
 
 // RemoveTag mocks base method.
-func (m *MockTemplate) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
+func (m *MockTemplate) RemoveTag(ctx context.Context, id, tag string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveTag", ctx, id, tag)
 	ret0, _ := ret[0].(error)

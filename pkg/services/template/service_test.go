@@ -225,7 +225,7 @@ func TestAddTag(t *testing.T) {
 	})
 	defer server.Close()
 
-	require.NoError(t, svc.AddTag(context.Background(), uuid.Must(uuid.FromString(testTemplateUUID1)), "foo"))
+	require.NoError(t, svc.AddTag(context.Background(), testTemplateUUID1, "foo"))
 }
 
 func TestRemoveTag(t *testing.T) {
@@ -236,7 +236,7 @@ func TestRemoveTag(t *testing.T) {
 	})
 	defer server.Close()
 
-	require.NoError(t, svc.RemoveTag(context.Background(), uuid.Must(uuid.FromString(testTemplateUUID1)), "foo"))
+	require.NoError(t, svc.RemoveTag(context.Background(), testTemplateUUID1, "foo"))
 }
 
 func TestGetTasks(t *testing.T) {
@@ -251,7 +251,7 @@ func TestGetTasks(t *testing.T) {
 	})
 	defer server.Close()
 
-	tasks, err := svc.GetTasks(context.Background(), uuid.Must(uuid.FromString(testTemplateUUID1)), 0, "")
+	tasks, err := svc.GetTasks(context.Background(), testTemplateUUID1, 0, "")
 	require.NoError(t, err)
 	assert.Empty(t, tasks)
 }

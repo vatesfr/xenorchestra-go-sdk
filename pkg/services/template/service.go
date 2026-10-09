@@ -8,7 +8,6 @@ package template
 import (
 	"context"
 
-	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/tagger"
@@ -76,20 +75,18 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 	return result, nil
 }
 
-// AddTag adds a tag to a template. The id is the bare template UUID
-// (Template.UUID).
-func (s *Service) AddTag(ctx context.Context, id uuid.UUID, tag string) error {
-	return s.tagService.Add(ctx, id, tag)
+// AddTag adds a tag to a template.
+func (s *Service) AddTag(ctx context.Context, id string, tag string) error {
+	return s.tagService.AddS(ctx, id, tag)
 }
 
-// RemoveTag removes a tag from a template. The id is the bare template UUID
-// (Template.UUID).
-func (s *Service) RemoveTag(ctx context.Context, id uuid.UUID, tag string) error {
-	return s.tagService.Remove(ctx, id, tag)
+// RemoveTag removes a tag from a template.
+func (s *Service) RemoveTag(ctx context.Context, id string, tag string) error {
+	return s.tagService.RemoveS(ctx, id, tag)
 }
 
 // GetTasks retrieves the tasks associated with a template, with optional
-// limit and filtering. The id is the bare template UUID (Template.UUID).
-func (s *Service) GetTasks(ctx context.Context, id uuid.UUID, limit int, filter string) ([]*payloads.Task, error) {
-	return tasker.GetTasks(ctx, s.client, s.log, payloads.ResourceTypeVMTemplate, id, limit, filter)
+// limit and filtering.
+func (s *Service) GetTasks(ctx context.Context, id string, limit int, filter string) ([]*payloads.Task, error) {
+	return tasker.GetTasksS(ctx, s.client, s.log, payloads.ResourceTypeVMTemplate, id, limit, filter)
 }

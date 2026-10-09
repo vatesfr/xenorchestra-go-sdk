@@ -24,10 +24,9 @@ type Template interface {
 	// Returns all matching templates or an error if the operation fails.
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Template, error)
 
-	// Taggable and Taskable are addressed by the bare template UUID
-	// (Template.UUID), not by the composite REST id used for default
-	// templates.
-	Taggable
+	// TaggableS and TaskableS are addressed by the template REST id
+	// (Template.ID).
+	TaggableS
 
-	Taskable
+	TaskableS
 }
