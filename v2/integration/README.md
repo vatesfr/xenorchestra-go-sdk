@@ -33,7 +33,7 @@ export XOA_NETWORK_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" # Must be a non-VLA
 export XOA_STORAGE="storage-repository-name"
 ```
 
-Legacy alternative (name-based, requires v1 client):
+Alternative (name-based):
 ```bash
 export XOA_TEMPLATE="template-name"
 export XOA_NETWORK="network-name" # Must be a non-VLAN network
@@ -77,7 +77,7 @@ func TestMyFeature(t *testing.T) {
 3. Key points:
    - Always `ctx, client, prefix := SetupTestContext(t)`
    - Prefix resources: `prefix + "my-vm"`
-   - Use: `client` (local), `intTests.testPool`, `intTests.testTemplateID`, `intTests.testNetworkID`
+   - Use: `client` (local), `intTests.testPool`, `intTests.testTemplate`, `intTests.testNetworkID`
    - Unexpected errors: `require.NoError`
    - Verifications: `assert.Equal`
 
@@ -86,8 +86,8 @@ func TestMyFeature(t *testing.T) {
 Shared resources are available via the `intTests` global variable:
 
 - `intTests.testPool` (payloads.Pool) - Test pool
-- `intTests.testTemplateID` (string) - Test template UUID (from `XOA_TEMPLATE_ID` or v1 fallback)
-- `intTests.testNetworkID` (string) - Test network UUID (from `XOA_NETWORK_ID` or v1 fallback, and must refer to a non-VLAN network)
+- `intTests.testTemplate` (payloads.Template) - Test template (from `XOA_TEMPLATE_ID` or `XOA_TEMPLATE` name lookup)
+- `intTests.testNetworkID` (uuid.UUID) - Test network UUID (from `XOA_NETWORK_ID` or `XOA_NETWORK` name lookup, and must refer to a non-VLAN network)
 - `intTests.testSR` (payloads.StorageRepository) - Storage repository for VDI tests
 - `intTests.v1Client` (v1.XOClient) - v1 client for setup/teardown tasks (nil if `XOA_DISABLE_V1=true`)
 
@@ -111,7 +111,7 @@ vms, _ := client.VM().GetAll(ctx, 0, "name_label:"+prefix)
 ```go
 params := payloads.CreateVMParams{
     NameLabel: prefix + "vm-name",
-    Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+    Template:  intTests.testTemplate.UUID,
 }
 vmID, _ := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
 ```

@@ -42,7 +42,7 @@ func TestCreateVM(t *testing.T) {
 		vmName := "test-vm"
 		params := payloads.CreateVMParams{
 			NameLabel: testPrefix + vmName,
-			Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+			Template:  intTests.testTemplate.UUID,
 		}
 
 		vmID, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
@@ -76,7 +76,7 @@ func TestCreateVM(t *testing.T) {
 
 		params := payloads.CreateVMParams{
 			NameLabel: testPrefix + vmName,
-			Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+			Template:  intTests.testTemplate.UUID,
 			VIFs: []payloads.VIFParams{
 				{
 					Device:  &deviceZero,
@@ -125,7 +125,7 @@ func TestCreateVM(t *testing.T) {
 		vmName := "test-vm-vif-device"
 		params := payloads.CreateVMParams{
 			NameLabel: testPrefix + vmName,
-			Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+			Template:  intTests.testTemplate.UUID,
 			VIFs: []payloads.VIFParams{
 				{
 					Network: &networkID,

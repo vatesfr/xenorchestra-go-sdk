@@ -17,7 +17,7 @@ func TestVmCreation(t *testing.T) {
 	vmName := testPrefix + "creation-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 	}
 
 	vmID, err := client.VM().Create(ctx, intTests.testPool.ID, params)
@@ -31,7 +31,7 @@ func TestVmDeletion(t *testing.T) {
 	vmName := testPrefix + "deletion-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 	}
 
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, params)
@@ -52,7 +52,7 @@ func TestVmStart(t *testing.T) {
 	vmName := testPrefix + "start-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 	}
 
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, params)
@@ -78,7 +78,7 @@ func TestVmHardShutdown(t *testing.T) {
 	vmName := testPrefix + "hard-shutdown-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 	}
 
@@ -102,7 +102,7 @@ func TestVmCleanShutdown(t *testing.T) {
 	vmName := testPrefix + "clean-shutdown-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 	}
 
@@ -129,7 +129,7 @@ func TestVmCleanReboot(t *testing.T) {
 	vmName := testPrefix + "clean-reboot-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 	}
 
@@ -156,7 +156,7 @@ func TestVmHardReboot(t *testing.T) {
 	vmName := testPrefix + "hard-reboot-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 	}
 
@@ -180,7 +180,7 @@ func TestVmPauseUnpause(t *testing.T) {
 	vmName := testPrefix + "pause-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 	}
 
@@ -214,7 +214,7 @@ func TestVmSuspendResume(t *testing.T) {
 	vmName := testPrefix + "suspend-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 	}
 
@@ -250,7 +250,7 @@ func TestVmSnapshot(t *testing.T) {
 	vmName := testPrefix + "snapshot-test-" + uuid.Must(uuid.NewV4()).String()
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 	}
 
@@ -338,7 +338,7 @@ func TestVMGetVDIs(t *testing.T) {
 	vmName := testPrefix + "get-vdis-test"
 	params := &payloads.CreateVMParams{
 		NameLabel: vmName,
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		VDIs: []payloads.VDIParams{
 			{
 				NameLabel: ptr(testPrefix + "vm-vdi-1"),
