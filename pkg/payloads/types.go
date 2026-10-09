@@ -5,25 +5,27 @@ type ResourceType string
 
 // Resource type constants
 const (
-	ResourceTypeVBD     ResourceType = "VBD"
-	ResourceTypeVDI     ResourceType = "VDI"
-	ResourceTypePool    ResourceType = "pool"
-	ResourceTypeHost    ResourceType = "host"
-	ResourceTypeVM      ResourceType = "VM"
-	ResourceTypePBD     ResourceType = "PBD"
-	ResourceTypeSR      ResourceType = "SR"
-	ResourceTypeNetwork ResourceType = "network"
+	ResourceTypeVBD        ResourceType = "VBD"
+	ResourceTypeVDI        ResourceType = "VDI"
+	ResourceTypePool       ResourceType = "pool"
+	ResourceTypeHost       ResourceType = "host"
+	ResourceTypeVM         ResourceType = "VM"
+	ResourceTypePBD        ResourceType = "PBD"
+	ResourceTypeSR         ResourceType = "SR"
+	ResourceTypeNetwork    ResourceType = "network"
+	ResourceTypeVMTemplate ResourceType = "VM-template"
 )
 
 var resourceTypePathMap = map[ResourceType]string{
-	ResourceTypeVBD:     "vbds",
-	ResourceTypeVDI:     "vdis",
-	ResourceTypePool:    "pools",
-	ResourceTypeHost:    "hosts",
-	ResourceTypeVM:      "vms",
-	ResourceTypePBD:     "pbds",
-	ResourceTypeSR:      "srs",
-	ResourceTypeNetwork: "networks",
+	ResourceTypeVBD:        "vbds",
+	ResourceTypeVDI:        "vdis",
+	ResourceTypePool:       "pools",
+	ResourceTypeHost:       "hosts",
+	ResourceTypeVM:         "vms",
+	ResourceTypePBD:        "pbds",
+	ResourceTypeSR:         "srs",
+	ResourceTypeNetwork:    "networks",
+	ResourceTypeVMTemplate: "vm-templates",
 }
 
 // Path returns the API path segment corresponding to the resource type.

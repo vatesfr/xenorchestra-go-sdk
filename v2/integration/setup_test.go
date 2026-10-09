@@ -31,12 +31,12 @@ type integrationTestContext struct {
 	// testSR holds a storage repository used for VDI-related tests
 	testSR payloads.StorageRepository
 
-	// testTemplateID holds the template UUID used for VM creation tests.
-	// Resolved from XOA_TEMPLATE_ID (direct) or v1 discovery (fallback).
-	testTemplateID string
+	// testTemplate holds the template used for VM creation tests.
+	// Resolved from XOA_TEMPLATE_ID (direct) or XOA_TEMPLATE name lookup (fallback).
+	testTemplate payloads.Template
 
 	// testNetworkID holds the network UUID used for network-related tests.
-	// Resolved from XOA_NETWORK_ID (direct) or v1 discovery (fallback).
+	// Resolved from XOA_NETWORK_ID (direct) or XOA_NETWORK name lookup (fallback).
 	testNetworkID uuid.UUID
 
 	// v1Disabled is true when XOA_DISABLE_V1=true.
@@ -85,9 +85,9 @@ func TestMain(m *testing.M) {
 	// - XOA_USER and XOA_PASSWORD: Credentials (required if no token)
 	// - XOA_TOKEN: Authentication token (required if no credentials)
 	// - XOA_DEVELOPMENT: true to enable development logs
-	// - XOA_DISABLE_V1: true to disable v1 client (requires XOA_TEMPLATE_ID and XOA_NETWORK_ID)
-	// - XOA_TEMPLATE_ID: direct template UUID (takes precedence over v1 discovery)
-	// - XOA_NETWORK_ID: direct network UUID (takes precedence over v1 discovery)
+	// - XOA_DISABLE_V1: true to disable v1 client
+	// - XOA_TEMPLATE_ID: direct template UUID (takes precedence over XOA_TEMPLATE name lookup)
+	// - XOA_NETWORK_ID: direct network UUID (takes precedence over XOA_NETWORK name lookup)
 	intTests.testConfig, err = config.New()
 	if err != nil {
 		log.Fatalf("configuration failed: %v", err)
@@ -99,51 +99,38 @@ func TestMain(m *testing.M) {
 	// Determine v1 status
 	intTests.v1Disabled, _ = strconv.ParseBool(os.Getenv("XOA_DISABLE_V1"))
 
-	// Resolve template ID: direct env var takes precedence, fallback to v1 discovery
-	if templateID, found := os.LookupEnv("XOA_TEMPLATE_ID"); found && templateID != "" {
-		intTests.testTemplateID = templateID
-	}
-
-	// Resolve network ID: direct env var takes precedence, fallback to v1 discovery
+	// Resolve network ID: direct env var takes precedence, fallback to XOA_NETWORK name lookup
 	if networkID, found := os.LookupEnv("XOA_NETWORK_ID"); found && networkID != "" {
 		intTests.testNetworkID = uuid.Must(uuid.FromString(networkID))
 	}
 
-	// When v1 is disabled, both direct IDs must be provided
-	if intTests.v1Disabled {
-		if intTests.testTemplateID == "" {
-			integrationCancel()
-			log.Fatal("XOA_DISABLE_V1=true requires XOA_TEMPLATE_ID to be set")
-		}
-		if intTests.testNetworkID == uuid.Nil {
-			integrationCancel()
-			log.Fatal("XOA_DISABLE_V1=true requires XOA_NETWORK_ID to be set")
-		}
+	// Get information for testing
+	setupClient, err := v2.New(intTests.testConfig)
+	if err != nil {
+		log.Fatalf("test client initialization failed: %v", err)
+	}
+	pool := findUniqueByLabel(setupClient, "pool", "XOA_POOL", func() ([]*payloads.Pool, error) {
+		return setupClient.Pool().GetAll(intTests.ctx, 0, os.Getenv("XOA_POOL"))
+	})
+	intTests.testPool = *pool
+	srName := os.Getenv("XOA_STORAGE")
+	getSR := func() ([]*payloads.StorageRepository, error) {
+		filter := "name_label:\"" + srName + "\" $pool:" + intTests.testPool.ID.String()
+		return setupClient.SR().GetAll(intTests.ctx, 0, filter)
+	}
+	intTests.testSR = *findUniqueByLabel(setupClient, "storage repository", "XOA_STORAGE", getSR)
+	intTests.testPBD = findPBDForTests()
+	intTests.testTemplate = findTemplateForTests(setupClient)
+	if intTests.testNetworkID == uuid.Nil {
+		intTests.testNetworkID = findNetworkForTests(setupClient).ID
 	}
 
-	// Get information for testing
-	intTests.testPool = findPoolForTests()
-	intTests.testSR = findStorageRepositoryForTests()
-	intTests.testPBD = findPBDForTests()
-
-	// Initialize v1 client only when needed for discovery or v1-dependent teardown
+	// Initialize v1 client only when needed for v1-dependent tests
 	if !intTests.v1Disabled {
 		intTests.v1Client, err = v1.NewClientWithLogger(v1.GetConfigFromEnv(), logger)
 		if err != nil {
 			integrationCancel()
 			log.Fatalf("error getting v1.client %s", err)
-		}
-
-		// Fallback to v1 discovery when direct IDs are not provided
-		if intTests.testTemplateID == "" {
-			var tmpl v1.Template
-			v1.FindTemplateForTests(&tmpl, intTests.testPool.ID.String(), "XOA_TEMPLATE")
-			intTests.testTemplateID = tmpl.Id
-		}
-		if intTests.testNetworkID == uuid.Nil {
-			var net v1.Network
-			v1.FindNetworkForTests(intTests.testPool.ID.String(), &net)
-			intTests.testNetworkID = uuid.Must(uuid.FromString(net.Id))
 		}
 	}
 
@@ -210,33 +197,28 @@ func SetupTestContext(t *testing.T) (context.Context, library.Library, string) {
 	return ctx, testClient, prefix
 }
 
-// findPoolForTests finds a pool by name from the XOA_POOL environment variable
-func findPoolForTests() payloads.Pool {
-	// Initialize XO client
-	client, err := v2.New(intTests.testConfig)
-	if err != nil {
-		log.Fatalf("test client initialization failed: %v", err)
-	}
-
-	poolName, found := os.LookupEnv("XOA_POOL")
-
+// findUniqueByLabel looks up exactly one resource of the given kind by
+// name_label in the test pool, using the value of the given environment
+// variable. It fails the suite if the variable is unset or the match is not
+// unique.
+func findUniqueByLabel[T any](client library.Library, kind, envVar string, get func() ([]T, error)) T {
+	label, found := os.LookupEnv(envVar)
 	if !found {
-		log.Fatal("The XOA_POOL environment variable must be set")
+		log.Fatalf("%s environment variable must be set", envVar)
 	}
 
-	pools, err := client.Pool().GetAll(intTests.ctx, 0, poolName)
+	items, err := get()
 	if err != nil {
-		log.Fatalf("failed to get pool with name: %v with error: %v", poolName, err)
+		log.Fatalf("failed to get %s with name: %s, with err: %v", kind, label, err)
 	}
-	if len(pools) == 0 {
-		log.Fatalf("failed to find a pool with name: %v, no poll returned", poolName)
+	if len(items) == 0 {
+		log.Fatalf("failed to find a %s with name: %v, no %s returned", kind, label, kind)
 	}
-	if len(pools) != 1 {
-		log.Fatalf("Found %d pools with name_label %s."+
-			"Please use a label that is unique so tests are reproducible.\n", len(pools), poolName)
+	if len(items) != 1 {
+		log.Fatalf("Found %d %ss with name_label %s."+
+			"Please use a label that is unique so tests are reproducible.\n", len(items), kind, label)
 	}
-
-	return *pools[0]
+	return items[0]
 }
 
 // cleanupVMsWithPrefix removes all VMs that have the testing prefix in their name
@@ -319,28 +301,30 @@ func findPBDForTests() uuid.UUID {
 	return id
 }
 
-// findStorageRepositoryForTests finds a storage repository by name from the XOA_STORAGE environment variable
-func findStorageRepositoryForTests() payloads.StorageRepository {
-	client, err := v2.New(intTests.testConfig)
-	if err != nil {
-		log.Fatalf("test client initialization failed: %v", err)
+// findTemplateForTests resolves the test template: XOA_TEMPLATE_ID (direct
+// UUID) takes precedence, falling back to an XOA_TEMPLATE name lookup.
+func findTemplateForTests(client library.Library) payloads.Template {
+	if templateID, found := os.LookupEnv("XOA_TEMPLATE_ID"); found && templateID != "" {
+		tmpl, err := client.Template().Get(intTests.ctx, templateID)
+		if err != nil {
+			log.Fatalf("failed to get template with ID: %s, with err: %v", templateID, err)
+		}
+		return *tmpl
 	}
 
-	srName, found := os.LookupEnv("XOA_STORAGE")
-	if !found {
-		log.Fatalf("XOA_STORAGE environment variable must be set")
-	}
+	tplName := os.Getenv("XOA_TEMPLATE")
+	tpl := findUniqueByLabel(client, "template", "XOA_TEMPLATE", func() ([]*payloads.Template, error) {
+		filter := "name_label:\"" + tplName + "\" $pool:" + intTests.testPool.ID.String()
+		return client.Template().GetAll(intTests.ctx, 0, filter)
+	})
+	return *tpl
+}
 
-	srs, err := client.SR().GetAll(intTests.ctx, 0, "name_label:\""+srName+"\" $pool:"+intTests.testPool.ID.String())
-	if err != nil {
-		log.Fatalf("failed to get storage repository with name: %s, with err: %v", srName, err)
-	}
-	if len(srs) == 0 {
-		log.Fatalf("failed to find a storage repository with name: %v, no storage repository returned", srName)
-	}
-	if len(srs) != 1 {
-		log.Fatalf("Found %d storage repositories with name_label %s."+
-			"Please use a label that is unique so tests are reproducible.\n", len(srs), srName)
-	}
-	return *srs[0]
+func findNetworkForTests(client library.Library) payloads.Network {
+	netName := os.Getenv("XOA_NETWORK")
+	net := findUniqueByLabel(client, "network", "XOA_NETWORK", func() ([]*payloads.Network, error) {
+		filter := "name_label:\"" + netName + "\" $pool:" + intTests.testPool.ID.String()
+		return client.Network().GetAll(intTests.ctx, 0, filter)
+	})
+	return *net
 }

@@ -2,6 +2,7 @@ package tasker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gofrs/uuid"
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
@@ -20,7 +21,22 @@ func GetTasks(
 	limit int,
 	filter string,
 ) ([]*payloads.Task, error) {
-	path := core.NewPathBuilder().Resource(resourceType.Path()).ID(id).Resource("tasks").Build()
+	return GetTasksS(ctx, c, log, resourceType, id.String(), limit, filter)
+}
+
+func GetTasksS(
+	ctx context.Context,
+	c *client.Client,
+	log *logger.Logger,
+	resourceType payloads.ResourceType,
+	id string,
+	limit int,
+	filter string,
+) ([]*payloads.Task, error) {
+	if id == "" {
+		return nil, fmt.Errorf("resource id cannot be empty")
+	}
+	path := core.NewPathBuilder().Resource(resourceType.Path()).IDString(id).Resource("tasks").Build()
 
 	params := make(map[string]any)
 	params["fields"] = "*"
@@ -36,7 +52,7 @@ func GetTasks(
 	if err := client.TypedGet(ctx, c, path, params, &result); err != nil {
 		log.Error("Failed to get tasks for resource",
 			zap.String("resourceType", string(resourceType)),
-			zap.String("id", id.String()),
+			zap.String("id", id),
 			zap.Error(err))
 		return nil, err
 	}
