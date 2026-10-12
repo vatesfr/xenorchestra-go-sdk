@@ -33,7 +33,7 @@ type VBD interface {
 	// Returns an error if the operation fails.
 	Delete(ctx context.Context, id uuid.UUID) error
 
-	Taskable
+	Taskable[uuid.UUID]
 
 	// VBDActions is a group of actions that can be performed on a VBD.
 	VBDActions

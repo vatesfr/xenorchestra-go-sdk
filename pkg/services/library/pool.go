@@ -12,8 +12,8 @@ type Pool interface {
 	Get(ctx context.Context, id uuid.UUID) (*payloads.Pool, error)
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Pool, error)
 
-	Taggable
-	Taskable
+	Taggable[uuid.UUID]
+	Taskable[uuid.UUID]
 
 	PoolAction
 }

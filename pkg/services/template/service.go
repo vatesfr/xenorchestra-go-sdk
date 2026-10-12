@@ -75,18 +75,18 @@ func (s *Service) GetAll(ctx context.Context, limit int, filter string) ([]*payl
 	return result, nil
 }
 
-// AddTag adds a tag to a template.
+// AddTag adds a tag to a template. Use the REST ID (Template.ID) as the template identifier.
 func (s *Service) AddTag(ctx context.Context, id string, tag string) error {
 	return s.tagService.AddS(ctx, id, tag)
 }
 
-// RemoveTag removes a tag from a template.
+// RemoveTag removes a tag from a template. Use the REST ID (Template.ID) as the template identifier.
 func (s *Service) RemoveTag(ctx context.Context, id string, tag string) error {
 	return s.tagService.RemoveS(ctx, id, tag)
 }
 
 // GetTasks retrieves the tasks associated with a template, with optional
-// limit and filtering.
+// limit and filtering. Use the REST ID (Template.ID) as the template identifier.
 func (s *Service) GetTasks(ctx context.Context, id string, limit int, filter string) ([]*payloads.Task, error) {
 	return tasker.GetTasksS(ctx, s.client, s.log, payloads.ResourceTypeVMTemplate, id, limit, filter)
 }

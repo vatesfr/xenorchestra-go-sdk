@@ -51,9 +51,9 @@ type VDI interface {
 	// VDIActions is a group of actions that can be performed on a VDI.
 	VDIActions
 
-	Taggable
+	Taggable[uuid.UUID]
 
-	Taskable
+	Taskable[uuid.UUID]
 }
 
 type VDIActions interface {

@@ -132,7 +132,7 @@ func TestGet(t *testing.T) {
 		svc, server := setupTestServer(t)
 		defer server.Close()
 
-		tmpl, err := svc.Get(context.Background(), testTemplateID1)
+		tmpl, err := svc.Get(t.Context(), testTemplateID1)
 		require.NoError(t, err)
 		require.NotNil(t, tmpl)
 		assert.Equal(t, testTemplateID1, tmpl.ID)
@@ -147,7 +147,7 @@ func TestGet(t *testing.T) {
 		svc, server := setupTestServer(t)
 		defer server.Close()
 
-		tmpl, err := svc.Get(context.Background(), testTemplateIDNotFound)
+		tmpl, err := svc.Get(t.Context(), testTemplateIDNotFound)
 		assert.Error(t, err)
 		assert.Nil(t, tmpl)
 	})

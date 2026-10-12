@@ -35,8 +35,8 @@ type VM interface {
 	// VMActions is a group of actions that can be performed on a VM.
 	VMActions
 
-	Taggable
-	Taskable
+	Taggable[uuid.UUID]
+	Taskable[uuid.UUID]
 }
 
 type VMActions interface {
