@@ -101,6 +101,11 @@ func setupTestServer(t *testing.T) (*httptest.Server, library.Task) {
 					ID:     "running-task-789",
 					Status: payloads.Pending,
 				}
+			case "interrupted-task-012":
+				task = payloads.Task{
+					ID:     "interrupted-task-012",
+					Status: payloads.Interrupted,
+				}
 			default:
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -299,6 +304,15 @@ func TestWait(t *testing.T) {
 		assert.Equal(t, "failure-task-456", task.ID)
 		assert.Equal(t, payloads.Failure, task.Status)
 		assert.Equal(t, "VM not found", task.Result.Message)
+	})
+
+	t.Run("wait for interrupted task", func(t *testing.T) {
+		// interrupted is terminal in XO; Wait must return, not poll forever (#121).
+		task, err := service.Wait(context.Background(), "interrupted-task-012")
+
+		assert.NoError(t, err)
+		assert.Equal(t, "interrupted-task-012", task.ID)
+		assert.Equal(t, payloads.Interrupted, task.Status)
 	})
 
 	t.Run("wait with context cancellation", func(t *testing.T) {
