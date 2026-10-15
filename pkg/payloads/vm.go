@@ -46,7 +46,7 @@ type VM struct {
 	Template           uuid.UUID              `json:"template,omitempty"`
 	NameLabel          string                 `json:"name_label"`
 	NameDescription    string                 `json:"name_description"`
-	PowerState         string                 `json:"power_state,omitempty"`
+	PowerState         PowerState             `json:"power_state,omitempty"`
 	Memory             Memory                 `json:"memory"`
 	CPUs               CPUs                   `json:"CPUs"`
 	VIFs               []string               `json:"VIFs,omitempty"`
@@ -125,11 +125,26 @@ type VMFilter struct {
 	Tags       string `json:"tags,omitempty"`
 }
 
+// PowerState represents the power state of a VM or a VM template.
+type PowerState string
+
 const (
-	PowerStateHalted    = "Halted"
-	PowerStateRunning   = "Running"
-	PowerStatePaused    = "Paused"
-	PowerStateSuspended = "Suspended"
+	PowerStateHalted    PowerState = "Halted"
+	PowerStateRunning   PowerState = "Running"
+	PowerStatePaused    PowerState = "Paused"
+	PowerStateSuspended PowerState = "Suspended"
+)
+
+// DomainType represents the virtualization mode (domain type) of a VM or a
+// VM template.
+type DomainType string
+
+const (
+	DomainTypeHVM         DomainType = "hvm"
+	DomainTypePV          DomainType = "pv"
+	DomainTypePVH         DomainType = "pvh"
+	DomainTypePVInPVH     DomainType = "pv_in_pvh"
+	DomainTypeUnspecified DomainType = "unspecified"
 )
 
 type VMOperation string

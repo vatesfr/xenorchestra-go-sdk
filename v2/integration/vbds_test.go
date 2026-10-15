@@ -18,7 +18,7 @@ func TestVBDGet(t *testing.T) {
 	// Create a VM — it comes with at least one system-disk VBD.
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-get-vm",
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		VDIs: []payloads.VDIParams{
 			{
 				NameLabel: ptr(testPrefix + "vbd-get-vdi"),
@@ -56,7 +56,7 @@ func TestVBDGetAll(t *testing.T) {
 	// Create a VM with two extra data disks so we have a known set of VBDs to filter on.
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-getall-vm",
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		VDIs: []payloads.VDIParams{
 			{
 				NameLabel: ptr(testPrefix + "vbd-getall-vdi-1"),
@@ -116,7 +116,7 @@ func TestVBDCreate(t *testing.T) {
 
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-create-vm",
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		VDIs:      []payloads.VDIParams{},
 	})
 	require.NoError(t, err, "creating VM should succeed")
@@ -154,7 +154,7 @@ func TestVBDDelete(t *testing.T) {
 
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-delete-vm",
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		VDIs: []payloads.VDIParams{
 			{
 				NameLabel: ptr(testPrefix + "vbd-delete-vdi"),
@@ -189,7 +189,7 @@ func TestVBDConnectDisconnect(t *testing.T) {
 	// Create and start a VM.
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-connect-vm",
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 		VDIs: []payloads.VDIParams{
 			{
@@ -249,7 +249,7 @@ func TestVBDGetTasks(t *testing.T) {
 	// Create and start a VM.
 	vm, err := client.VM().Create(ctx, intTests.testPool.ID, &payloads.CreateVMParams{
 		NameLabel: testPrefix + "vbd-connect-vm",
-		Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+		Template:  intTests.testTemplate.UUID,
 		Boot:      ptr(true),
 		VDIs: []payloads.VDIParams{
 			{

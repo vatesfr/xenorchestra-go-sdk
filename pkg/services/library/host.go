@@ -12,6 +12,6 @@ type Host interface {
 	Get(ctx context.Context, id uuid.UUID) (*payloads.Host, error)
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.Host, error)
 
-	Taggable
-	Taskable
+	Taggable[uuid.UUID]
+	Taskable[uuid.UUID]
 }

@@ -30,9 +30,9 @@ type Network interface {
 
 	NetworkActions
 
-	Taggable
+	Taggable[uuid.UUID]
 
-	Taskable
+	Taskable[uuid.UUID]
 }
 
 type NetworkActions interface {

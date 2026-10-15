@@ -22,9 +22,9 @@ type SR interface {
 	// Returns all matching SRs or an error if the operation fails.
 	GetAll(ctx context.Context, limit int, filter string) ([]*payloads.StorageRepository, error)
 
-	Taggable
+	Taggable[uuid.UUID]
 
-	Taskable
+	Taskable[uuid.UUID]
 
 	SRActions
 }

@@ -51,8 +51,8 @@ type integrationTestContext struct {
     ctx             context.Context // Parent context
     testConfig      *config.Config  // SDK configuration
     testPool        payloads.Pool   // Pool used for testing (v2)
-    testTemplateID  string          // Template UUID for VM creation
-    testNetworkID   string          // Network UUID for tests
+    testTemplate    payloads.Template // Template for VM creation
+    testNetworkID   uuid.UUID       // Network UUID for tests
     v1Disabled      bool            // Whether v1 client is disabled
     v1Client        v1.XOClient     // Client for missing v2 features (nil if disabled)
 }
@@ -87,8 +87,8 @@ Common utility functions used across multiple test files are centralized in `hel
 | `XOA_TOKEN` | Authentication token | `xxxxxxx` | If no credentials |
 | `XOA_POOL` | Test pool Name Label | `My Pool` | ✅ |
 | `XOA_STORAGE` | Test storage repository Name Label | `My SR` | ✅ |
-| `XOA_TEMPLATE` | Template Name Label (legacy) | `Alpine 3.10` | Legacy — use `XOA_TEMPLATE_ID` instead |
-| `XOA_NETWORK` | Network Name Label (legacy, must refer to a non-VLAN network) | `My Network` | Legacy — use `XOA_NETWORK_ID` instead |
+| `XOA_TEMPLATE` | Template Name Label | `Alpine 3.10` | Fallback — `XOA_TEMPLATE_ID` takes precedence |
+| `XOA_NETWORK` | Network Name Label (must refer to a non-VLAN network) | `My Network` | Fallback — `XOA_NETWORK_ID` takes precedence |
 | `XOA_TEMPLATE_ID` | Direct template UUID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Preferred over `XOA_TEMPLATE` |
 | `XOA_NETWORK_ID` | Direct network UUID (must refer to a non-VLAN network) | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` | Preferred over `XOA_NETWORK` |
 | `XOA_DISABLE_V1` | Disable v1 client (v2-only mode) | `true` | ❌ |
@@ -101,10 +101,10 @@ Common utility functions used across multiple test files are centralized in `hel
 
 The integration test suite supports two modes:
 
-**Hybrid Mode (Default)**: Uses the v2 SDK for primary operations and falls back to the v1 client for resource discovery (templates, networks) and cleanup tasks not yet available in v2.
+**Hybrid Mode (Default)**: Uses the v2 SDK for primary operations and keeps the v1 client available for resources not yet available in v2 (e.g. VIF lookups). Resource discovery (pool, storage, template, network) is v2-only in both modes.
 
 **v2-Only Mode**: Set `XOA_DISABLE_V1=true` to disable the v1 client entirely. In this mode:
-- `XOA_TEMPLATE_ID` and `XOA_NETWORK_ID` are **required** (no fallback to name-based discovery).
+- `XOA_TEMPLATE_ID` or `XOA_TEMPLATE` and `XOA_NETWORK_ID` or `XOA_NETWORK` must be provided (name-based discovery works without the v1 client).
 - Tests that depend on the v1 client (network creation, VIF device tests) are automatically skipped.
 - v2 cleanup paths (VMs, VDIs) remain active.
 
@@ -171,7 +171,7 @@ func TestCreateVM(t *testing.T) {
     vmName := prefix + "my-vm"
     params := &payloads.CreateVMParams{
         NameLabel: vmName,
-        Template:  uuid.FromStringOrNil(intTests.testTemplateID),
+        Template:  intTests.testTemplate.UUID,
     }
 
     // 3. Execute v2 operation
