@@ -9,6 +9,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 )
@@ -29,8 +30,10 @@ func TestSRGet(t *testing.T) {
 
 	t.Run("GetByInvalidID", func(t *testing.T) {
 		t.Parallel()
-		_, err := client.SR().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		_, err := client.SR().Get(ctx, testInvalidID)
 		require.Error(t, err, "expected error when fetching SR with non-existent ID")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeSR, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this SR, got: %v", err)
 	})
 }
 
@@ -96,8 +99,9 @@ func TestSRGetTasks(t *testing.T) {
 
 	t.Run("GetTasksForInvalidSR", func(t *testing.T) {
 		t.Parallel()
-		_, err := client.SR().GetTasks(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"), 0, "")
+		_, err := client.SR().GetTasks(ctx, testInvalidID, 0, "")
 		require.Error(t, err, "expected error when fetching tasks for non-existent SR ID")
+		assert.True(t, apierror.IsNotFound(err), "expected a 404 for non-existent SR ID, got: %v", err)
 	})
 }
 
@@ -118,12 +122,12 @@ func TestSRScan(t *testing.T) {
 
 	t.Run("ScanInvalidSR", func(t *testing.T) {
 		t.Parallel()
-		// The POST succeeds (200) and returns a task ID even for a non-existent SR.
-		// The task then fails asynchronously with result.message="no such object {id}".
-		taskID, err := client.SR().Scan(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		// Scanning a non-existent SR fails synchronously: Xen Orchestra answers 404.
+		taskID, err := client.SR().Scan(ctx, testInvalidID)
 		require.Error(t, err, "Scan should return a 404 error for a non-existent SR")
 		require.Empty(t, taskID, "Scan should return an empty task ID")
-		assert.Contains(t, err.Error(), "API error: 404 Not Found", "error message should indicate 404 Not Found")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeSR, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this SR, got: %v", err)
 	})
 }
 
@@ -144,11 +148,11 @@ func TestSRReclaimSpace(t *testing.T) {
 
 	t.Run("ReclaimSpaceInvalidSR", func(t *testing.T) {
 		t.Parallel()
-		// The POST succeeds (200) and returns a task ID even for a non-existent SR.
-		// The task then fails asynchronously with result.message="no such object {id}".
-		taskID, err := client.SR().ReclaimSpace(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		// Reclaiming space on a non-existent SR fails synchronously: Xen Orchestra answers 404.
+		taskID, err := client.SR().ReclaimSpace(ctx, testInvalidID)
 		require.Error(t, err, "ReclaimSpace should return a 404 error for a non-existent SR")
-		assert.Contains(t, err.Error(), "API error: 404 Not Found", "error message should indicate 404 Not Found")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeSR, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this SR, got: %v", err)
 		require.Empty(t, taskID, "ReclaimSpace should return an empty task ID")
 	})
 }

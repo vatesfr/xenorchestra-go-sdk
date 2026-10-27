@@ -40,6 +40,9 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
+// testInvalidID is a random UUID guaranteed to reference no real object.
+var testInvalidID = uuid.Must(uuid.NewV4())
+
 // waitForTask waits until the task with the given ID is no longer pending and returns the final task details.
 func waitForTask(t *testing.T, ctx context.Context, client library.Library, taskID string) *payloads.Task {
 	t.Helper()

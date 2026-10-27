@@ -8,6 +8,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -44,8 +45,10 @@ func TestVBDGet(t *testing.T) {
 
 	t.Run("GetByInvalidID", func(t *testing.T) {
 		t.Parallel()
-		_, err := client.VBD().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		_, err := client.VBD().Get(ctx, testInvalidID)
 		require.Error(t, err, "expected error when fetching VBD with non-existent ID")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeVBD, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this VBD, got: %v", err)
 	})
 }
 
@@ -103,7 +106,7 @@ func TestVBDGetAll(t *testing.T) {
 	t.Run("WithFilterNoResult", func(t *testing.T) {
 		t.Parallel()
 		vbds, err := client.VBD().GetAll(ctx, 0,
-			"VM:"+uuid.Must(uuid.NewV4()).String()+" VDI:"+uuid.Must(uuid.NewV4()).String())
+			"VM:"+testInvalidID.String()+" VDI:"+testInvalidID.String())
 		require.NoError(t, err)
 		require.NotNil(t, vbds)
 		assert.Len(t, vbds, 0, "filter by non-existent VM ID should return no VBDs")
@@ -320,7 +323,7 @@ func TestVBDGetTasks(t *testing.T) {
 
 	t.Run("GetTasksInvalidVBD", func(t *testing.T) {
 		t.Parallel()
-		tasks, err := client.VBD().GetTasks(ctx, uuid.Must(uuid.FromString("123e4567-e89b-12d3-a456-426655440000")), 0, "")
+		tasks, err := client.VBD().GetTasks(ctx, testInvalidID, 0, "")
 		require.Error(t, err)
 		assert.Nil(t, tasks)
 	})

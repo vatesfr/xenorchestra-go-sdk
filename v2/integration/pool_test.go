@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -27,9 +27,10 @@ func TestGetPool(t *testing.T) {
 	t.Run("ByInvalidID", func(t *testing.T) {
 		ctx, client, _ := SetupTestContext(t)
 
-		_, err := client.Pool().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		_, err := client.Pool().Get(ctx, testInvalidID)
 		require.Error(t, err, "expected error when fetching pool with invalid ID, got nil")
-		assert.Contains(t, err.Error(), "404 Not Found", "error message should indicate not found")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypePool, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this pool, got: %v", err)
 	})
 }
 
@@ -166,16 +167,16 @@ func TestCreateVM(t *testing.T) {
 		ctx, client, testPrefix := SetupTestContext(t)
 
 		vmName := "test-vm-invalid-template"
+		invalidTemplateID := testInvalidID // Invalid template ID
 		params := payloads.CreateVMParams{
 			NameLabel: testPrefix + vmName,
-			Template:  uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"), // Invalid template ID
+			Template:  invalidTemplateID,
 		}
 
 		_, err := client.Pool().CreateVM(ctx, intTests.testPool.ID, params)
 		require.Error(t, err, "expected error when creating VM with invalid template ID, got nil")
-		assert.Contains(t, err.Error(),
-			fmt.Sprintf("failed to create vm on pool %s: API error: 404 Not Found", intTests.testPool.ID),
-			"error message should indicate bad request")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeVMTemplate, invalidTemplateID.String()),
+			"expected Xen Orchestra's 404 for this template, got: %v", err)
 	})
 }
 
@@ -269,7 +270,7 @@ func TestCreateNetwork(t *testing.T) {
 		networkName := "test-bonded-network"
 		mtu := 1450
 		// Replace with a valid PIF ID from your environment
-		pifID1 := uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000")
+		pifID1 := testInvalidID
 		pifID2 := uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440001")
 
 		// Resolve PIF from the test network via v1 client

@@ -7,6 +7,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -34,8 +35,10 @@ func TestPBDGet(t *testing.T) {
 
 	t.Run("GetByInvalidID", func(t *testing.T) {
 		t.Parallel()
-		_, err := client.PBD().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		_, err := client.PBD().Get(ctx, testInvalidID)
 		require.Error(t, err, "expected error when fetching PBD with non-existent ID")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypePBD, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this PBD, got: %v", err)
 	})
 }
 
