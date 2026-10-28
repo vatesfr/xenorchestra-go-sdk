@@ -9,6 +9,8 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 )
 
@@ -66,8 +68,10 @@ func TestNetworkGet(t *testing.T) {
 	})
 
 	t.Run("with invalid ID", func(t *testing.T) {
-		_, err := client.Network().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		_, err := client.Network().Get(ctx, testInvalidID)
 		require.Error(t, err, "expected error when fetching network with invalid ID")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeNetwork, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this network, got: %v", err)
 	})
 
 }
@@ -136,8 +140,9 @@ func TestNetworkGetTasks(t *testing.T) {
 
 	t.Run("with invalid network ID", func(t *testing.T) {
 		t.Parallel()
-		_, err := client.Network().GetTasks(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"), 0, "")
+		_, err := client.Network().GetTasks(ctx, testInvalidID, 0, "")
 		require.Error(t, err, "expected error when fetching tasks with invalid network ID")
+		assert.True(t, apierror.IsNotFound(err), "expected a 404 for invalid network ID, got: %v", err)
 	})
 }
 
@@ -154,11 +159,14 @@ func TestNetworkDelete(t *testing.T) {
 		// Verify that the network no longer exists
 		_, err = client.Network().Get(ctx, networkID)
 		require.Error(t, err, "expected error when fetching deleted network")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeNetwork, networkID.String()),
+			"expected Xen Orchestra's 404 for this network, got: %v", err)
 	})
 
 	t.Run("with invalid network ID", func(t *testing.T) {
 		t.Parallel()
-		err := client.Network().Delete(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		err := client.Network().Delete(ctx, testInvalidID)
 		require.Error(t, err, "expected error when deleting network with invalid ID")
+		assert.True(t, apierror.IsNotFound(err), "expected a 404 for invalid network ID, got: %v", err)
 	})
 }

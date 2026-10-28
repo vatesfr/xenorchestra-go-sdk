@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/core"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
 )
 
@@ -164,7 +165,9 @@ func (c *Client) buildURL(endpoint string) url.URL {
 
 // doRequest performs an HTTP request and returns the raw response.
 // The caller is responsible for closing the response body when finished reading it.
-// For error responses (non-2xx), the body is read, closed, and included in the error message.
+// For error responses (non-2xx), the body is read and closed, and an
+// *apierror.Error carrying the status and the decoded Xen Orchestra error body
+// is returned.
 func (c *Client) doRequest(req *http.Request) (*http.Response, error) {
 	// #nosec G124 -- Outbound request cookie for SDK auth; Secure/HttpOnly/SameSite do not apply here.
 	req.AddCookie(&http.Cookie{
@@ -184,7 +187,7 @@ func (c *Client) doRequest(req *http.Request) (*http.Response, error) {
 		if readErr != nil {
 			return nil, core.ErrFailedToReadResponse.WithArgs(readErr, "")
 		}
-		return nil, fmt.Errorf("API error: %s - %s", resp.Status, string(bodyBytes))
+		return nil, apierror.NewFromResponse(req.Method, req.URL.String(), resp.StatusCode, resp.Status, bodyBytes)
 	}
 
 	return resp, nil

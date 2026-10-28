@@ -12,6 +12,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 )
@@ -54,8 +55,10 @@ func TestVDIGet(t *testing.T) {
 	})
 	t.Run("GetInvalidID", func(t *testing.T) {
 		t.Parallel()
-		_, err := client.VDI().Get(ctx, uuid.FromStringOrNil("123e4567-e89b-12d3-a456-426655440000"))
+		_, err := client.VDI().Get(ctx, testInvalidID)
 		require.Error(t, err, "expected error when fetching VDI with invalid ID")
+		assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeVDI, testInvalidID.String()),
+			"expected Xen Orchestra's 404 for this VDI, got: %v", err)
 	})
 }
 
@@ -105,6 +108,8 @@ func TestVDIDeletion(t *testing.T) {
 
 	_, err = client.VDI().Get(ctx, vdiTestID)
 	assert.Error(t, err, "expected error when fetching deleted VDI")
+	assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeVDI, vdiTestID.String()),
+		"expected Xen Orchestra's 404 for this VDI, got: %v", err)
 }
 
 func TestVDIMigration(t *testing.T) {
@@ -190,9 +195,10 @@ func TestVDIGetTasks(t *testing.T) {
 
 	t.Run("GetTasksInvalidVDI", func(t *testing.T) {
 		t.Parallel()
-		tasks, err := client.VDI().GetTasks(ctx, uuid.Must(uuid.FromString("123e4567-e89b-12d3-a456-426655440000")), 0, "")
+		tasks, err := client.VDI().GetTasks(ctx, testInvalidID, 0, "")
 		require.Error(t, err)
 		assert.Nil(t, tasks)
+		assert.True(t, apierror.IsNotFound(err), "expected a 404 for invalid VDI ID, got: %v", err)
 	})
 }
 

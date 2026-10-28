@@ -123,6 +123,41 @@ func main() {
 
 This is particularly useful for integration with test runners, as seen in the SDK's own integration tests.
 
+## Error Handling
+
+When the Xen Orchestra REST API answers with a non-2xx status, every v2
+service returns an `*apierror.Error` (package
+`github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror`). It carries the status
+code, the request method and URL, the raw body and, when the body is a Xen
+Orchestra JSON error, its `error` message and `data`.
+
+Inspect it with the helpers instead of parsing the error text:
+
+```go
+vm, err := client.VM().GetByID(ctx, vmID)
+switch {
+case err == nil:
+    // use vm
+case apierror.IsNoSuchObject(err, payloads.ResourceTypeVM, vmID.String()):
+    // Xen Orchestra itself answered 404 for this VM:
+    // {"error":"no such VM <id>","data":{"id":"<id>","type":"VM"}}
+case apierror.IsNotFound(err):
+    // A 404 that does not name this VM: a reverse proxy, a wrong URL...
+default:
+    if apiErr, ok := apierror.As(err); ok {
+        log.Printf("XO answered %d: %s", apiErr.StatusCode, apiErr.Message)
+    }
+}
+```
+
+`IsNoSuchObject` is the strict check: only Xen Orchestra can echo the
+requested id in `data.id`, so a 404 from another server is never mistaken for
+a missing object. `err.Error()` keeps the historical
+`API error: <status> - <body>` text.
+
+When wrapping SDK errors in your own code, use `%w` so `errors.As` keeps
+working.
+
 ## Next Steps
 
 - [Architecture Guide](02-architecture.md) - Learn about the design patterns used in the SDK

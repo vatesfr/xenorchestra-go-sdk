@@ -8,6 +8,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 )
 
@@ -44,6 +45,8 @@ func TestVmDeletion(t *testing.T) {
 	// Verify the VM is gone
 	_, err = client.VM().GetByID(ctx, vm.ID)
 	require.Error(t, err, "expected error when getting deleted VM")
+	assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeVM, vm.ID.String()),
+		"expected Xen Orchestra's 404 for this VM, got: %v", err)
 }
 
 func TestVmStart(t *testing.T) {

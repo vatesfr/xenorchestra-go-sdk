@@ -15,6 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/vatesfr/xenorchestra-go-sdk/internal/common/logger"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/payloads"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library"
 	mock "github.com/vatesfr/xenorchestra-go-sdk/pkg/services/library/mock"
@@ -194,6 +195,29 @@ func TestGetByID(t *testing.T) {
 	assert.Equal(t, id, vm.ID)
 	assert.Equal(t, "VM 1", vm.NameLabel)
 	assert.Equal(t, payloads.PowerStateRunning, vm.PowerState)
+}
+
+func TestGetByIDNotFoundReturnsAPIError(t *testing.T) {
+	const missingVMID = "48b8425b-469a-4b4b-860e-635568e5445a"
+
+	server, service, _ := setupTestServerWithHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		// Body written by the Xen Orchestra REST API for an unknown object.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = fmt.Fprintf(w, `{"error":"no such VM %[1]s","data":{"id":"%[1]s","type":"VM"}}`, missingVMID)
+	})
+	defer server.Close()
+
+	_, err := service.GetByID(context.Background(), uuid.Must(uuid.FromString(missingVMID)))
+
+	apiErr, ok := apierror.As(err)
+	if assert.True(t, ok, "GetByID must return an *apierror.Error, got %T", err) {
+		assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
+		assert.Equal(t, http.MethodGet, apiErr.Method)
+		assert.Equal(t, "no such VM "+missingVMID, apiErr.Message)
+	}
+	assert.True(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeVM, missingVMID))
+	assert.False(t, apierror.IsNoSuchObject(err, payloads.ResourceTypeVM, mockVMID1))
 }
 
 func TestGetAll(t *testing.T) {

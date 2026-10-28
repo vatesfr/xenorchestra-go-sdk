@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vatesfr/xenorchestra-go-sdk/pkg/apierror"
 	"github.com/vatesfr/xenorchestra-go-sdk/pkg/config"
 )
 
@@ -173,6 +174,16 @@ func TestDo(t *testing.T) {
 
 	err = client.post(ctx, "error", nil, nil)
 	assert.Error(t, err)
+
+	apiErr, ok := apierror.As(err)
+	require.True(t, ok, "non-2xx answers must be *apierror.Error, got %T", err)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+	assert.Equal(t, http.MethodPost, apiErr.Method)
+	assert.Equal(t, "test error", apiErr.Message)
+	assert.Equal(t, `API error: 400 Bad Request - {"error":"test error"}`, err.Error())
+
+	err = client.get(ctx, "missing", nil, nil)
+	assert.True(t, apierror.IsNotFound(err))
 }
 
 func TestTypedGet(t *testing.T) {
