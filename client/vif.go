@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"net"
 )
 
 type VIF struct {
@@ -14,20 +15,44 @@ type VIF struct {
 	VmId       string `json:"$VM"`
 }
 
+// Compare reports whether other matches the VIF used as a query.
+//
+// When the query has an ID, only the ID is compared. Otherwise every
+// non-empty criterion (VM, device, MAC address) must match. MAC addresses
+// are not unique (cloned or replicated VMs keep them), so a lookup by MAC
+// address should be scoped to a VM to identify a single VIF.
 func (v VIF) Compare(obj interface{}) bool {
 	other := obj.(VIF)
-	if v.Id == other.Id {
-		return true
+	if v.Id != "" {
+		return v.Id == other.Id
 	}
 
-	if v.MacAddress == other.MacAddress {
-		return true
+	if v.VmId == "" && v.Device == "" && v.MacAddress == "" {
+		return false
 	}
 
-	if v.VmId == other.VmId {
-		return true
+	if v.VmId != "" && v.VmId != other.VmId {
+		return false
 	}
-	return false
+
+	if v.Device != "" && v.Device != other.Device {
+		return false
+	}
+
+	if v.MacAddress != "" && !isSameMacAddress(v.MacAddress, other.MacAddress) {
+		return false
+	}
+
+	return true
+}
+
+func isSameMacAddress(a, b string) bool {
+	macA, errA := net.ParseMAC(a)
+	macB, errB := net.ParseMAC(b)
+	if errA != nil || errB != nil {
+		return a == b
+	}
+	return macA.String() == macB.String()
 }
 
 func (c *Client) GetVIFs(vm *Vm) ([]VIF, error) {
@@ -52,6 +77,8 @@ func (c *Client) GetVIF(vifReq *VIF) (*VIF, error) {
 
 	obj, err := c.FindFromGetAllObjects(VIF{
 		Id:         vifReq.Id,
+		VmId:       vifReq.VmId,
+		Device:     vifReq.Device,
 		MacAddress: vifReq.MacAddress,
 	})
 
