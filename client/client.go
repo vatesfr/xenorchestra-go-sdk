@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
@@ -137,6 +138,11 @@ type XOClient interface {
 
 	GetBond(bondReq Bond) (*Bond, error)
 	GetBonds(bondReq Bond) ([]Bond, error)
+
+	// Close releases the websocket connection and its reader goroutine, and
+	// revokes the authentication token if it was created by the client
+	// (username/password authentication). The client must not be used after.
+	Close() error
 }
 
 type Client struct {
@@ -146,7 +152,17 @@ type Client struct {
 	httpClient   http.Client
 	restApiURL   *url.URL
 	logger       *slog.Logger
+
+	// createdToken is the token created by NewClient on username/password
+	// authentication; it is revoked on Close. Empty when the user provided it.
+	createdToken string
+	closeOnce    sync.Once
+	closeErr     error
 }
+
+// tokenRevokeTimeout bounds the token.delete call made on Close so that an
+// unresponsive server cannot block it forever.
+const tokenRevokeTimeout = 10 * time.Second
 
 type RetryMode int
 
@@ -341,7 +357,27 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 		httpClient:   httpClient,
 		restApiURL:   restApiURL,
 		logger:       logger,
+		createdToken: createdToken,
 	}, nil
+}
+
+// Close implements XOClient. It is safe to call multiple times; only the
+// first call has an effect and later calls return the same error.
+func (c *Client) Close() error {
+	c.closeOnce.Do(func() {
+		var revokeErr error
+		if c.createdToken != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), tokenRevokeTimeout)
+			revokeErr = c.rpc.Call(ctx, "token.delete", map[string]interface{}{"token": c.createdToken}, nil)
+			cancel()
+			if revokeErr != nil {
+				revokeErr = fmt.Errorf("failed to revoke authentication token: %w", revokeErr)
+			}
+		}
+		c.httpClient.CloseIdleConnections()
+		c.closeErr = errors.Join(revokeErr, c.rpc.Close())
+	})
+	return c.closeErr
 }
 
 // SetLogger sets the logger for the client. Useful for tests to redirect logs.

@@ -129,3 +129,86 @@ func TestNewClient_closesConnectionWhenTokenCreateFails(t *testing.T) {
 		t.Errorf("no token should be revoked when none was created, got %v", got)
 	}
 }
+
+func TestClose_revokesCreatedTokenAndClosesConnection(t *testing.T) {
+	f := newFakeXO(t)
+
+	cfg := f.config()
+	cfg.Username = "user"
+	cfg.Password = "pass"
+	c, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	if err := c.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	f.waitDisconnect(t)
+
+	if got := f.deleted(); len(got) != 1 || got[0] != fakeCreatedToken {
+		t.Errorf("expected token %q to be revoked, got %v", fakeCreatedToken, got)
+	}
+}
+
+func TestClose_keepsUserProvidedToken(t *testing.T) {
+	f := newFakeXO(t)
+
+	cfg := f.config()
+	cfg.Token = "user-token"
+	c, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	if err := c.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+	f.waitDisconnect(t)
+
+	if got := f.deleted(); len(got) != 0 {
+		t.Errorf("a user provided token must not be revoked, got %v", got)
+	}
+}
+
+func TestClose_isIdempotent(t *testing.T) {
+	f := newFakeXO(t)
+
+	cfg := f.config()
+	cfg.Username = "user"
+	cfg.Password = "pass"
+	c, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	if err := c.Close(); err != nil {
+		t.Fatalf("first Close failed: %v", err)
+	}
+	if err := c.Close(); err != nil {
+		t.Fatalf("second Close failed: %v", err)
+	}
+	f.waitDisconnect(t)
+
+	if got := f.deleted(); len(got) != 1 {
+		t.Errorf("token should be revoked exactly once, got %v", got)
+	}
+}
+
+func TestClose_callsFailAfterClose(t *testing.T) {
+	f := newFakeXO(t)
+
+	cfg := f.config()
+	cfg.Token = "user-token"
+	c, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	if err := c.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	if err := c.(*Client).Call("session.signIn", map[string]interface{}{}, nil); err == nil {
+		t.Error("expected Call to fail on a closed client")
+	}
+}
