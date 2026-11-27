@@ -43,6 +43,31 @@ export XOA_RETRY_MAX_TIME="10m"
 export XOA_INSECURE="true"
 ```
 
+## Diskless cloud-init integration test
+
+`TestCreateVmDisklessCloudConfig` requires a real XO JSON-RPC endpoint;
+`xo-api-sim` only supports REST. Configure the connection above and the existing
+v1 integration fixtures:
+
+```bash
+export XOA_POOL="your-pool-name"
+export XOA_TEMPLATE="your-template-name"
+export XOA_DISKLESS_TEMPLATE="Other install media"
+# Optional: use a writable SR in the same pool, different from its default SR,
+# to verify that CloudConfigSrId overrides the default.
+export XOA_CLOUD_CONFIG_SR="your-other-sr-id"
+
+go test ./client -run '^TestCreateVmDisklessCloudConfig$' -v
+```
+
+The two subtests create halted VMs without OS disks and check that their only
+disk is `XO CloudConfigDrive` on the expected SR. Each test VM is deleted during
+cleanup, including when creation fails after the VM has been allocated. Without
+`XOA_CLOUD_CONFIG_SR`, the explicit-SR case also uses the pool's default SR.
+The test is skipped when the required integration environment is absent.
+It checks drive creation and placement, but does not boot a guest or verify the
+contents of the drive.
+
 ## Support
 
 For issues, questions, or contributions, please refer to the main repository documentation.

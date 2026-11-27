@@ -155,6 +155,10 @@ type Vm struct {
 	PVDriversDetected              bool              `json:"pvDriversDetected"`
 	DestroyCloudConfigVdiAfterBoot bool              `json:"-"`
 	CloneType                      string            `json:"-"`
+	// SR on which the cloud-init config drive is created when the VM has no
+	// disk. Defaults to the default SR of the template's pool. Ignored when
+	// the VM has disks: Xen Orchestra then uses the SR of the first disk.
+	CloudConfigSrId string `json:"-"`
 }
 
 type Installation struct {
@@ -352,6 +356,23 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 		vdis = append(vdis, createVdiMap(disks[i]))
 	}
 
+	// Xen Orchestra creates the cloud-init config drive on the SR of the VM's
+	// first disk and fails when the VM has none. For a diskless VM, the drive
+	// is created separately on an explicit SR before the VM is started.
+	// Every template disk beyond len(disks) is removed, so the VM is diskless
+	// exactly when no disk is requested.
+	cloudConfigDriveSrId := ""
+	if vmReq.CloudConfig != "" && len(disks) == 0 {
+		if vmReq.DestroyCloudConfigVdiAfterBoot {
+			return nil, errors.New("cannot destroy the cloud-init config drive after boot for a VM without disks")
+		}
+
+		cloudConfigDriveSrId, err = c.getCloudConfigDriveSrId(vmReq.CloudConfigSrId, tmpl[0].PoolId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	params := map[string]interface{}{
 		"bootAfterCreate":   false,
 		"clone":             useExistingDisks && vmReq.CloneType == CloneTypeFastClone,
@@ -433,7 +454,9 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	if cloudConfig != "" {
 		c.warnOnInvalidCloudConfig(cloudConfig)
 
-		params["cloudConfig"] = cloudConfig
+		if cloudConfigDriveSrId == "" {
+			params["cloudConfig"] = cloudConfig
+		}
 	}
 
 	resourceSet := vmReq.ResourceSet
@@ -446,7 +469,7 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 	}
 
 	cloudNetworkConfig := vmReq.CloudNetworkConfig
-	if cloudNetworkConfig != "" {
+	if cloudNetworkConfig != "" && cloudConfigDriveSrId == "" {
 		params["networkConfig"] = cloudNetworkConfig
 	}
 
@@ -459,6 +482,13 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if cloudConfigDriveSrId != "" {
+		err = c.createCloudConfigDrive(vmId, cloudConfigDriveSrId, cloudConfig, cloudNetworkConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	otherParams := map[string]interface{}{
@@ -502,6 +532,65 @@ func (c *Client) CreateVm(vmReq Vm, createTime time.Duration) (*Vm, error) {
 			Id: vmId,
 		},
 	)
+}
+
+// getCloudConfigDriveSrId returns the SR on which the cloud-init config drive
+// of a diskless VM created in the given pool is stored: the requested SR, or
+// the default SR of the pool.
+func (c *Client) getCloudConfigDriveSrId(srId, poolId string) (string, error) {
+	if srId != "" {
+		sr, err := c.GetStorageRepositoryById(srId)
+		if err != nil {
+			return "", fmt.Errorf("cannot find the SR '%s' for the cloud-init config drive: %w", srId, err)
+		}
+		if sr.PoolId != poolId {
+			return "", fmt.Errorf("the SR '%s' for the cloud-init config drive belongs to pool '%s', not to the pool '%s' of the VM",
+				srId, sr.PoolId, poolId)
+		}
+		return srId, nil
+	}
+
+	pools, err := c.GetPools(Pool{Id: poolId})
+	if err != nil {
+		return "", fmt.Errorf("cannot find the pool '%s' to get its default SR for the cloud-init config drive: %w", poolId, err)
+	}
+	for _, pool := range pools {
+		if pool.Id != poolId {
+			continue
+		}
+		if pool.DefaultSR == "" {
+			return "", fmt.Errorf("a VM without disks needs an SR for its cloud-init config drive, "+
+				"but none was given and the pool '%s' has no default SR", poolId)
+		}
+		return pool.DefaultSR, nil
+	}
+	return "", fmt.Errorf("cannot find the pool '%s' to get its default SR for the cloud-init config drive", poolId)
+}
+
+// createCloudConfigDrive creates the cloud-init config drive of a VM on the
+// given SR. The VM is deleted if the drive cannot be created, so that no
+// half-configured VM is left behind.
+func (c *Client) createCloudConfigDrive(vmId, srId, cloudConfig, cloudNetworkConfig string) error {
+	params := map[string]any{
+		"vm":     vmId,
+		"sr":     srId,
+		"config": cloudConfig,
+	}
+	if cloudNetworkConfig != "" {
+		params["networkConfig"] = cloudNetworkConfig
+	}
+
+	var reply any
+	err := c.Call("vm.createCloudInitConfigDrive", params, &reply)
+	if err == nil {
+		return nil
+	}
+
+	if deleteErr := c.DeleteVm(vmId); deleteErr != nil {
+		return fmt.Errorf("failed to create the cloud-init config drive of VM '%s': %w; "+
+			"deleting the VM also failed, it must be removed manually: %v", vmId, err, deleteErr)
+	}
+	return fmt.Errorf("failed to create the cloud-init config drive of VM '%s', the VM was deleted: %w", vmId, err)
 }
 
 func createVdiMap(disk Disk) map[string]interface{} {
