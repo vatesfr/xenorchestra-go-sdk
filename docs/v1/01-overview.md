@@ -38,6 +38,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Release the websocket connection (and revoke the token created for
+	// username/password authentication) when done.
+	defer c.Close()
 
 	// Get all VMs
 	vms, err := c.GetVms(client.Vm{

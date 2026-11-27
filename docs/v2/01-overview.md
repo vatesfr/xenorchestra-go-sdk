@@ -51,6 +51,8 @@ func main() {
     if err != nil {
         panic(err)
     }
+    // Release the v1 connection (if it was opened) and HTTP resources when done.
+    defer client.Close()
 
     // List all VMs (GetAll with no limit and no filter)
     vms, err := client.VM().GetAll(ctx, 0, "")
