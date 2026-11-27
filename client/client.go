@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
@@ -137,6 +138,11 @@ type XOClient interface {
 
 	GetBond(bondReq Bond) (*Bond, error)
 	GetBonds(bondReq Bond) ([]Bond, error)
+
+	// Close releases the websocket connection and its reader goroutine, and
+	// revokes the authentication token if it was created by the client
+	// (username/password authentication). The client must not be used after.
+	Close() error
 }
 
 type Client struct {
@@ -146,7 +152,17 @@ type Client struct {
 	httpClient   http.Client
 	restApiURL   *url.URL
 	logger       *slog.Logger
+
+	// createdToken is the token created by NewClient on username/password
+	// authentication; it is revoked on Close. Empty when the user provided it.
+	createdToken string
+	closeOnce    sync.Once
+	closeErr     error
 }
+
+// tokenRevokeTimeout bounds the token.delete call made on Close so that an
+// unresponsive server cannot block it forever.
+const tokenRevokeTimeout = 10 * time.Second
 
 type RetryMode int
 
@@ -167,11 +183,6 @@ type Config struct {
 	InsecureSkipVerify bool
 	RetryMode          RetryMode
 	RetryMaxTime       time.Duration
-}
-
-var dialer = gorillawebsocket.Dialer{
-	ReadBufferSize:  MaxMessageSize,
-	WriteBufferSize: MaxMessageSize,
 }
 
 var (
@@ -264,7 +275,13 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: config.InsecureSkipVerify, // #nosec G402
 	}
-	dialer.TLSClientConfig = tlsConfig
+	// Build a dialer per client: sharing a package-level dialer and mutating its
+	// TLS config would race when clients are created concurrently.
+	dialer := gorillawebsocket.Dialer{
+		ReadBufferSize:  MaxMessageSize,
+		WriteBufferSize: MaxMessageSize,
+		TLSClientConfig: tlsConfig,
+	}
 
 	ws, _, err := dialer.Dial(fmt.Sprintf("%s/api/", wsURL), http.Header{})
 
@@ -275,6 +292,17 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	objStream := websocket.NewObjectStream(ws)
 	var h jsonrpc2.Handler = &handler{}
 	c := jsonrpc2.NewConn(context.Background(), objStream, h)
+
+	// From here on, the websocket is open: every error path must release it,
+	// and revoke the token if we created it, so a failed NewClient leaks nothing.
+	createdToken := ""
+	fail := func(err error) (XOClient, error) {
+		if createdToken != "" {
+			_ = c.Call(context.Background(), "token.delete", map[string]interface{}{"token": createdToken}, nil)
+		}
+		_ = c.Close()
+		return nil, err
+	}
 
 	reqParams := map[string]interface{}{}
 	if useTokenAuth {
@@ -287,24 +315,25 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	var reply signInResponse
 	err = c.Call(context.Background(), "session.signIn", reqParams, &reply)
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 
 	if !useTokenAuth {
 		err = c.Call(context.Background(), "token.create", map[string]interface{}{}, &token)
 		if err != nil {
-			return nil, err
+			return fail(err)
 		}
+		createdToken = token
 	}
 
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 
 	restApiURL, err := convertWebsocketURLToRestApi(wsURL)
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 
 	jar.SetCookies(restApiURL, []*http.Cookie{
@@ -328,7 +357,27 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 		httpClient:   httpClient,
 		restApiURL:   restApiURL,
 		logger:       logger,
+		createdToken: createdToken,
 	}, nil
+}
+
+// Close implements XOClient. It is safe to call multiple times; only the
+// first call has an effect and later calls return the same error.
+func (c *Client) Close() error {
+	c.closeOnce.Do(func() {
+		var revokeErr error
+		if c.createdToken != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), tokenRevokeTimeout)
+			revokeErr = c.rpc.Call(ctx, "token.delete", map[string]interface{}{"token": c.createdToken}, nil)
+			cancel()
+			if revokeErr != nil {
+				revokeErr = fmt.Errorf("failed to revoke authentication token: %w", revokeErr)
+			}
+		}
+		c.httpClient.CloseIdleConnections()
+		c.closeErr = errors.Join(revokeErr, c.rpc.Close())
+	})
+	return c.closeErr
 }
 
 // SetLogger sets the logger for the client. Useful for tests to redirect logs.

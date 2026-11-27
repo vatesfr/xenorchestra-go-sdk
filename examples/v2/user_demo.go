@@ -23,6 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create XO client: %v", err)
 	}
+	defer func() { _ = client.Close() }()
 
 	vmService := client.VM()
 

@@ -103,4 +103,11 @@ if xoClient.v1InitErr != nil {
     // only REST v2 services are available
 }
 
+// Pattern 4: Release resources
+defer xoClient.Close()
+// Close closes the v1 websocket connection if it was initialized (revoking
+// the token it created for username/password authentication), and prevents
+// any later lazy initialization: after Close, V1Client() returns nil and
+// JSON-RPC calls fail.
+
 ```
