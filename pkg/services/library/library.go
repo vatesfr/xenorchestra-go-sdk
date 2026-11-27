@@ -20,4 +20,9 @@ type Library interface {
 	// 2. Use v2 features while maintaining backward compatibility
 	// 3. Gradually migrate from v1 to v2 without managing multiple clients
 	V1Client() v1.XOClient
+	// Close releases the resources held by the client: the v1 websocket
+	// connection when it was initialized (revoking the token it created, if
+	// any), idle HTTP connections, and buffered logs. The client must not be
+	// used after Close; JSON-RPC calls will fail and V1Client will return nil.
+	Close() error
 }

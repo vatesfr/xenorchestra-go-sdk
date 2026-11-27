@@ -5,7 +5,9 @@ about the v2 design choices, how to add new services, etc.
 package v2
 
 import (
+	"errors"
 	"sync"
+	"sync/atomic"
 
 	"github.com/subosito/gotenv"
 	v1 "github.com/vatesfr/xenorchestra-go-sdk/client"
@@ -56,8 +58,17 @@ type XOClient struct {
 	// API will be fully released, this service will be removed. FYI, this
 	// is only for methods that are not part of the v1 client.
 	jsonrpcSvc library.JSONRPC
+	restClient *client.Client
 	log        *logger.Logger
+
+	closed    atomic.Bool
+	closeOnce sync.Once
+	closeErr  error
 }
+
+// errClientClosed is returned by the lazy v1 initialization once the client
+// has been closed, so that a closed client never reopens a connection.
+var errClientClosed = errors.New("xo client is closed")
 
 // Added to load the .env file in the root of the project,
 // to make it easier to test the SDK without having to set
@@ -118,6 +129,7 @@ func New(config *config.Config) (library.Library, error) {
 		networkService:  networkService,
 		templateService: templateService,
 		v1Config:        v1Config,
+		restClient:      client,
 		log:             log,
 	}
 
@@ -130,6 +142,9 @@ func New(config *config.Config) (library.Library, error) {
 // initV1Client initializes the v1 client lazily and thread-safely.
 // It is called at most once due to sync.Once.
 func (c *XOClient) initV1Client() (*v1.Client, error) {
+	if c.closed.Load() {
+		return nil, errClientClosed
+	}
 	c.v1InitOnce.Do(func() {
 		c.v1Client, c.v1InitErr = v1.NewClient(c.v1Config)
 	})
@@ -186,6 +201,33 @@ func (c *XOClient) Template() library.Template {
 }
 
 func (c *XOClient) V1Client() v1.XOClient {
-	_, _ = c.initV1Client()
+	if _, err := c.initV1Client(); err != nil {
+		return nil
+	}
 	return c.v1Client
+}
+
+// Close implements library.Library. It is safe to call multiple times; only
+// the first call has an effect and later calls return the same error.
+func (c *XOClient) Close() error {
+	c.closeOnce.Do(func() {
+		c.closed.Store(true)
+
+		// Claim the lazy initialization if it has not happened yet so that no
+		// v1 connection can be opened after Close. If an initialization is in
+		// progress, Do waits for it, so v1Client is safe to read afterwards.
+		c.v1InitOnce.Do(func() {
+			c.v1InitErr = errClientClosed
+		})
+
+		var v1Err error
+		if c.v1Client != nil {
+			v1Err = c.v1Client.Close()
+		}
+
+		c.restClient.HttpClient.CloseIdleConnections()
+		c.log.Sync()
+		c.closeErr = v1Err
+	})
+	return c.closeErr
 }
