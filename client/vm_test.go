@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -293,6 +296,74 @@ func TestShareFieldMarshalling(t *testing.T) {
 	}
 	if !strings.Contains(string(b), `"share":true`) {
 		t.Errorf("expected `share: true` in %s", b)
+	}
+}
+
+// This integration test requires a real XO JSON-RPC endpoint, not xo-api-sim.
+func TestCreateVmDisklessCloudConfig(t *testing.T) {
+	if !hasIntegrationTestEnv() {
+		t.Skip("requires the XO v1 integration test environment")
+	}
+
+	c, err := NewClient(GetConfigFromEnv())
+	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, c.(*Client).rpc.Close()) })
+
+	explicitSr := os.Getenv("XOA_CLOUD_CONFIG_SR")
+	if explicitSr == "" {
+		explicitSr = accDefaultSr.Id
+		t.Log("set XOA_CLOUD_CONFIG_SR to a different SR to verify overriding the pool default")
+	}
+
+	for _, tc := range []struct {
+		name        string
+		requestedSr string
+		expectedSr  string
+	}{
+		{name: "pool_default_sr", expectedSr: accTestPool.DefaultSR},
+		{name: "explicit_sr", requestedSr: explicitSr, expectedSr: explicitSr},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			name := integrationTestPrefix + "diskless-cloud-config-" + uuid.Must(uuid.NewV4()).String()
+			// Register cleanup before creation: CreateVm can fail after the VM exists.
+			t.Cleanup(func() {
+				vms, err := c.GetVms(Vm{NameLabel: name})
+				if _, notFound := err.(NotFound); notFound {
+					return
+				}
+				if !assert.NoError(t, err, "find test VM for cleanup") {
+					return
+				}
+				for _, vm := range vms {
+					assert.NoError(t, c.DeleteVm(vm.Id), "delete test VM %s", vm.Id)
+				}
+			})
+
+			vm, err := c.CreateVm(Vm{
+				NameLabel:          name,
+				Template:           disklessTestTemplate.Id,
+				CPUs:               CPUs{Number: 1},
+				Memory:             MemoryObject{Static: []int{0, 512 * 1024 * 1024}},
+				PowerState:         HaltedPowerState,
+				CloudConfig:        "#cloud-config\nhostname: diskless-cloud-config-test\n",
+				CloudNetworkConfig: "version: 1\nconfig: []\n",
+				CloudConfigSrId:    tc.requestedSr,
+				Installation:       Installation{Method: "network", Repository: "pxe"},
+			}, 5*time.Minute)
+			require.NoError(t, err)
+			assert.Equal(t, HaltedPowerState, vm.PowerState)
+
+			// No OS disk was requested: the only disk must be the cloud-init drive.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				disks, err := c.GetDisks(vm)
+				if !assert.NoError(collect, err) || !assert.Len(collect, disks, 1) {
+					return
+				}
+				assert.Equal(collect, "XO CloudConfigDrive", disks[0].NameLabel)
+				assert.Equal(collect, tc.expectedSr, disks[0].SrId)
+				assert.Positive(collect, disks[0].Size)
+			}, 30*time.Second, time.Second, "cloud-init drive must exist on the expected SR")
+		})
 	}
 }
 
