@@ -169,11 +169,6 @@ type Config struct {
 	RetryMaxTime       time.Duration
 }
 
-var dialer = gorillawebsocket.Dialer{
-	ReadBufferSize:  MaxMessageSize,
-	WriteBufferSize: MaxMessageSize,
-}
-
 var (
 	retryModeMap = map[string]RetryMode{
 		"none":    None,
@@ -264,7 +259,13 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: config.InsecureSkipVerify, // #nosec G402
 	}
-	dialer.TLSClientConfig = tlsConfig
+	// Build a dialer per client: sharing a package-level dialer and mutating its
+	// TLS config would race when clients are created concurrently.
+	dialer := gorillawebsocket.Dialer{
+		ReadBufferSize:  MaxMessageSize,
+		WriteBufferSize: MaxMessageSize,
+		TLSClientConfig: tlsConfig,
+	}
 
 	ws, _, err := dialer.Dial(fmt.Sprintf("%s/api/", wsURL), http.Header{})
 
