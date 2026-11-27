@@ -277,6 +277,17 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	var h jsonrpc2.Handler = &handler{}
 	c := jsonrpc2.NewConn(context.Background(), objStream, h)
 
+	// From here on, the websocket is open: every error path must release it,
+	// and revoke the token if we created it, so a failed NewClient leaks nothing.
+	createdToken := ""
+	fail := func(err error) (XOClient, error) {
+		if createdToken != "" {
+			_ = c.Call(context.Background(), "token.delete", map[string]interface{}{"token": createdToken}, nil)
+		}
+		_ = c.Close()
+		return nil, err
+	}
+
 	reqParams := map[string]interface{}{}
 	if useTokenAuth {
 		reqParams["token"] = token
@@ -288,24 +299,25 @@ func NewClientWithLogger(config Config, logger *slog.Logger) (XOClient, error) {
 	var reply signInResponse
 	err = c.Call(context.Background(), "session.signIn", reqParams, &reply)
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 
 	if !useTokenAuth {
 		err = c.Call(context.Background(), "token.create", map[string]interface{}{}, &token)
 		if err != nil {
-			return nil, err
+			return fail(err)
 		}
+		createdToken = token
 	}
 
 	jar, err := cookiejar.New(&cookiejar.Options{})
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 
 	restApiURL, err := convertWebsocketURLToRestApi(wsURL)
 	if err != nil {
-		return nil, err
+		return fail(err)
 	}
 
 	jar.SetCookies(restApiURL, []*http.Cookie{
